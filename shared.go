@@ -26,6 +26,7 @@ import(
 
 type BB uint64
 
+
 type BRD struct {
   pieces [2][6]BB
   occupied [2]BB
@@ -115,12 +116,25 @@ func Placement(c int, brd *BRD) BB { return brd.occupied[c] }
 func piece_type(piece_id int) int { return (piece_id & 0xe) >> 1 }
 func piece_color(piece_id int) int { return piece_id & 1 }
 
+func piece_value(piece_id int) int { return piece_values[piece_type(piece_id)] }
+
 // #define Occupied() ((brd->occupied[0])|(brd->occupied[1]))
 // #define Placement(color) (brd->occupied[color])
 // #define piece_type(piece_id)  ((piece_id & 0xe) >> 1 )
 // #define piece_color(piece_id)  (piece_id & 0x1)
 
+  // Init_bitwise_math();
+  // Init_board();
+  // Init_bitboard();
+  // Init_attack();
+  // Init_move_gen();
+  // Init_eval();
+  // Init_tropism();
 func main() {
+
+  setup_masks()
+  setup_bonus_table()
+
   fmt.Println("Hello Chess World")
 }
 

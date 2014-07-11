@@ -21,16 +21,16 @@
 
 package main
 
+
 var tropism_bonus [64][64][6]int
 
 func setup_bonus_table(){
-  base_bonus_ratio := 0.15
-  bonus := 0.0
+  base_bonus_ratio := float64(0.15)
+  bonus := float64(0.0)
   for f := 0; f < 64; f++ {
     for to := 0; to < 64; to++ {
       for t := PAWN; t < KING; t++ {
-        // bonus = piece_values[t] * base_bonus_ratio * manhattan_distance_ratio(f, to);
-        bonus = piece_values[t] * base_bonus_ratio * chebyshev_distance_ratio(f, to);
+        bonus = float64(piece_values[t]) * base_bonus_ratio * chebyshev_distance_ratio(f, to);
         tropism_bonus[f][to][t] = round(bonus);
       }
     }
@@ -38,12 +38,12 @@ func setup_bonus_table(){
 }
 
 // Returns 1 (maximum bonus) at minimum distance, and 0 (no bonus) at max distance.
-func chebyshev_distance_ratio(from, to int) float {
-  return (-float(chebyshev_distance(from, to))/6.0) + (7.0/6.0)
+func chebyshev_distance_ratio(from, to int) float64 {
+  return (-float64(chebyshev_distance(from, to))/6.0) + (7.0/6.0)
 }
 // Returns 1 (maximum bonus) at minimum distance, and 0 (no bonus) at max distance.
-func manhattan_distance_ratio(from, to int) float {
-  return (-float(manhattan_distance(from, to))/13.0) + (14.0/13.0)
+func manhattan_distance_ratio(from, to int) float64 {
+  return (-float64(manhattan_distance(from, to))/13.0) + (14.0/13.0)
 }
 
 

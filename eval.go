@@ -21,7 +21,6 @@
 
 package main
 
-
 var non_king_value, endgame_value, mate_value int
 
 var passed_pawn_bonus = [2][8]int{ { 0, 49, 28, 16, 9,  5,  3,  0 },   
@@ -190,9 +189,7 @@ func net_placement(c, e int, brd *BRD) int {
 }
 
 
-
 func adjusted_placement(c, e int, brd *BRD) int {
-  var ratio float64
   var sq, placement int
   var b BB
   enemy_king_sq := furthest_forward(e, brd.pieces[e][KING])
@@ -208,179 +205,117 @@ func adjusted_placement(c, e int, brd *BRD) int {
     placement += king_pst[c][in_endgame(c, brd)][sq]
   }
   // Base material is incrementally updated as moves are made/unmade.
-  return brd.material[c] + placement + mobility(c, e, brd) + pawn_structure(c, e, brd);
+  return brd.material[c] + placement + mobility(c, e, brd) + pawn_structure(c, e, brd)
 }
 
-// // Counts the total possible moves for the given side, not including any target squares defended by enemy pawns.
-// static int mobility(int c, int e, BRD *brd){
-//   BB friendly = Placement(c);
-//   BB available = ~friendly;
-//   BB enemy = Placement(e);
-//   BB occ = friendly|enemy;
-//   BB empty = ~occ;
-//   BB unguarded;
-//   int sq;
-//   int mobility=0;
+// Counts the total possible moves for the given side, not including any target squares defended by enemy pawns.
+func mobility(c, e int, brd *BRD) int {
+  friendly := Placement(c, brd)
+  available := ^friendly
+  enemy := Placement(e, brd)
+  occ := friendly|enemy
+  empty := ^occ;
 
-//   // pawn mobility
-//   BB single_advances, double_advances, left_temp, right_temp;
-//   if(c){ // white to move
-//     single_advances = (brd->pieces[WHITE][PAWN]<<8) & empty; // promotions generated in get_captures
-//     double_advances = ((single_advances & row_masks[2])<<8) & empty;
-//     left_temp = ((brd->pieces[c][PAWN] & (~column_masks[0]))<<7) & enemy;
-//     right_temp = ((brd->pieces[c][PAWN] & (~column_masks[7]))<<9) & enemy;
-//     unguarded = ~(((brd->pieces[e][PAWN]&(~column_masks[0]))>>9) | ((brd->pieces[e][PAWN]&(~column_masks[7]))>>7));
-//   } else { // black to move
-//     single_advances = (brd->pieces[BLACK][PAWN]>>8) & empty;  
-//     double_advances = ((single_advances & row_masks[5])>>8) & empty;
-//     left_temp = ((brd->pieces[c][PAWN] & (~column_masks[0]))>>9) & enemy;
-//     right_temp = ((brd->pieces[c][PAWN] & (~column_masks[7]))>>7) & enemy;
-//     unguarded = ~(((brd->pieces[e][PAWN]& (~column_masks[0]))<<7) | ((brd->pieces[e][PAWN]& (~column_masks[7]))<<9));
-//   }
+  var sq, mob int
+  var single_advances, double_advances, left_temp, right_temp, unguarded BB
 
-//   mobility += (pop_count((single_advances|double_advances) & unguarded) 
-//                + pop_count(left_temp & unguarded) + pop_count(right_temp & unguarded));
-//   // knight mobility
-//   for(BB b = brd->pieces[c][KNIGHT]; b; clear_sq(sq, b)){
-//     sq = furthest_forward(c, b);
-//     mobility += pop_count(knight_masks[sq] & available & unguarded);
-//   }
-//   // bishop mobility
-//   for(BB b = brd->pieces[c][BISHOP]; b; clear_sq(sq, b)){
-//     sq = furthest_forward(c, b);
-//     mobility += pop_count(bishop_attacks(occ, sq) & available & unguarded);
-//   }
-//   // rook mobility
-//   for(BB b = brd->pieces[c][ROOK]; b; clear_sq(sq, b)){
-//     sq = furthest_forward(c, b);
-//     mobility += pop_count(rook_attacks(occ, sq) & available & unguarded);
-//   }
-//   // queen mobility
-//   for(BB b = brd->pieces[c][QUEEN]; b; clear_sq(sq, b)){
-//     sq = furthest_forward(c, b);
-//     mobility += pop_count(queen_attacks(occ, sq) & available & unguarded);
-//   }
-//   // king mobility
-//   for(BB b = brd->pieces[c][KING]; b; clear_sq(sq, b)){
-//     sq = furthest_forward(c, b);
-//     mobility += pop_count(king_masks[sq] & available & unguarded);
-//   }
-//   return mobility;
-// }
+  // pawn mobility
 
-// // PAWN EVALUATION
-// // 
-// // Good structures:
-// //   -Passed pawns - Bonus for pawns unblocked by an enemy pawn on the same or adjacent file. 
-// //                   May eventually get promoted.
-// //   -Pawn duos - Pawns side by side to another friendly pawn receive a small bonus
-// // 
-// // Bad structures:
-// //   -Isolated pawns - Penalty for any pawn without friendly pawns on adjacent files.  
-// //   -Double/tripled pawns - Penalty for having multiple pawns on the same file.
-// static int pawn_structure(int c, int e, BRD *brd){
-//   int structure = 0;
-//   int sq;
-//   BB own_pawns = brd->pieces[c][PAWN];
-//   BB enemy_pawns = brd->pieces[e][PAWN];
+  if(c > 0){ // white to move
+    single_advances = (brd.pieces[WHITE][PAWN]<<8) & empty // promotions generated in get_captures
+    double_advances = ((single_advances & row_masks[2])<<8) & empty
+    left_temp = ((brd.pieces[c][PAWN] & (^column_masks[0]))<<7) & enemy
+    right_temp = ((brd.pieces[c][PAWN] & (^column_masks[7]))<<9) & enemy
+    unguarded = ^(((brd.pieces[e][PAWN]&(^column_masks[0]))>>9) | ((brd.pieces[e][PAWN]&(^column_masks[7]))>>7))
+  } else { // black to move
+    single_advances = (brd.pieces[BLACK][PAWN]>>8) & empty; 
+    double_advances = ((single_advances & row_masks[5])>>8) & empty
+    left_temp = ((brd.pieces[c][PAWN] & (^column_masks[0]))>>9) & enemy
+    right_temp = ((brd.pieces[c][PAWN] & (^column_masks[7]))>>7) & enemy
+    unguarded = ^(((brd.pieces[e][PAWN]& (^column_masks[0]))<<7) | ((brd.pieces[e][PAWN]& (^column_masks[7]))<<9))
+  }
 
-//   for(BB b = own_pawns; b; clear_sq(sq, b)){
-//     sq = furthest_forward(c, b);
-//     // passed pawns
-//     if(!(pawn_passed_masks[c][sq] & enemy_pawns)) {
-//       structure += passed_pawn_bonus[c][row(sq)];        
-//       if(row(sq) == promote_row[c][0]){
-//         if(!is_attacked_by(brd, (c ? sq+8 : sq-8), c^1, c)){
-//           structure += passed_pawn_bonus[c][row(sq)];  // double the value of the bonus if path to promotion is undefended.          
-//         }
-//       } else if(row(sq) == promote_row[c][1]) {
-//         if(!is_attacked_by(brd, (c ? sq+8 : sq-8), c^1, c) && 
-//            !is_attacked_by(brd, (c ? sq+16 : sq-16), c^1, c)){
-//           structure += passed_pawn_bonus[c][row(sq)];  // double the value of the bonus if path to promotion is undefended.
-//         }
-//       }
-//     }
-//     // isolated pawns
-//     if(!(pawn_isolated_masks[sq] & own_pawns)) structure += isolated_pawn_penalty;
-//     // pawn duos 
-//     if(pawn_side_masks[sq] & own_pawns) structure += pawn_duo_bonus;
-//   }
-//   int column_count;
-//   for(int i=0; i<8; i++){
-//     // doubled/tripled pawns
-//     column_count = pop_count(column_masks[i] & own_pawns);
-//     if (column_count > 1){
-//       structure += (double_pawn_penalty<<(column_count-2));
-//     }
-//   }
-//   return structure;
-// }
+  mob += (pop_count((single_advances|double_advances) & unguarded) +
+          pop_count(left_temp & unguarded) + pop_count(right_temp & unguarded))
+  // knight mob
+  var b BB
+  for b = brd.pieces[c][KNIGHT]; b>0; clear_sq(sq, b) {
+    sq = furthest_forward(c, b)
+    mob += pop_count(knight_masks[sq] & available & unguarded)
+  }
+  // bishop mob
+  for b = brd.pieces[c][BISHOP]; b>0; clear_sq(sq, b) {
+    sq = furthest_forward(c, b)
+    mob += pop_count(bishop_attacks(occ, sq) & available & unguarded)
+  }
+  // rook mob
+  for b = brd.pieces[c][ROOK]; b>0; clear_sq(sq, b) {
+    sq = furthest_forward(c, b)
+    mob += pop_count(rook_attacks(occ, sq) & available & unguarded)
+  }
+  // queen mob
+  for b = brd.pieces[c][QUEEN]; b>0; clear_sq(sq, b) {
+    sq = furthest_forward(c, b)
+    mob += pop_count(queen_attacks(occ, sq) & available & unguarded)
+  }
+  // king mob
+  for b = brd.pieces[c][KING]; b>0; clear_sq(sq, b) {
+    sq = furthest_forward(c, b)
+    mob += pop_count(king_masks[sq] & available & unguarded)
+  }
+  return mob;
+}
 
+// PAWN EVALUATION
+// 
+// Good structures:
+//   -Passed pawns - Bonus for pawns unblocked by an enemy pawn on the same or adjacent file. 
+//                   May eventually get promoted.
+//   -Pawn duos - Pawns side by side to another friendly pawn receive a small bonus
+// 
+// Bad structures:
+//   -Isolated pawns - Penalty for any pawn without friendly pawns on adjacent files.  
+//   -Double/tripled pawns - Penalty for having multiple pawns on the same file.
+func pawn_structure(c, e int, brd *BRD) int {
+  var structure, sq int
+  own_pawns := brd.pieces[c][PAWN]
+  enemy_pawns := brd.pieces[e][PAWN]
 
+  for b := own_pawns; b>0; clear_sq(sq, b) {
+    sq = furthest_forward(c, b)
+    // passed pawns
+    if !(pawn_passed_masks[c][sq] & enemy_pawns >0) {
+      structure += passed_pawn_bonus[c][row(sq)]        
+      if row(sq) == promote_row[c][0] {
+        if !is_attacked_by(brd, get_offset(c, sq, 8), e, c) {
+          structure += passed_pawn_bonus[c][row(sq)]  // double the value of the bonus if path to promotion is undefended.          
+        }
+      } else if(row(sq) == promote_row[c][1]) {
+        if !is_attacked_by(brd, get_offset(c, sq, 8), e, c) && 
+           !is_attacked_by(brd, get_offset(c, sq, 16), e, c) {
+          structure += passed_pawn_bonus[c][row(sq)]  // double the value of the bonus if path to promotion is undefended.
+        }
+      }
+    }
+    // isolated pawns
+    if pawn_isolated_masks[sq] & own_pawns == 0 { structure += isolated_pawn_penalty }
+    // pawn duos 
+    if pawn_side_masks[sq] & own_pawns > 0 { structure += pawn_duo_bonus }
+  }
+  var column_count int
+  for i:=0; i<8; i++ {
+    // doubled/tripled pawns
+    column_count = pop_count(column_masks[i] & own_pawns)
+    if  column_count > 1 {
+      structure += double_pawn_penalty<<(uint(column_count-2))
+    }
+  }
+  return structure
+}
 
-// static VALUE net_material(VALUE self, VALUE pc_board, VALUE color){
-//   BRD *brd = get_brd(pc_board);  
-//   int c = SYM2COLOR(color);
-//   int e = c^1;
-//   int sq, placement = 0;
-//   BB b;
-//   return INT2NUM(adjusted_material(c, brd)-adjusted_material(e, brd));
-// }
+func get_offset(c, sq, off int) int { if c>0 { return sq+off } else { return sq-off } }
 
-// static int adjusted_material(int c, BRD *brd){
-//   int sq, placement = 0;
-//   BB b;
+func in_endgame(c int, brd *BRD) int { if brd.material[c] <= endgame_value { return 1 } else { return 0 } }
 
-//   for(int t = PAWN; t < QUEEN; t++){
-//     for(b = brd->pieces[c][t]; b; clear_sq(sq, b)){
-//       sq = furthest_forward(c, b);
-//       placement += main_pst[c][t][sq];
-//     }
-//   }
-//   for(b = brd->pieces[c][KING]; b; clear_sq(sq, b)){
-//     sq = furthest_forward(c, b);
-//     placement += king_pst[c][in_endgame(c)][sq];
-//   }
-//   return brd->material[c] + placement;
-// }
-
-
-// static VALUE evaluate_material(VALUE self, VALUE pc_board, VALUE color){
-//   BRD *brd = get_brd(pc_board);  
-//   int c = SYM2COLOR(color);
-//   int sq, placement = 0;
-//   BB b;
-
-//   for(int t = PAWN; t < QUEEN; t++){
-//     b = brd->pieces[c][t];
-//     for(b = brd->pieces[c][t]; b; clear_sq(sq, b)){
-//       sq = furthest_forward(c, b);
-//       placement += main_pst[c][t][sq];
-//     }
-//   }
-//   for(b = brd->pieces[c][KING]; b; clear_sq(sq, b)){
-//     sq = furthest_forward(c, b);
-//     placement += king_pst[c][in_endgame(c)][sq];
-//   }
-//   return INT2NUM(brd->material[c] + placement);
-// }
-
-// extern void Init_eval(){
-//   printf("  -Loading eval extension...");
-//   setup_eval_constants();
-
-//   VALUE mod_chess = rb_define_module("Chess");
-//   VALUE mod_eval = rb_define_module_under(mod_chess, "Evaluation");
-
-//   rb_define_module_function(mod_eval, "evaluate_material", evaluate_material, 2);
-//   rb_define_module_function(mod_eval, "net_material", net_material, 2);
-//   rb_define_module_function(mod_eval, "net_placement", net_placement, 2);
-
-//   printf("done.\n");
-// }
-
-func in_endgame(c int, brd *BRD) bool { if brd.material[c] <= endgame_value { return 1 } else { return 0 } }
-
-// #define in_endgame(color) (cBoard->material[color] <= endgame_value ? 1 : 0)
 
 
