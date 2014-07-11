@@ -128,7 +128,6 @@ func get_see(brd *BRD, from, to, c int) int {
 
   var piece_list [20]int
   count := 1
-
   // before entering the main loop, perform each step once for the initial attacking piece.  This ensures that the
   // moved piece is the first to capture.
 

@@ -21,7 +21,6 @@
 
 package main
 
-
 var tropism_bonus [64][64][6]int
 
 func setup_bonus_table(){
@@ -30,8 +29,8 @@ func setup_bonus_table(){
   for f := 0; f < 64; f++ {
     for to := 0; to < 64; to++ {
       for t := PAWN; t < KING; t++ {
-        bonus = float64(piece_values[t]) * base_bonus_ratio * chebyshev_distance_ratio(f, to);
-        tropism_bonus[f][to][t] = round(bonus);
+        bonus = float64(piece_values[t]) * base_bonus_ratio * chebyshev_distance_ratio(f, to)
+        tropism_bonus[f][to][t] = round(bonus)
       }
     }
   }
