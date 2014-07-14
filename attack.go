@@ -175,15 +175,10 @@ func get_see(brd *BRD, from, to, c int) int {
 }
 
 
-// // Ruby interface
-
-// static VALUE is_in_check(VALUE self, VALUE p_board, VALUE side_to_move){
-//   BRD *brd = get_brd(p_board);
-//   int c = SYM2COLOR(side_to_move);
-//   int e = c^1;
-//   if(!brd.pieces[c][KING]) return Qtrue;
-//   return (is_attacked_by(brd, furthest_forward(c, brd.pieces[c][KING]), e, c) ? Qtrue : Qfalse);
-// }
+func is_in_check(brd *BRD, c, e int) bool {
+  if brd.pieces[c][KING] == 0 { return true }
+  if is_attacked_by(brd, furthest_forward(c, brd.pieces[c][KING]), e, c) { return true } else { return false }
+}
 
 // static VALUE move_evades_check(VALUE self, VALUE p_board, VALUE sq_board, VALUE from, VALUE to, VALUE color){
 //   BRD *brd = get_brd(p_board);

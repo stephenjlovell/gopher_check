@@ -18,6 +18,7 @@
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //-----------------------------------------------------------------------------------
+
 package main
 
 import(
@@ -27,12 +28,38 @@ import(
 type BB uint64
 
 
+// side to move / enemy
+// castle rights
+// enp target
+// halfmove clock
+
 type BRD struct {
+  squares [64]int
   pieces [2][6]BB
   occupied [2]BB
   material [2]int
-  squares [64]int
+  hash    int
+  pawn_hash int
 }
+
+// type
+const (
+  PAWN = iota; KNIGHT; BISHOP; ROOK; QUEEN; KING;
+)
+// color
+const (
+  BLACK = iota; WHITE
+)
+
+// square/ID codes
+const (
+  W_PAWN = (iota*2+1); W_KNIGHT; W_BISHOP; W_ROOK; W_QUEEN; W_KING;
+)
+const(
+  B_PAWN = iota*2; B_KNIGHT; B_BISHOP; B_ROOK; B_QUEEN; B_KING;
+)
+const EMPTY = 12
+
 
 const (
   NW = iota; NE; SE; SW; NORTH; EAST; SOUTH; WEST; INVALID;
@@ -40,21 +67,13 @@ const (
 
 const (
   A1=iota; B1; C1; D1; E1; F1; G1; H1; 
-  A2; B2; C2; D2; E2; F2; G2; H2; 
-  A3; B3; C3; D3; E3; F3; G3; H3; 
-  A4; B4; C4; D4; E4; F4; G4; H4; 
-  A5; B5; C5; D5; E5; F5; G5; H5; 
-  A6; B6; C6; D6; E6; F6; G6; H6; 
-  A7; B7; C7; D7; E7; F7; G7; H7; 
-  A8; B8; C8; D8; E8; F8; G8; H8; 
-)
-
-const (
-  BLACK = iota; WHITE
-)
-
-const (
-  PAWN = iota; KNIGHT; BISHOP; ROOK; QUEEN; KING;
+       A2; B2; C2; D2; E2; F2; G2; H2; 
+       A3; B3; C3; D3; E3; F3; G3; H3; 
+       A4; B4; C4; D4; E4; F4; G4; H4; 
+       A5; B5; C5; D5; E5; F5; G5; H5; 
+       A6; B6; C6; D6; E6; F6; G6; H6; 
+       A7; B7; C7; D7; E7; F7; G7; H7; 
+       A8; B8; C8; D8; E8; F8; G8; H8; 
 )
 
 var uni_mask BB = 0xffffffffffffffff;
@@ -97,39 +116,31 @@ func column(sq int) int { return sq & 7 }
 func manhattan_distance(from, to int) int { return abs(row(from)-row(to)) + abs(column(from)-column(to)) }
 func chebyshev_distance(from, to int) int { return max(abs(row(from)-row(to)),abs(column(from)-column(to))) }
 
-func clear_sq(sq int, b BB) BB { return (b & sq_mask_off[sq]) }  // no longer modifies b by reference
-func add_sq(sq int, b BB) BB { return  (b | sq_mask_on[sq]) }  // no longer modifies b by reference
+func clear_sq(sq int, b BB) { b &= sq_mask_off[sq] }  // no longer modifies b by reference
+func add_sq(sq int, b BB) { b |= sq_mask_on[sq] }  // no longer modifies b by reference
 
 
 func lsb(b BB) int { return 0 }
 func msb(b BB) int { return 0 }
 func furthest_forward(c int, b BB) int { return 0 }
 func pop_count(b BB) int { return 0 }
-
 // #define lsb(bitboard) (__builtin_ctzl(bitboard))
 // #define msb(bitboard) (63-__builtin_clzl(bitboard))
 // #define furthest_forward(color, bitboard) (color ? lsb(bitboard) : msb(bitboard))  
 // #define pop_count(bitboard) (__builtin_popcountl(bitboard))
 
+
 func Occupied(brd *BRD) BB { return brd.occupied[0]|brd.occupied[1] }
 func Placement(c int, brd *BRD) BB { return brd.occupied[c] }
-func piece_type(piece_id int) int { return (piece_id & 0xe) >> 1 }
+func piece_type(piece_id int) int { return piece_id >> 1 }
 func piece_color(piece_id int) int { return piece_id & 1 }
-
 func piece_value(piece_id int) int { return piece_values[piece_type(piece_id)] }
-
 // #define Occupied() ((brd->occupied[0])|(brd->occupied[1]))
 // #define Placement(color) (brd->occupied[color])
 // #define piece_type(piece_id)  ((piece_id & 0xe) >> 1 )
 // #define piece_color(piece_id)  (piece_id & 0x1)
 
-  // Init_bitwise_math();
-  // Init_board();
-  // Init_bitboard();
-  // Init_attack();
-  // Init_move_gen();
-  // Init_eval();
-  // Init_tropism();
+
 func main() {
 
   setup_masks()
@@ -137,5 +148,11 @@ func main() {
 
   fmt.Println("Hello Chess World")
 }
-
+  // Init_bitwise_math();
+  // Init_board();
+  // Init_bitboard();
+  // Init_attack();
+  // Init_move_gen();
+  // Init_eval();
+  // Init_tropism();
 
