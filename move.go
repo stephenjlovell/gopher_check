@@ -23,48 +23,44 @@ package main
 
 
 
+type MV uint32
+// To to fit into transposition table entries, moves are encoded using 21 bits as follows (in LSB order):
+// From square - first 6 bits
+// To square - next 6 bits
+// Piece - next 3 bits
+// Captured piece - next 3 bits
+// promoted to - next 3 bits
+
 
 // define an interface shared by all moves.
 type AnyMove interface {
-  Make() 
-  Unmake()
-  // Hash()
-  // PawnHash()
-
-  // 24 bits, in LSB order:
-  Piece() uint32  // 4 bits
-  From() uint32  // 6 bits
-  To() uint32 // 6 bits
-  CapturedPiece() uint32  // 4 bits
-  PromotedTo() uint32  // 4 bits
-} // Space remaining => 8 bits
-
-type MV uint32
-
-func (m MV) Make(brd *BRD) {
-
-}
-func (m MV) Unmake(brd *BRD) {
-
-}
-func (m MV) Piece() uint32 {
-  return uint32(m) & uint32(15)
-}
-func (m MV) From() uint32 {
-  return (uint32(m) >> 4) & uint32(63)  // discard the first 4 bits and return the next 6 bits
-}
-func (m MV) To() uint32 {
-  return (uint32(m) >> 10) & uint32(63)  
-}
-func (m MV) CapturedPiece() uint32 {
-  return (uint32(m) >> 16) & uint32(15)
-}
-func (m MV) PromotedTo() uint32 {
-  return (uint32(m) >> 20) & uint32(15)
-}
+  From() int 
+  To() int 
+  Piece() PC  
+  CapturedPiece() PC  
+  PromotedTo() PC
+} 
 
 
-// use automatic delegation to call make/unmake of strategy
+func (m MV) From() int {
+  return int(uint32(m) & uint32(63))  
+}
+
+func (m MV) To() int {
+  return int((uint32(m) >> 6) & uint32(63))
+}
+
+func (m MV) Piece(c int) PC {
+  return (PC((uint32(m) >> 12) & uint32(7))<<1) | PC(c)
+}
+
+func (m MV) CapturedPiece(e int) PC {
+  return (PC((uint32(m) >> 15) & uint32(7))<<1) | PC(e)
+}
+
+func (m MV) PromotedTo(c int) PC {
+  return PC(((uint32(m) >> 18) & uint32(7))<<1) | PC(c)
+}
 
 
 // regular_move:           Proc.new { |*args| RegularMove.new                },  

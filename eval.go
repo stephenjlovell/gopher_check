@@ -205,7 +205,7 @@ func adjusted_placement(c, e int, brd *BRD) int {
     placement += king_pst[c][in_endgame(c, brd)][sq]
   }
   // Base material is incrementally updated as moves are made/unmade.
-  return brd.material[c] + placement + mobility(c, e, brd) + pawn_structure(c, e, brd)
+  return int(brd.material[c]) + placement + mobility(c, e, brd) + pawn_structure(c, e, brd)
 }
 
 // Counts the total possible moves for the given side, not including any target squares defended by enemy pawns.
@@ -315,7 +315,7 @@ func pawn_structure(c, e int, brd *BRD) int {
 
 func get_offset(c, sq, off int) int { if c>0 { return sq+off } else { return sq-off } }
 
-func in_endgame(c int, brd *BRD) int { if brd.material[c] <= endgame_value { return 1 } else { return 0 } }
+func in_endgame(c int, brd *BRD) int { if int(brd.material[c]) <= endgame_value { return 1 } else { return 0 } }
 
 
 

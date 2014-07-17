@@ -21,45 +21,18 @@
 
 package main
 
-
-
-// At each node, call each new subtree search in a new goroutine.
-
-// values are piped up the subtrees.  
-// When this causes bounds in the node to update, the updated bounds are piped down the subtrees.
-
-
-
-// Young Brothers Wait (YBW) approach
-
-// at each node, search the leftmost child sequentially before searching the rest of the successors concurrently.
-
-
-// When spawning goroutines, priority should be based on node type of subtree root.  
-// If the node type is the same, use the move ordering to guess priority.  
-// If all goroutines are spawned into a single pool, this would create a "tree splitting" effect.
-
-
-// Goal is to avoid wasted processing effort where a subtree is expanded that otherwise would have been pruned.
-
-
-
-// The more edges have been already explored, the more likely it is that all moves will need to be searched. Could increment a max number
-// of goroutines for the current subtree root as the number of moves explored increases. 
+type KTable [MAX_PLY][2]MV
 
 
 
 
 
-// Generate moves in batches to save effort on move generation when cutoffs occur.
-// PV, hash, promotions, winning captures, killers, losing captures, quiet moves
 
 
 
 
-// Load balancing
 
-// ???
+
 
 
 

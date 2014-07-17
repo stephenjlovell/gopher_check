@@ -81,7 +81,7 @@ func is_attacked_by(brd *BRD, sq, attacker, defender int) bool {
 //    lies along a valid ray attack.  If the vector is a valid ray attack:
 // 2. Scan toward the king to see if there are any other pieces blocking this route to the king.
 // 3. Scan in the opposite direction to see detect any potential threats along this ray.
-func is_pinned(brd *BRD, sq, c, e int) bool {
+func is_pinned(brd *BRD, sq, c, e int) BB {
   occ := Occupied(brd)
   var threat, guarded_king BB
    //get direction toward king
@@ -99,9 +99,9 @@ func is_pinned(brd *BRD, sq, c, e int) bool {
     case SOUTH, WEST: 
       threat = scan_up(occ, dir-2, sq) & (brd.pieces[e][ROOK]|brd.pieces[e][QUEEN])
       guarded_king = scan_down(occ, dir, sq) & (brd.pieces[c][KING])
-    case INVALID: return false
+    case DIR_INVALID: return 0
   }
-  return (threat & guarded_king > 0)
+  return (threat & guarded_king)
 }
 
 // The Static Exchange Evaluation (SEE) heuristic provides a way to determine if a capture 
@@ -131,10 +131,10 @@ func get_see(brd *BRD, from, to, c int) int {
   // before entering the main loop, perform each step once for the initial attacking piece.  This ensures that the
   // moved piece is the first to capture.
 
-  piece_list[0] = piece_value(to)
+  piece_list[0] = brd.ValueAt(to)
+  next_victim = brd.ValueAt(from)  
+  t = brd.TypeAt(from)
 
-  next_victim = piece_value(from)
-  t = piece_type(from)
   clear_sq(from, temp_occ)
   if t != KNIGHT && t != KING { // if the attacker was a pawn, bishop, rook, or queen, re-scan for hidden attacks:
     if t == PAWN || t == BISHOP || t == QUEEN { temp_map |= bishop_attacks(temp_occ, to) & b_attackers }
@@ -265,22 +265,17 @@ func is_in_check(brd *BRD, c, e int) bool {
 // }
 
 
-// static VALUE is_pseudolegal_move_legal(VALUE self, VALUE p_board, VALUE piece, VALUE f, VALUE t, VALUE color){
-//   int c = SYM2COLOR(color);
-//   int e = c^1;
-//   BRD *brd = get_brd(p_board);
-//   if(piece_type(NUM2INT(piece)) == KING){ // determine if the to square is attacked by an enemy piece.
-//     return is_attacked_by(brd, NUM2INT(t), e, c) ? Qfalse : Qtrue;  // castle moves are pre-checked for legality
-//   } else { // determine if the piece being moved is pinned on the king and can't move without putting king at risk.
-//     BB pinned = is_pinned(brd, NUM2INT(f), c, e);
+func avoids_check(brd *BRD, m MV, c, e int) bool {
+  if m.Piece(c).Type() == KING {
+    return is_attacked_by(brd, m.To(),e, c)
+  } else {
+    pinned := is_pinned(brd, m.From(), c, e)
+    return pinned == BB(0) || ((^pinned) & sq_mask_on[m.To()]) == BB(0)
+  }
+}
 //     return pinned && (~pinned & sq_mask_on(NUM2INT(t))) ? Qfalse : Qtrue;
-//   }
-// }
 
 
-// static VALUE static_exchange_evaluation(VALUE self, VALUE p_board, VALUE from, VALUE to, VALUE side_to_move, VALUE sq_board){
-//   return INT2NUM(get_see(get_brd(p_board), NUM2INT(from), NUM2INT(to), SYM2COLOR(side_to_move), sq_board));
-// }
 
 
 // extern void Init_attack(){

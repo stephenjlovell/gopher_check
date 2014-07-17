@@ -21,45 +21,50 @@
 
 package main
 
+// When spawning new goroutines for subtree search, a deep copy of the BRD struct will have to be made 
+// and passed to the new goroutine.  Keep this struct as small as possible.
+
+type BRD struct {
+  squares [64]PC   // 512 bits
+  pieces [2][6]BB  // 768 bits
+  occupied [2]BB   // 128 bits
+  material [2]int32  // 64 bits
+  pawn_hash_key uint64 // 64 bits
+  hash_key uint64   // 64 bits
+}
+
+type PC uint8
 
 
-// At each node, call each new subtree search in a new goroutine.
-
-// values are piped up the subtrees.  
-// When this causes bounds in the node to update, the updated bounds are piped down the subtrees.
-
-
-
-// Young Brothers Wait (YBW) approach
-
-// at each node, search the leftmost child sequentially before searching the rest of the successors concurrently.
-
-
-// When spawning goroutines, priority should be based on node type of subtree root.  
-// If the node type is the same, use the move ordering to guess priority.  
-// If all goroutines are spawned into a single pool, this would create a "tree splitting" effect.
+const (
+  A1=iota; B1; C1; D1; E1; F1; G1; H1; 
+       A2; B2; C2; D2; E2; F2; G2; H2; 
+       A3; B3; C3; D3; E3; F3; G3; H3; 
+       A4; B4; C4; D4; E4; F4; G4; H4; 
+       A5; B5; C5; D5; E5; F5; G5; H5; 
+       A6; B6; C6; D6; E6; F6; G6; H6; 
+       A7; B7; C7; D7; E7; F7; G7; H7; 
+       A8; B8; C8; D8; E8; F8; G8; H8; SQ_INVALID; 
+)
 
 
-// Goal is to avoid wasted processing effort where a subtree is expanded that otherwise would have been pruned.
+func (brd *BRD) ValueAt(sq int) int {
+  return brd.squares[sq].Value()
+}
+
+func (brd *BRD) TypeAt(sq int) int {
+  return brd.squares[sq].Type()
+}
+
+func (pc PC) Type() int { return int(pc) >> 1 }
+func (pc PC) Color() int { return int(pc) & 1 }
+func (pc PC) Value() int { return piece_values[pc.Type()] }
 
 
+// func piece_type(piece_id int) int { return piece_id >> 1 }
+// func piece_color(piece_id int) int { return piece_id & 1 }
+// func piece_value(piece_id int) int { return piece_values[piece_type(piece_id)] }
 
-// The more edges have been already explored, the more likely it is that all moves will need to be searched. Could increment a max number
-// of goroutines for the current subtree root as the number of moves explored increases. 
-
-
-
-
-
-// Generate moves in batches to save effort on move generation when cutoffs occur.
-// PV, hash, promotions, winning captures, killers, losing captures, quiet moves
-
-
-
-
-// Load balancing
-
-// ???
 
 
 

@@ -123,7 +123,7 @@ func setup_directions(){
   var ray BB
   for i:=0; i<64; i++ {
     for j:=0; j<64; j++ {
-      directions[i][j] = INVALID  // initialize array.
+      directions[i][j] = DIR_INVALID  // initialize array.
     }
   }
   for i:=0; i<64; i++ {

@@ -23,24 +23,43 @@ package main
 
 import(
   "fmt"
+  "math/rand"
 )
+
+
+const (
+  MAX_DEPTH = 10
+  EXT_MAX = 5
+  MAX_PLY = MAX_DEPTH + EXT_MAX
+)
+
+
 
 type BB uint64
 
 
-// side to move / enemy
-// castle rights
-// enp target
-// halfmove clock
 
-type BRD struct {
-  squares [64]int
-  pieces [2][6]BB
-  occupied [2]BB
-  material [2]int
-  hash    int
-  pawn_hash int
+
+// Transposition Table, Killer moves, History Table should be shared by all goroutines.
+type SHARED struct {
+  killer_moves KTable
+  history HTable
+  // add transposition table
+  side_to_move [MAX_PLY]uint8
+  enemy [MAX_PLY]uint8
+
 }
+
+// Each goroutine gets its own explicit stack to store the local pv and information needed to unmake moves.
+
+type StackItem struct {
+  pv []MV
+  castle uint8
+  enp_target int
+  halfmove_clock uint8
+}
+
+type Stack []StackItem
 
 // type
 const (
@@ -51,30 +70,16 @@ const (
   BLACK = iota; WHITE
 )
 
-// square/ID codes
+// square/ID codes (0...12)
 const (
-  W_PAWN = (iota*2+1); W_KNIGHT; W_BISHOP; W_ROOK; W_QUEEN; W_KING;
-)
-const(
-  B_PAWN = iota*2; B_KNIGHT; B_BISHOP; B_ROOK; B_QUEEN; B_KING;
-)
-const EMPTY = 12
-
-
-const (
-  NW = iota; NE; SE; SW; NORTH; EAST; SOUTH; WEST; INVALID;
+  B_PAWN = iota; W_PAWN; B_KNIGHT; W_KNIGHT; B_BISHOP; W_BISHOP; 
+  B_ROOK; W_ROOK; B_QUEEN; W_QUEEN; B_KING; W_KING; PC_EMPTY;
 )
 
-const (
-  A1=iota; B1; C1; D1; E1; F1; G1; H1; 
-       A2; B2; C2; D2; E2; F2; G2; H2; 
-       A3; B3; C3; D3; E3; F3; G3; H3; 
-       A4; B4; C4; D4; E4; F4; G4; H4; 
-       A5; B5; C5; D5; E5; F5; G5; H5; 
-       A6; B6; C6; D6; E6; F6; G6; H6; 
-       A7; B7; C7; D7; E7; F7; G7; H7; 
-       A8; B8; C8; D8; E8; F8; G8; H8; 
+const (  // direction codes (0...8)
+  NW = iota; NE; SE; SW; NORTH; EAST; SOUTH; WEST; DIR_INVALID;
 )
+
 
 var uni_mask BB = 0xffffffffffffffff;
 var empty_mask BB = 0x0;
@@ -132,27 +137,21 @@ func pop_count(b BB) int { return 0 }
 
 func Occupied(brd *BRD) BB { return brd.occupied[0]|brd.occupied[1] }
 func Placement(c int, brd *BRD) BB { return brd.occupied[c] }
-func piece_type(piece_id int) int { return piece_id >> 1 }
-func piece_color(piece_id int) int { return piece_id & 1 }
-func piece_value(piece_id int) int { return piece_values[piece_type(piece_id)] }
+
+
 // #define Occupied() ((brd->occupied[0])|(brd->occupied[1]))
 // #define Placement(color) (brd->occupied[color])
-// #define piece_type(piece_id)  ((piece_id & 0xe) >> 1 )
-// #define piece_color(piece_id)  (piece_id & 0x1)
+
+
 
 
 func main() {
+  rand.Seed(9)  // keep the same seed each time for debugging purposes.
+  setup_zobrist()
 
   setup_masks()
   setup_bonus_table()
 
   fmt.Println("Hello Chess World")
 }
-  // Init_bitwise_math();
-  // Init_board();
-  // Init_bitboard();
-  // Init_attack();
-  // Init_move_gen();
-  // Init_eval();
-  // Init_tropism();
 
