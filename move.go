@@ -22,16 +22,6 @@
 package main
 
 
-
-type MV uint32
-// To to fit into transposition table entries, moves are encoded using 21 bits as follows (in LSB order):
-// From square - first 6 bits
-// To square - next 6 bits
-// Piece - next 3 bits
-// Captured piece - next 3 bits
-// promoted to - next 3 bits
-
-
 // define an interface shared by all moves.
 type AnyMove interface {
   From() int 
@@ -40,6 +30,15 @@ type AnyMove interface {
   CapturedPiece() PC  
   PromotedTo() PC
 } 
+
+
+type MV uint32
+// To to fit into transposition table entries, moves are encoded using 21 bits as follows (in LSB order):
+// From square - first 6 bits
+// To square - next 6 bits
+// Piece - next 3 bits
+// Captured piece - next 3 bits
+// promoted to - next 3 bits
 
 
 func (m MV) From() int {
@@ -63,23 +62,54 @@ func (m MV) PromotedTo(c int) PC {
 }
 
 
-// regular_move:           Proc.new { |*args| RegularMove.new                },  
-// regular_capture:        Proc.new { |*args| RegularCapture.new(*args)      },  # captured_piece
-// castle:                 Proc.new { |*args| Castle.new(*args)              },  # rook, rook_from, rook_to
-// enp_capture:            Proc.new { |*args| EnPassantCapture.new(*args)    },  # captured_piece, enp_target
-// pawn_move:              Proc.new { |*args| PawnMove.new                   },  
-// enp_advance:            Proc.new { |*args| EnPassantAdvance.new           },
-// pawn_promotion:         Proc.new { |*args| PawnPromotion.new(*args)       },  # promoted_piece
-// pawn_promotion_capture: Proc.new { |*args| PawnPromotionCapture.new(*args)} } 
+// Generate moves in batches to save effort on move generation when cutoffs occur.
+
+// Ordering: PV/hash, promotions, winning captures, killers, losing captures, quiet moves
+
+// use a buffered channel to coordinate between move generation and search.  
+// MoveGen sends ordered moves into the channel buffer in batches.
+// When the buffer is full, the move generator is blocked.
+// When no move is available yet, the Search routine is blocked.
+// When there are no more moves to send (move generation is complete) MoveGen closes the channel and sends a flag.
 
 
 
 
+// # Moves are ordered based on expected subtree value. Better move ordering produces a greater
+// # number of alpha/beta cutoffs during search, reducing the size of the actual search tree toward the minimal tree.
+// def get_moves(depth, enhanced_sort=false, in_check=false) 
+//   promotions, captures, moves = [], [], []
 
+//   if in_check
+//     MoveGen::get_evasions(@pieces, @side_to_move, @board.squares, @enp_target, promotions, captures, moves)
+//   else
+//     MoveGen::get_captures(@pieces, @side_to_move, @board.squares, @enp_target, captures, promotions)
+//     MoveGen::get_non_captures(@pieces, @side_to_move, @castle, moves, in_check)
+//   end
 
+//   if enhanced_sort  # At higher depths, expend additional effort on move ordering.
+//     enhanced_sort(promotions, captures, moves, depth)
+//   else
+//     promotions + sort_captures_by_see!(captures) + history_sort!(moves)
+//   end
+// end
 
-
-
+// # Generate only moves that create big swings in material balance, i.e. captures and promotions. 
+// # Used during Quiescence search to seek out positions from which a stable static evaluation can 
+// # be performed.
+// def get_captures(evade_check) 
+//   # During quiesence search, sorting captures by SEE has the added benefit of enabling the pruning of bad
+//   # captures (those with SEE < 0). In practice, this reduced the average number of q-nodes by around half. 
+//   promotions, captures = [], []
+//   if evade_check
+//     moves = []
+//     MoveGen::get_evasions(@pieces, @side_to_move, @board.squares, @enp_target, promotions, captures, moves)
+//     promotions + sort_captures_by_see!(captures) + history_sort!(moves)
+//   else
+//     MoveGen::get_winning_captures(@pieces, @side_to_move, @board.squares, @enp_target, captures, promotions)
+//     promotions + sort_winning_captures_by_see!(captures)
+//   end
+// end
 
 
 

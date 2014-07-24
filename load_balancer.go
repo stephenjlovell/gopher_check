@@ -19,44 +19,38 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //-----------------------------------------------------------------------------------
 
-package main
-
-// Young Brothers Wait (YBW) approach
-// At each node, search the leftmost child sequentially before searching the rest of the successors concurrently.
-// Goal is to avoid wasted processing effort where a subtree is expanded that otherwise would have been pruned.
-
-// Values are passed up call stack as normal.
-
-// When this causes bounds in the node to update, ideally would want updated bounds to be piped down to each 
-// frame of local search stack for each goroutine subtree search rooted at that node
 
 
+// The load balancer uses a priority queue to divide up subtree searches evenly among available 'worker'
+// goroutines, based on the expected effort required to search the subtree and its relative importance
+// based on how promising that part of the tree appears to be.
+
+
+// Expected effort is the average branching factor for the game tree raised by the depth remaining to search.
+
+
+// Subtrees rooted along the Principal Variation (PV-Nodes) should be searched first, 
+// followed by fail-high nodes (Cut-Nodes). Fail-low nodes (All-Nodes) should be searched last.
+// Nodes of the same type should be processed left to right (making use of move ordering heuristics)
 
 
 
 
-// example of concurrent move generation.  
-// Communication and deep copy cost probably would outweigh benefit of concurrent move gen...
-func example_movegen_call(brd *BRD, depth, alpha, beta int) {
 
-  moves := make(chan MV, 10) // create a channel that will receive moves created by MoveGen.
 
-  go GenerateMoves(brd, moves) // generate moves concurrently.
 
-  for {
-    m, more_moves := <-moves // blocks until a move is ready to try.
-    if more_moves {
-      make_move(brd, m)  // proceed normally.
-      value, count := alpha_beta(brd, depth, alpha, beta)
-      unmake_move(brd, m)
 
-      // test bounds etc.
 
-    } else {
-      break // no more moves to try.  Exit the loop.
-    }
-  }
-}
+
+
+
+
+
+
+
+
+
+
 
 
 

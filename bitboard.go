@@ -21,10 +21,42 @@
 
 package main
 
+import(
+  "fmt"
+)
+
+type BB uint64
+
+func (b BB) Clear(sq int) {
+  b &= sq_mask_off[sq]
+}
+
+func (b BB) Add(sq int) {
+  b |= sq_mask_on[sq]
+}
+
+func (b BB) Print(){
+  row, sq := "", ""
+
+  fmt.Printf("%d\n\n", b)
+  for i:=63; i>=0; i-- {
+    if sq_mask_on[i] & b > 0 { sq = " 1" } else { sq = " 0" }
+
+    row = sq + row
+    if i % 8 == 0 { 
+      fmt.Printf("%s\n", row)
+      row = ""
+    }
+  }
+  fmt.Printf("\n")
+}
+
+
 func setup_square_masks(){
   for i := 0; i<64; i++ {
     sq_mask_on[i] = BB(1<<uint(i))
     sq_mask_off[i] = (^sq_mask_on[i])
+    mask_of_length[i] = sq_mask_on[i]-1
   }
 }
 
@@ -171,6 +203,14 @@ func setup_pawn_structure_masks(){
   }
 }
 
+func setup_castle_masks(){
+  castle_queenside_intervening[1] |= (sq_mask_on[B1]|sq_mask_on[C1]|sq_mask_on[D1])
+  castle_kingside_intervening[1]  |= (sq_mask_on[F1]|sq_mask_on[G1])
+  castle_queenside_intervening[0] = (castle_queenside_intervening[1]<<56)
+  castle_kingside_intervening[0] = (castle_kingside_intervening[1]<<56) 
+}
+
+
 func setup_masks(){
   setup_square_masks()  // First set up masks used to add/remove bits by their index.
   setup_pawn_masks()    // For each square, calculate bitboard attack maps showing
@@ -183,4 +223,11 @@ func setup_masks(){
   setup_column_masks()
   setup_directions()
   setup_pawn_structure_masks()
+  setup_castle_masks()
 }
+
+
+
+
+
+

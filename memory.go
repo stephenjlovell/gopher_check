@@ -50,11 +50,33 @@ type BUCKET struct {
   key uint64
   data uint64
 }
-// data stores the following:
-  // depth (remaining) - 6 bits
-  // search id (age of entry) - 9 bits
+// data stores the following: (54 bits total)
+  // depth (remaining) - 5 bits
+  // move - 21 bits
   // bound/node type (exact, upper, lower) - 2 bits
   // value - 17 bits
+  // search id (age of entry) - 9 bits
+
+func (b *BUCKET) Depth() int {
+  return int(b.data & uint64(31))
+}
+
+func (b *BUCKET) Move() MV {
+  return MV((b.data >> 5) & uint64(2097151))
+}
+
+func (b *BUCKET) Type() int {
+  return int((b.data >> 26) & uint64(3))
+}
+
+func (b *BUCKET) Value() int {
+  return int((b.data >> 28) & uint64(131071))
+}
+
+func (b *BUCKET) Id() int {
+  return int((b.data >> 45) & uint64(511))
+}
+
 
 
 func (tt *TT) get_slot(hash_key uint64) SLOT {
@@ -67,19 +89,17 @@ func (tt *TT) probe(brd*BRD, c, depth, alpha, beta, value int){
   slot := tt.get_slot(hash_key)
 
   for _, bucket := range slot {
-    if bucket.key ^ bucket.data == hash_key { break }
-  
+    if bucket.key ^ bucket.data == hash_key { break }  // find an entry uncorrupted by lockless access.
+    
 
   }
 
 
 }
 
-
 // use lockless storing to avoid concurrent write issues without incurring Lock() overhead.
 
 func (tt *TT) store(brd *BRD, c, depth, alpha, beta, value int){
-
 
 
 }
@@ -111,7 +131,9 @@ func setup_zobrist() {
   enp_table[SQ_INVALID] = 0  // 
 }
 
-
+func zobrist(pc PC, sq int) uint64 {
+  return zobrist_table[pc][sq]
+}
 
 
 

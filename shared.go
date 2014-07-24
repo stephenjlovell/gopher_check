@@ -24,6 +24,7 @@ package main
 import(
   "fmt"
   "math/rand"
+  "runtime"
 )
 
 
@@ -32,13 +33,6 @@ const (
   EXT_MAX = 5
   MAX_PLY = MAX_DEPTH + EXT_MAX
 )
-
-
-
-type BB uint64
-
-
-
 
 // Transposition Table, Killer moves, History Table should be shared by all goroutines.
 type SHARED struct {
@@ -81,8 +75,10 @@ const (  // direction codes (0...8)
 )
 
 
-var uni_mask BB = 0xffffffffffffffff;
-var empty_mask BB = 0x0;
+
+// var uni_mask BB = 0xffffffffffffffff;
+// var empty_mask BB = 0x0;
+var mask_of_length [64]BB
 
 var row_masks [8]BB
 var column_masks [8]BB
@@ -93,6 +89,7 @@ var pawn_attack_masks, pawn_passed_masks [2][64]BB
 var pawn_isolated_masks, pawn_side_masks [64]BB
 
 var intervening [64][64]BB
+var castle_queenside_intervening, castle_kingside_intervening [2]BB 
 
 var knight_masks, bishop_masks, rook_masks, queen_masks, king_masks, sq_mask_on, sq_mask_off [64]BB
 
@@ -121,8 +118,7 @@ func column(sq int) int { return sq & 7 }
 func manhattan_distance(from, to int) int { return abs(row(from)-row(to)) + abs(column(from)-column(to)) }
 func chebyshev_distance(from, to int) int { return max(abs(row(from)-row(to)),abs(column(from)-column(to))) }
 
-func clear_sq(sq int, b BB) { b &= sq_mask_off[sq] }  // no longer modifies b by reference
-func add_sq(sq int, b BB) { b |= sq_mask_on[sq] }  // no longer modifies b by reference
+
 
 
 func lsb(b BB) int { return 0 }
@@ -135,17 +131,12 @@ func pop_count(b BB) int { return 0 }
 // #define pop_count(bitboard) (__builtin_popcountl(bitboard))
 
 
-func Occupied(brd *BRD) BB { return brd.occupied[0]|brd.occupied[1] }
-func Placement(c int, brd *BRD) BB { return brd.occupied[c] }
-
-
-// #define Occupied() ((brd->occupied[0])|(brd->occupied[1]))
-// #define Placement(color) (brd->occupied[color])
 
 
 
 
 func main() {
+  runtime.GOMAXPROCS(runtime.NumCPU())
   rand.Seed(9)  // keep the same seed each time for debugging purposes.
   setup_zobrist()
 
@@ -153,5 +144,6 @@ func main() {
   setup_bonus_table()
 
   fmt.Println("Hello Chess World")
+
 }
 

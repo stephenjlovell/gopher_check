@@ -195,12 +195,12 @@ func adjusted_placement(c, e int, brd *BRD) int {
   enemy_king_sq := furthest_forward(e, brd.pieces[e][KING])
   
   for t := PAWN; t < KING; t++ {
-    for b = brd.pieces[c][t]; b>0; clear_sq(sq, b) {
+    for b = brd.pieces[c][t]; b>0; b.Clear(sq) {
       sq = furthest_forward(c, b)
       placement += (main_pst[c][t][sq] + tropism_bonus[sq][enemy_king_sq][t])
     }
   }
-  for b = brd.pieces[c][KING]; b>0; clear_sq(sq, b){
+  for b = brd.pieces[c][KING]; b>0; b.Clear(sq){
     sq = furthest_forward(c, b)
     placement += king_pst[c][in_endgame(c, brd)][sq]
   }
@@ -210,10 +210,9 @@ func adjusted_placement(c, e int, brd *BRD) int {
 
 // Counts the total possible moves for the given side, not including any target squares defended by enemy pawns.
 func mobility(c, e int, brd *BRD) int {
-  friendly := Placement(c, brd)
+  friendly, enemy := brd.Placement(c), brd.Placement(e)
   available := ^friendly
-  enemy := Placement(e, brd)
-  occ := friendly|enemy
+  occ := brd.Occupied()
   empty := ^occ;
 
   var sq, mob int
@@ -239,27 +238,27 @@ func mobility(c, e int, brd *BRD) int {
           pop_count(left_temp & unguarded) + pop_count(right_temp & unguarded))
   // knight mob
   var b BB
-  for b = brd.pieces[c][KNIGHT]; b>0; clear_sq(sq, b) {
+  for b = brd.pieces[c][KNIGHT]; b>0; b.Clear(sq) {
     sq = furthest_forward(c, b)
     mob += pop_count(knight_masks[sq] & available & unguarded)
   }
   // bishop mob
-  for b = brd.pieces[c][BISHOP]; b>0; clear_sq(sq, b) {
+  for b = brd.pieces[c][BISHOP]; b>0; b.Clear(sq) {
     sq = furthest_forward(c, b)
     mob += pop_count(bishop_attacks(occ, sq) & available & unguarded)
   }
   // rook mob
-  for b = brd.pieces[c][ROOK]; b>0; clear_sq(sq, b) {
+  for b = brd.pieces[c][ROOK]; b>0; b.Clear(sq) {
     sq = furthest_forward(c, b)
     mob += pop_count(rook_attacks(occ, sq) & available & unguarded)
   }
   // queen mob
-  for b = brd.pieces[c][QUEEN]; b>0; clear_sq(sq, b) {
+  for b = brd.pieces[c][QUEEN]; b>0; b.Clear(sq) {
     sq = furthest_forward(c, b)
     mob += pop_count(queen_attacks(occ, sq) & available & unguarded)
   }
   // king mob
-  for b = brd.pieces[c][KING]; b>0; clear_sq(sq, b) {
+  for b = brd.pieces[c][KING]; b>0; b.Clear(sq) {
     sq = furthest_forward(c, b)
     mob += pop_count(king_masks[sq] & available & unguarded)
   }
@@ -281,7 +280,7 @@ func pawn_structure(c, e int, brd *BRD) int {
   own_pawns := brd.pieces[c][PAWN]
   enemy_pawns := brd.pieces[e][PAWN]
 
-  for b := own_pawns; b>0; clear_sq(sq, b) {
+  for b := own_pawns; b>0; b.Clear(sq) {
     sq = furthest_forward(c, b)
     // passed pawns
     if !(pawn_passed_masks[c][sq] & enemy_pawns >0) {

@@ -23,7 +23,7 @@ package main
 
 func attack_map(brd *BRD, sq int) BB {
   var attacks, b_attackers, r_attackers BB
-  occ := Occupied(brd)
+  occ := brd.Occupied()
   // Pawns
   attacks |= (pawn_attack_masks[BLACK][sq] & brd.pieces[WHITE][PAWN]) |
              (pawn_attack_masks[WHITE][sq] & brd.pieces[BLACK][PAWN])
@@ -44,7 +44,7 @@ func attack_map(brd *BRD, sq int) BB {
 
 func color_attack_map(brd *BRD, sq, c, e int) BB {
   var attacks, b_attackers, r_attackers BB
-  occ := Occupied(brd)
+  occ := brd.Occupied()
   // Pawns
   attacks |= pawn_attack_masks[e][sq] & brd.pieces[c][PAWN]
   // Knights
@@ -61,7 +61,7 @@ func color_attack_map(brd *BRD, sq, c, e int) BB {
 }
 
 func is_attacked_by(brd *BRD, sq, attacker, defender int) bool {
-  occ := Occupied(brd)
+  occ := brd.Occupied()
   // Pawns
   if pawn_attack_masks[defender][sq] & brd.pieces[attacker][PAWN] >0 { return true }
   // Knights
@@ -82,7 +82,7 @@ func is_attacked_by(brd *BRD, sq, attacker, defender int) bool {
 // 2. Scan toward the king to see if there are any other pieces blocking this route to the king.
 // 3. Scan in the opposite direction to see detect any potential threats along this ray.
 func is_pinned(brd *BRD, sq, c, e int) BB {
-  occ := Occupied(brd)
+  occ := brd.Occupied()
   var threat, guarded_king BB
    //get direction toward king
   dir := directions[sq][furthest_forward(c, brd.pieces[c][KING])]
@@ -123,7 +123,7 @@ func get_see(brd *BRD, from, to, c int) int {
                  brd.pieces[WHITE][QUEEN]  | brd.pieces[BLACK][QUEEN]
 
   temp_map := attack_map(brd, to)
-  temp_occ := Occupied(brd)
+  temp_occ := brd.Occupied()
   var temp_pieces BB
 
   var piece_list [20]int
@@ -135,7 +135,7 @@ func get_see(brd *BRD, from, to, c int) int {
   next_victim = brd.ValueAt(from)  
   t = brd.TypeAt(from)
 
-  clear_sq(from, temp_occ)
+  temp_occ.Clear(from)
   if t != KNIGHT && t != KING { // if the attacker was a pawn, bishop, rook, or queen, re-scan for hidden attacks:
     if t == PAWN || t == BISHOP || t == QUEEN { temp_map |= bishop_attacks(temp_occ, to) & b_attackers }
     if t == PAWN || t == ROOK   || t == QUEEN { temp_map |= rook_attacks(temp_occ, to) & r_attackers }
