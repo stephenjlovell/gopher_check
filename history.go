@@ -24,25 +24,5 @@ package main
 type HTable [12][64]int
 
 func (h HTable) store(m MV, c, count int) {
-  h[m.Piece(c)][m.To()] += count
+	h[m.Piece(c)][m.To()] += count
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

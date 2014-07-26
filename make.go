@@ -19,34 +19,14 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //-----------------------------------------------------------------------------------
 
-
 // when unmaking a move from the transposition table
 
 package main
 
-func make_move(brd *BRD, move MV){
-
-
-}
-
-func unmake_move(brd *BRD, move MV){
+func make_move(brd *BRD, move MV) {
 
 }
 
+func unmake_move(brd *BRD, move MV) {
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+}

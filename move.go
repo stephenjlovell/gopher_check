@@ -21,18 +21,17 @@
 
 package main
 
-
 // define an interface shared by all moves.
 type AnyMove interface {
-  From() int 
-  To() int 
-  Piece() PC  
-  CapturedPiece() PC  
-  PromotedTo() PC
-} 
-
+	From() int
+	To() int
+	Piece() PC
+	CapturedPiece() PC
+	PromotedTo() PC
+}
 
 type MV uint32
+
 // To to fit into transposition table entries, moves are encoded using 21 bits as follows (in LSB order):
 // From square - first 6 bits
 // To square - next 6 bits
@@ -40,38 +39,33 @@ type MV uint32
 // Captured piece - next 3 bits
 // promoted to - next 3 bits
 
-
 func (m MV) From() int {
-  return int(uint32(m) & uint32(63))  
+	return int(uint32(m) & uint32(63))
 }
 
 func (m MV) To() int {
-  return int((uint32(m) >> 6) & uint32(63))
+	return int((uint32(m) >> 6) & uint32(63))
 }
 
 func (m MV) Piece(c int) PC {
-  return (PC((uint32(m) >> 12) & uint32(7))<<1) | PC(c)
+	return (PC((uint32(m)>>12)&uint32(7)) << 1) | PC(c)
 }
 
 func (m MV) CapturedPiece(e int) PC {
-  return (PC((uint32(m) >> 15) & uint32(7))<<1) | PC(e)
+	return (PC((uint32(m)>>15)&uint32(7)) << 1) | PC(e)
 }
 
 func (m MV) PromotedTo(c int) PC {
-  return PC(((uint32(m) >> 18) & uint32(7))<<1) | PC(c)
+	return PC(((uint32(m)>>18)&uint32(7))<<1) | PC(c)
 }
-
 
 // Generate moves in batches to save effort on move generation when cutoffs occur.
 
 // Ordering: PV/hash, promotions, winning captures, killers, losing captures, quiet moves
 
-
-
-
 // # Moves are ordered based on expected subtree value. Better move ordering produces a greater
 // # number of alpha/beta cutoffs during search, reducing the size of the actual search tree toward the minimal tree.
-// def get_moves(depth, enhanced_sort=false, in_check=false) 
+// def get_moves(depth, enhanced_sort=false, in_check=false)
 //   promotions, captures, moves = [], [], []
 
 //   if in_check
@@ -88,12 +82,12 @@ func (m MV) PromotedTo(c int) PC {
 //   end
 // end
 
-// # Generate only moves that create big swings in material balance, i.e. captures and promotions. 
-// # Used during Quiescence search to seek out positions from which a stable static evaluation can 
+// # Generate only moves that create big swings in material balance, i.e. captures and promotions.
+// # Used during Quiescence search to seek out positions from which a stable static evaluation can
 // # be performed.
-// def get_captures(evade_check) 
+// def get_captures(evade_check)
 //   # During quiesence search, sorting captures by SEE has the added benefit of enabling the pruning of bad
-//   # captures (those with SEE < 0). In practice, this reduced the average number of q-nodes by around half. 
+//   # captures (those with SEE < 0). In practice, this reduced the average number of q-nodes by around half.
 //   promotions, captures = [], []
 //   if evade_check
 //     moves = []
@@ -104,14 +98,3 @@ func (m MV) PromotedTo(c int) PC {
 //     promotions + sort_winning_captures_by_see!(captures)
 //   end
 // end
-
-
-
-
-
-
-
-
-
-
-

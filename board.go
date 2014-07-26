@@ -21,71 +21,115 @@
 
 package main
 
-
 type PC uint8
 
-func (pc PC) Type() int { return int(pc) >> 1 }
+func (pc PC) Type() int  { return int(pc) >> 1 }
 func (pc PC) Color() int { return int(pc) & 1 }
 func (pc PC) Value() int { return piece_values[pc.Type()] }
 
-
-// When spawning new goroutines for subtree search, a deep copy of the BRD struct will have to be made 
+// When spawning new goroutines for subtree search, a deep copy of the BRD struct will have to be made
 // and passed to the new goroutine.  Keep this struct as small as possible.
 type BRD struct {
-  squares [64]PC   // 512 bits
-  pieces [2][6]BB  // 768 bits
-  occupied [2]BB   // 128 bits
-  material [2]int32  // 64 bits
-  hash_key uint64   // 64 bits
-  pawn_hash_key uint64 // 64 bits
-  c uint8 
-  e uint8
+	squares       [64]PC   // 512 bits
+	pieces        [2][6]BB // 768 bits
+	occupied      [2]BB    // 128 bits
+	material      [2]int32 // 64 bits
+	hash_key      uint64   // 64 bits
+	pawn_hash_key uint64   // 64 bits
+	c             uint8
+	e             uint8
 }
 
-const (
-  A1=iota; B1; C1; D1; E1; F1; G1; H1; 
-       A2; B2; C2; D2; E2; F2; G2; H2; 
-       A3; B3; C3; D3; E3; F3; G3; H3; 
-       A4; B4; C4; D4; E4; F4; G4; H4; 
-       A5; B5; C5; D5; E5; F5; G5; H5; 
-       A6; B6; C6; D6; E6; F6; G6; H6; 
-       A7; B7; C7; D7; E7; F7; G7; H7; 
-       A8; B8; C8; D8; E8; F8; G8; H8; SQ_INVALID; 
-)
-
-
 func (brd *BRD) ValueAt(sq int) int {
-  return brd.squares[sq].Value()
+	return brd.squares[sq].Value()
 }
 
 func (brd *BRD) TypeAt(sq int) int {
-  return brd.squares[sq].Type()
+	return brd.squares[sq].Type()
 }
 
-func (brd *BRD) Occupied() BB { return brd.occupied[0]|brd.occupied[1] }
+func (brd *BRD) Occupied() BB { return brd.occupied[0] | brd.occupied[1] }
 
 func (brd *BRD) Placement(c int) BB { return brd.occupied[c] }
 
-
 func (brd *BRD) Copy() *BRD {
-  clone := &BRD{  
-    brd.squares,
-    brd.pieces,
-    brd.occupied,
-    brd.material,
-    brd.hash_key,
-    brd.pawn_hash_key,
-    brd.c,
-    brd.e,
-  }
-  return clone
+	clone := &BRD{
+		brd.squares,
+		brd.pieces,
+		brd.occupied,
+		brd.material,
+		brd.hash_key,
+		brd.pawn_hash_key,
+		brd.c,
+		brd.e,
+	}
+	return clone
 }
 
-
-
-
-
-
-
-
-
+const (
+	A1 = iota
+	B1
+	C1
+	D1
+	E1
+	F1
+	G1
+	H1
+	A2
+	B2
+	C2
+	D2
+	E2
+	F2
+	G2
+	H2
+	A3
+	B3
+	C3
+	D3
+	E3
+	F3
+	G3
+	H3
+	A4
+	B4
+	C4
+	D4
+	E4
+	F4
+	G4
+	H4
+	A5
+	B5
+	C5
+	D5
+	E5
+	F5
+	G5
+	H5
+	A6
+	B6
+	C6
+	D6
+	E6
+	F6
+	G6
+	H6
+	A7
+	B7
+	C7
+	D7
+	E7
+	F7
+	G7
+	H7
+	A8
+	B8
+	C8
+	D8
+	E8
+	F8
+	G8
+	H8
+	SQ_INVALID
+)

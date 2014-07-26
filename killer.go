@@ -22,25 +22,3 @@
 package main
 
 type KTable [MAX_PLY][2]MV
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

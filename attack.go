@@ -22,57 +22,67 @@
 package main
 
 func attack_map(brd *BRD, sq int) BB {
-  var attacks, b_attackers, r_attackers BB
-  occ := brd.Occupied()
-  // Pawns
-  attacks |= (pawn_attack_masks[BLACK][sq] & brd.pieces[WHITE][PAWN]) |
-             (pawn_attack_masks[WHITE][sq] & brd.pieces[BLACK][PAWN])
-  // Knights
-  attacks |= (knight_masks[sq] & (brd.pieces[WHITE][KNIGHT]|brd.pieces[BLACK][KNIGHT]))
-  // Bishops and Queens
-  b_attackers = brd.pieces[WHITE][BISHOP] | brd.pieces[BLACK][BISHOP] | 
-                brd.pieces[WHITE][QUEEN]  | brd.pieces[BLACK][QUEEN]
-  attacks |= bishop_attacks(occ, sq) & b_attackers
-  // Rooks and Queens
-  r_attackers = brd.pieces[WHITE][ROOK]  | brd.pieces[BLACK][ROOK] | 
-                brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]
-  attacks |= rook_attacks(occ, sq) & r_attackers
-  // Kings
-  attacks |= king_masks[sq] & (brd.pieces[WHITE][KING]|brd.pieces[BLACK][KING])
-  return attacks
+	var attacks, b_attackers, r_attackers BB
+	occ := brd.Occupied()
+	// Pawns
+	attacks |= (pawn_attack_masks[BLACK][sq] & brd.pieces[WHITE][PAWN]) |
+		(pawn_attack_masks[WHITE][sq] & brd.pieces[BLACK][PAWN])
+	// Knights
+	attacks |= (knight_masks[sq] & (brd.pieces[WHITE][KNIGHT] | brd.pieces[BLACK][KNIGHT]))
+	// Bishops and Queens
+	b_attackers = brd.pieces[WHITE][BISHOP] | brd.pieces[BLACK][BISHOP] |
+		brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]
+	attacks |= bishop_attacks(occ, sq) & b_attackers
+	// Rooks and Queens
+	r_attackers = brd.pieces[WHITE][ROOK] | brd.pieces[BLACK][ROOK] |
+		brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]
+	attacks |= rook_attacks(occ, sq) & r_attackers
+	// Kings
+	attacks |= king_masks[sq] & (brd.pieces[WHITE][KING] | brd.pieces[BLACK][KING])
+	return attacks
 }
 
 func color_attack_map(brd *BRD, sq, c, e int) BB {
-  var attacks, b_attackers, r_attackers BB
-  occ := brd.Occupied()
-  // Pawns
-  attacks |= pawn_attack_masks[e][sq] & brd.pieces[c][PAWN]
-  // Knights
-  attacks |= knight_masks[sq] & brd.pieces[c][KNIGHT]
-  // Bishops and Queens
-  b_attackers = brd.pieces[c][BISHOP] | brd.pieces[c][QUEEN]
-  attacks |= bishop_attacks(occ, sq) & b_attackers
-  // Rooks and Queens
-  r_attackers = brd.pieces[c][ROOK] | brd.pieces[c][QUEEN]
-  attacks |= rook_attacks(occ, sq) & r_attackers
-  // Kings
-  attacks |= king_masks[sq] & brd.pieces[c][KING]
-  return attacks
+	var attacks, b_attackers, r_attackers BB
+	occ := brd.Occupied()
+	// Pawns
+	attacks |= pawn_attack_masks[e][sq] & brd.pieces[c][PAWN]
+	// Knights
+	attacks |= knight_masks[sq] & brd.pieces[c][KNIGHT]
+	// Bishops and Queens
+	b_attackers = brd.pieces[c][BISHOP] | brd.pieces[c][QUEEN]
+	attacks |= bishop_attacks(occ, sq) & b_attackers
+	// Rooks and Queens
+	r_attackers = brd.pieces[c][ROOK] | brd.pieces[c][QUEEN]
+	attacks |= rook_attacks(occ, sq) & r_attackers
+	// Kings
+	attacks |= king_masks[sq] & brd.pieces[c][KING]
+	return attacks
 }
 
 func is_attacked_by(brd *BRD, sq, attacker, defender int) bool {
-  occ := brd.Occupied()
-  // Pawns
-  if pawn_attack_masks[defender][sq] & brd.pieces[attacker][PAWN] >0 { return true }
-  // Knights
-  if knight_masks[sq] & (brd.pieces[attacker][KNIGHT]) > 0 { return true }
-  // Bishops and Queens
-  if bishop_attacks(occ, sq) & (brd.pieces[attacker][BISHOP]|brd.pieces[attacker][QUEEN]) > 0 { return true }
-  // Rooks and Queens
-  if rook_attacks(occ, sq) & (brd.pieces[attacker][ROOK]|brd.pieces[attacker][QUEEN]) > 0 { return true }
-  // Kings
-  if king_masks[sq] & (brd.pieces[attacker][KING]) > 0 { return true }
-  return false
+	occ := brd.Occupied()
+	// Pawns
+	if pawn_attack_masks[defender][sq]&brd.pieces[attacker][PAWN] > 0 {
+		return true
+	}
+	// Knights
+	if knight_masks[sq]&(brd.pieces[attacker][KNIGHT]) > 0 {
+		return true
+	}
+	// Bishops and Queens
+	if bishop_attacks(occ, sq)&(brd.pieces[attacker][BISHOP]|brd.pieces[attacker][QUEEN]) > 0 {
+		return true
+	}
+	// Rooks and Queens
+	if rook_attacks(occ, sq)&(brd.pieces[attacker][ROOK]|brd.pieces[attacker][QUEEN]) > 0 {
+		return true
+	}
+	// Kings
+	if king_masks[sq]&(brd.pieces[attacker][KING]) > 0 {
+		return true
+	}
+	return false
 }
 
 // Determines if a piece is blocking a ray attack to its king, and cannot move off this ray
@@ -82,115 +92,143 @@ func is_attacked_by(brd *BRD, sq, attacker, defender int) bool {
 // 2. Scan toward the king to see if there are any other pieces blocking this route to the king.
 // 3. Scan in the opposite direction to see detect any potential threats along this ray.
 func is_pinned(brd *BRD, sq, c, e int) BB {
-  occ := brd.Occupied()
-  var threat, guarded_king BB
-   //get direction toward king
-  dir := directions[sq][furthest_forward(c, brd.pieces[c][KING])]
-  switch dir {
-    case NW, NE:
-      threat = scan_down(occ, dir+2, sq) & (brd.pieces[e][BISHOP]|brd.pieces[e][QUEEN])
-      guarded_king = scan_up(occ, dir, sq) & (brd.pieces[c][KING])
-    case SE, SW:
-      threat = scan_up(occ, dir-2, sq) & (brd.pieces[e][BISHOP]|brd.pieces[e][QUEEN])
-      guarded_king = scan_down(occ, dir, sq) & (brd.pieces[c][KING])
-    case NORTH, EAST:
-      threat = scan_down(occ, dir+2, sq) & (brd.pieces[e][ROOK]|brd.pieces[e][QUEEN])
-      guarded_king = scan_up(occ, dir, sq) & (brd.pieces[c][KING])
-    case SOUTH, WEST: 
-      threat = scan_up(occ, dir-2, sq) & (brd.pieces[e][ROOK]|brd.pieces[e][QUEEN])
-      guarded_king = scan_down(occ, dir, sq) & (brd.pieces[c][KING])
-    case DIR_INVALID: return 0
-  }
-  return (threat & guarded_king)
+	occ := brd.Occupied()
+	var threat, guarded_king BB
+	//get direction toward king
+	dir := directions[sq][furthest_forward(c, brd.pieces[c][KING])]
+	switch dir {
+	case NW, NE:
+		threat = scan_down(occ, dir+2, sq) & (brd.pieces[e][BISHOP] | brd.pieces[e][QUEEN])
+		guarded_king = scan_up(occ, dir, sq) & (brd.pieces[c][KING])
+	case SE, SW:
+		threat = scan_up(occ, dir-2, sq) & (brd.pieces[e][BISHOP] | brd.pieces[e][QUEEN])
+		guarded_king = scan_down(occ, dir, sq) & (brd.pieces[c][KING])
+	case NORTH, EAST:
+		threat = scan_down(occ, dir+2, sq) & (brd.pieces[e][ROOK] | brd.pieces[e][QUEEN])
+		guarded_king = scan_up(occ, dir, sq) & (brd.pieces[c][KING])
+	case SOUTH, WEST:
+		threat = scan_up(occ, dir-2, sq) & (brd.pieces[e][ROOK] | brd.pieces[e][QUEEN])
+		guarded_king = scan_down(occ, dir, sq) & (brd.pieces[c][KING])
+	case DIR_INVALID:
+		return 0
+	}
+	return (threat & guarded_king)
 }
 
-// The Static Exchange Evaluation (SEE) heuristic provides a way to determine if a capture 
+// The Static Exchange Evaluation (SEE) heuristic provides a way to determine if a capture
 // is a 'winning' or 'losing' capture.
-// 1. When a capture results in an exchange of pieces by both sides, SEE is used to determine the 
+// 1. When a capture results in an exchange of pieces by both sides, SEE is used to determine the
 //    net gain/loss in material for the side initiating the exchange.
 // 2. SEE scoring of moves is used for move ordering of captures at critical nodes.
 // 3. During quiescence search, SEE is used to prune losing captures. This provides a very low-risk
 //    way of reducing the size of the q-search without impacting playing strength.
 
 func get_see(brd *BRD, from, to, c int) int {
-  var next_victim, t, last_t int
-  temp_color := c^1
+	var next_victim, t, last_t int
+	temp_color := c ^ 1
 
-  // get initial map of all squares directly attacking this square (does not include 'discovered'/hidden attacks)
-  b_attackers := brd.pieces[WHITE][BISHOP] | brd.pieces[BLACK][BISHOP] | 
-                 brd.pieces[WHITE][QUEEN]  | brd.pieces[BLACK][QUEEN]
-  r_attackers := brd.pieces[WHITE][ROOK]   | brd.pieces[BLACK][ROOK]   | 
-                 brd.pieces[WHITE][QUEEN]  | brd.pieces[BLACK][QUEEN]
+	// get initial map of all squares directly attacking this square (does not include 'discovered'/hidden attacks)
+	b_attackers := brd.pieces[WHITE][BISHOP] | brd.pieces[BLACK][BISHOP] |
+		brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]
+	r_attackers := brd.pieces[WHITE][ROOK] | brd.pieces[BLACK][ROOK] |
+		brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]
 
-  temp_map := attack_map(brd, to)
-  temp_occ := brd.Occupied()
-  var temp_pieces BB
+	temp_map := attack_map(brd, to)
+	temp_occ := brd.Occupied()
+	var temp_pieces BB
 
-  var piece_list [20]int
-  count := 1
-  // before entering the main loop, perform each step once for the initial attacking piece.  This ensures that the
-  // moved piece is the first to capture.
+	var piece_list [20]int
+	count := 1
+	// before entering the main loop, perform each step once for the initial attacking piece.  This ensures that the
+	// moved piece is the first to capture.
 
-  piece_list[0] = brd.ValueAt(to)
-  next_victim = brd.ValueAt(from)  
-  t = brd.TypeAt(from)
+	piece_list[0] = brd.ValueAt(to)
+	next_victim = brd.ValueAt(from)
+	t = brd.TypeAt(from)
 
-  temp_occ.Clear(from)
-  if t != KNIGHT && t != KING { // if the attacker was a pawn, bishop, rook, or queen, re-scan for hidden attacks:
-    if t == PAWN || t == BISHOP || t == QUEEN { temp_map |= bishop_attacks(temp_occ, to) & b_attackers }
-    if t == PAWN || t == ROOK   || t == QUEEN { temp_map |= rook_attacks(temp_occ, to) & r_attackers }
-  }
-  last_t = t
+	temp_occ.Clear(from)
+	if t != KNIGHT && t != KING { // if the attacker was a pawn, bishop, rook, or queen, re-scan for hidden attacks:
+		if t == PAWN || t == BISHOP || t == QUEEN {
+			temp_map |= bishop_attacks(temp_occ, to) & b_attackers
+		}
+		if t == PAWN || t == ROOK || t == QUEEN {
+			temp_map |= rook_attacks(temp_occ, to) & r_attackers
+		}
+	}
+	last_t = t
 
-  for temp_map &= temp_occ; temp_map>0; temp_map &= temp_occ {
-    for t = PAWN; t <= KING; t++ { // loop over piece ts in order of value.
-      temp_pieces = brd.pieces[temp_color][t] & temp_map;
-      if temp_pieces>0 { break } // stop as soon as a match is found.
-    }
-    if t > KING { break }
+	for temp_map &= temp_occ; temp_map > 0; temp_map &= temp_occ {
+		for t = PAWN; t <= KING; t++ { // loop over piece ts in order of value.
+			temp_pieces = brd.pieces[temp_color][t] & temp_map
+			if temp_pieces > 0 {
+				break
+			} // stop as soon as a match is found.
+		}
+		if t > KING {
+			break
+		}
 
-    piece_list[count] = -piece_list[count-1] + next_victim
-    next_victim = piece_values[t]
+		piece_list[count] = -piece_list[count-1] + next_victim
+		next_victim = piece_values[t]
 
-    count++
-    if (piece_list[count-1] - next_victim) > 0 { break }
+		count++
+		if (piece_list[count-1] - next_victim) > 0 {
+			break
+		}
 
-    if last_t == KING { break }
+		if last_t == KING {
+			break
+		}
 
-    temp_occ ^= (temp_pieces & -temp_pieces)  // merge the first set bit of temp_pieces into temp_occ
-    if t != KNIGHT && t != KING {
-      if t == PAWN || t == BISHOP || t == QUEEN { temp_map |= (bishop_attacks(temp_occ, to) & b_attackers) }
-      if t == ROOK || t == QUEEN { temp_map |= (rook_attacks(temp_occ, to) & r_attackers) }
-    }
-    temp_color ^= 1
-    last_t = t
-  }
+		temp_occ ^= (temp_pieces & -temp_pieces) // merge the first set bit of temp_pieces into temp_occ
+		if t != KNIGHT && t != KING {
+			if t == PAWN || t == BISHOP || t == QUEEN {
+				temp_map |= (bishop_attacks(temp_occ, to) & b_attackers)
+			}
+			if t == ROOK || t == QUEEN {
+				temp_map |= (rook_attacks(temp_occ, to) & r_attackers)
+			}
+		}
+		temp_color ^= 1
+		last_t = t
+	}
 
-  for count-1 > 0 { 
-    count--
-    piece_list[count-1] = -max(-piece_list[count-1], piece_list[count]) 
-  }
+	for count-1 > 0 {
+		count--
+		piece_list[count-1] = -max(-piece_list[count-1], piece_list[count])
+	}
 
-  return piece_list[0]
+	return piece_list[0]
 }
 
-
-
-func side_in_check(brd *BRD, c, e int) bool {  // determines if specified side is in check
-  if brd.pieces[c][KING] == 0 { return true }
-  if is_attacked_by(brd, furthest_forward(c, brd.pieces[c][KING]), e, c) { return true } else { return false }
+func side_in_check(brd *BRD, c, e int) bool { // determines if specified side is in check
+	if brd.pieces[c][KING] == 0 {
+		return true
+	}
+	if is_attacked_by(brd, furthest_forward(c, brd.pieces[c][KING]), e, c) {
+		return true
+	} else {
+		return false
+	}
 }
 
-func is_in_check(brd *BRD) bool {  // determines if side to move is in check
-  c, e := int(brd.c), int(brd.e)
-  if is_attacked_by(brd, furthest_forward(c, brd.pieces[c][KING]), e, c) { return true } else { return false }
+func is_in_check(brd *BRD) bool { // determines if side to move is in check
+	c, e := int(brd.c), int(brd.e)
+	if is_attacked_by(brd, furthest_forward(c, brd.pieces[c][KING]), e, c) {
+		return true
+	} else {
+		return false
+	}
 }
 
-func enemy_in_check(brd *BRD) bool {  // determines if other side is in check
-  c, e := int(brd.e), int(brd.c)
-  if is_attacked_by(brd, furthest_forward(c, brd.pieces[c][KING]), e, c) { return true } else { return false }
+func enemy_in_check(brd *BRD) bool { // determines if other side is in check
+	c, e := int(brd.e), int(brd.c)
+	if is_attacked_by(brd, furthest_forward(c, brd.pieces[c][KING]), e, c) {
+		return true
+	} else {
+		return false
+	}
 }
-
 
 // static VALUE move_evades_check(VALUE self, VALUE p_board, VALUE sq_board, VALUE from, VALUE to, VALUE color){
 //   BRD *brd = get_brd(p_board);
@@ -226,7 +264,7 @@ func enemy_in_check(brd *BRD) bool {  // determines if other side is in check
 // }
 
 // // Determines if a move will put the enemy's king in check.
-// static VALUE move_gives_check(VALUE self, VALUE p_board, VALUE sq_board, VALUE from, VALUE to, 
+// static VALUE move_gives_check(VALUE self, VALUE p_board, VALUE sq_board, VALUE from, VALUE to,
 //                               VALUE color, VALUE promoted_piece){
 //   BRD *brd = get_brd(p_board);
 //   int c = SYM2COLOR(color);
@@ -276,15 +314,13 @@ func enemy_in_check(brd *BRD) bool {  // determines if other side is in check
 //   return check ? Qtrue : Qfalse;
 // }
 
-
 func avoids_check(brd *BRD, m MV, c, e int) bool {
-  if m.Piece(c).Type() == KING {
-    return is_attacked_by(brd, m.To(),e, c)
-  } else {
-    pinned := is_pinned(brd, m.From(), c, e)
-    return pinned == BB(0) || ((^pinned) & sq_mask_on[m.To()]) == BB(0)
-  }
+	if m.Piece(c).Type() == KING {
+		return is_attacked_by(brd, m.To(), e, c)
+	} else {
+		pinned := is_pinned(brd, m.From(), c, e)
+		return pinned == BB(0) || ((^pinned)&sq_mask_on[m.To()]) == BB(0)
+	}
 }
+
 //     return pinned && (~pinned & sq_mask_on(NUM2INT(t))) ? Qfalse : Qtrue;
-
-
