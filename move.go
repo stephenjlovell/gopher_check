@@ -66,12 +66,6 @@ func (m MV) PromotedTo(c int) PC {
 
 // Ordering: PV/hash, promotions, winning captures, killers, losing captures, quiet moves
 
-// use a buffered channel to coordinate between move generation and search.  
-// MoveGen sends ordered moves into the channel buffer in batches.
-// When the buffer is full, the move generator is blocked.
-// When no move is available yet, the Search routine is blocked.
-// When there are no more moves to send (move generation is complete) MoveGen closes the channel and sends a flag.
-
 
 
 

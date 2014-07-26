@@ -21,41 +21,128 @@
 
 package main
 
-// Young Brothers Wait (YBW) approach
-// At each node, search the leftmost child sequentially before searching the rest of the successors concurrently.
-// Goal is to avoid wasted processing effort where a subtree is expanded that otherwise would have been pruned.
+// Modified Young Brothers Wait (YBW) approach
 
-// Values are passed up call stack as normal.
+// At each node, search the most promising (leftmost) child sequentially first, 
+// then send the rest of the successors to the load balancer.  
+// The requester then blocks until it receives a cancellation flag, a result, or an updated bound.
 
-// When this causes bounds in the node to update, ideally would want updated bounds to be piped down to each 
-// frame of local search stack for each goroutine subtree search rooted at that node
+// Completion
+
+// When each child completes, its result is sent back via a channel to the requester node.
+// On completion, each node sends a cancellation flag indicating no more work is needed.
+
+// Alpha Updates
+
+// Bounds are stored in the call stack.
+// When alpha is updated, the update is piped down to all running child requests via a channel.  For requests still
+// in queue, use a closure to scope the arguments so that when a worker executes the job it does so with the latest
+// bounds from the requestor.
+
+// When an alpha update is received from the node above, use the received value to update the locally scoped alpha 
+// value.
+
+// Cancellation
+
+// If a beta cutoff occurs, a cancellation flag is sent on the cancellation channel for the current master node. 
+
+// Each request made by the master node contains a pointer to a cancellation channel.
+// Prior to starting work on a new request, the worker checks the cancellation channel to see if the work is still 
+// needed, and discards the request if not.
+
+// Each node periodically reads the cancellation channel from the frame above it.  When a cancellation message
+// is received, the frame sends a cancellation message on its own channel to be read by the frames below it and any
+// workers who have the current frame's requests in queue.
+
+// Spawning behavior
+
+// If some heuristic for the strength of move ordering were available at the current node
+// (variance of ordering scores?), this info could be used to influence spawning behavior.
+// When some moves are scored far better than others, those nodes would be searched sequentially in hopes of 
+// achieving a cutoff without incurring communication overhead.
+
+// Without a meaningful heuristic, spawning tactic could alternatively be based on node type.
+
+type Request struct {
+  cancel chan bool
+  result chan int
+  fn func() int    // a closure containing the function and its arguments for the worker to call.
+}
 
 
+func young_brothers_wait(brd *BRD, old_alpha, old_beta, depth, ply int, cancel chan bool, update chan int) int {
+  
+  alpha, beta, score := -old_beta, -old_alpha, -INF
+
+  update_child := make(chan int)
+  cancel_child := make(chan bool)
+
+  if depth <= 0 { return quiescence(brd, alpha, beta, depth, ply, cancel_child) } // call standard sequential q-search
 
 
+  in_check := is_in_check(brd, /* c, e */ )  // move c, e into BRD struct to avoid constantly passing these around.
 
+  moves := generate_moves(brd, in_check) // build an ordered move list.
 
-// example of concurrent move generation.  
-// Communication and deep copy cost probably would outweigh benefit of concurrent move gen...
-func example_movegen_call(brd *BRD, depth, alpha, beta int) {
+  best_moves := get_best_moves(&moves)  // slice off the best 1-4 nodes to search sequentially
 
-  moves := make(chan MV, 10) // create a channel that will receive moves created by MoveGen.
+  for _, m := range best_moves { // proceed like normal sequential alpha-beta
+    if is_cancelled(cancel, cancel_child, update_child) { return 0 }  // make sure the job hasn't been cancelled.
+    
+    score = young_brothers_wait(brd, alpha, beta, depth-1, ply+1, cancel_child, update_child) * -1  
 
-  go GenerateMoves(brd, moves) // generate moves concurrently.
-
-  for {
-    m, more_moves := <-moves // blocks until a move is ready to try.
-    if more_moves {
-      make_move(brd, m)  // proceed normally.
-      value, count := alpha_beta(brd, depth, alpha, beta)
-      unmake_move(brd, m)
-
-      // test bounds etc.
-
-    } else {
-      break // no more moves to try.  Exit the loop.
+    if score >= beta {
+      // save result to transposition table before returning.
+      cancel_work(cancel_child, update_child)
+      return beta
     }
+
+    if score > alpha {
+      alpha = score
+      update_child <- alpha  // send the updated bound to child processes.
+    }
+
   }
+
+  // search remaining moves in parallel.
+  result := make(chan int)
+
+  for {  // wait for a message on one of the channels
+    select {
+    case cancelled := <-cancel:  // task was cancelled.
+      cancel_work(cancel_child, update_child)
+      return 0
+    case updated := <-update:
+      if updated > alpha { alpha = updated }
+      update_child <- updated  // give updated bound to child nodes 
+    case score = <-result:     // 
+
+    }
+
+  }
+
+}
+
+
+func is_cancelled(cancel, cancel_child chan bool, update_child chan int) bool {
+  select {
+    case msg := <-cancel:
+      cancel_work(cancel_child, update_child)
+      return true
+    default:
+      return false
+  }
+}
+
+func cancel_work(cancel_child chan bool, update_child chan int) {
+  cancel_child <- true
+  close(cancel_child)
+  close(update_child)
+}
+
+
+func quiescence(brd *BRD, alpha, beta, depth, ply int, cancel chan bool) int {
+  return 0
 }
 
 
@@ -66,3 +153,27 @@ func example_movegen_call(brd *BRD, depth, alpha, beta int) {
 
 
 
+
+
+// // example of concurrent move generation.
+// // Communication and deep copy cost probably would outweigh benefit of concurrent move gen...
+// func example_movegen_call(brd *BRD, depth, alpha, beta int) {
+
+//   moves := make(chan MV, 10) // create a channel that will receive moves created by MoveGen.
+
+//   go GenerateMoves(brd, moves) // generate moves concurrently.
+
+//   for {
+//     m, more_moves := <-moves // blocks until a move is ready to try.
+//     if more_moves {
+//       make_move(brd, m)  // proceed normally.
+//       value, count := alpha_beta(brd, depth, alpha, beta)
+//       unmake_move(brd, m)
+
+//       // test bounds etc.
+
+//     } else {
+//       break // no more moves to try.  Exit the loop.
+//     }
+//   }
+// }

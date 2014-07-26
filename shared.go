@@ -27,6 +27,11 @@ import(
   "runtime"
 )
 
+const (
+  INF = 100000 // an arbitrarily large score used to signal checkmate.
+)
+
+
 
 const (
   MAX_DEPTH = 10
@@ -74,10 +79,6 @@ const (  // direction codes (0...8)
   NW = iota; NE; SE; SW; NORTH; EAST; SOUTH; WEST; DIR_INVALID;
 )
 
-
-
-// var uni_mask BB = 0xffffffffffffffff;
-// var empty_mask BB = 0x0;
 var mask_of_length [64]BB
 
 var row_masks [8]BB
@@ -102,7 +103,7 @@ var pawn_attack_offsets = [4]int{9, 7, -9, -7}
 var pawn_advance_offsets = [4]int{8, 16, -8, -16}
 var pawn_enpassant_offsets = [2]int{1, -1}
 
-var piece_values = [6]int{100, 320, 333, 510, 880, 100000} // default piece values
+var piece_values = [6]int{100, 320, 333, 510, 880, 10000} // default piece values
 
 var directions [64][64]int
 
