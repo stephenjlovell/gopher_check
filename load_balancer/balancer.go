@@ -39,7 +39,7 @@ import (
 
 type Balancer struct {
   pool Pool
-  done chan *Worker
+  done chan Done
 }
 
 func (b *Balancer) start() {
@@ -54,8 +54,8 @@ func (b *Balancer) balance(work chan Request) {
       select {
       case req := <-work: // request received
         b.dispatch(req) // forward request to a worker
-      case w := <-b.done: // worker finished with a request
-        b.completed(w) 
+      case d := <-b.done: // worker finished with a request
+        b.completed(d) 
       }
     }
   }()
@@ -64,14 +64,14 @@ func (b *Balancer) balance(work chan Request) {
 func (b *Balancer) dispatch(req Request) { // route the request to the most lightly loaded 
   w := heap.Pop(&b.pool).(*Worker)         // worker in the priority queue, and adjust queue
   w.requests <- req                        // ordering if needed.
-  w.pending++
+  w.pending += req.Size
   heap.Push(&b.pool, w)
 }
 
-func (b *Balancer) completed(w *Worker) {  // adjust the ordering of the priority queue.
-  w.pending--
-  heap.Remove(&b.pool, w.index)
-  heap.Push(&b.pool, w)
+func (b *Balancer) completed(d Done) {  // adjust the ordering of the priority queue.
+  d.w.pending -= d.size
+  heap.Remove(&b.pool, d.w.index)
+  heap.Push(&b.pool, d.w)
 }
 
 func (b *Balancer) print() {
@@ -87,7 +87,7 @@ func (b *Balancer) print() {
 
 func new_balancer(nworker int, work chan Request) *Balancer {  // Balancer constructor
   b := &Balancer{
-    done: make(chan *Worker, 100),
+    done: make(chan Done, 100),
     pool: make(Pool, nworker),
   }
   for i := 0; i < nworker; i++ {
