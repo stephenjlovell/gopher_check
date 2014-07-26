@@ -19,7 +19,7 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //-----------------------------------------------------------------------------------
 
-package main
+package load_balancer
 
 
 type Worker struct {
@@ -32,7 +32,7 @@ func (w *Worker) work(done chan *Worker) {
   go func() {
     for {
       req := <-w.requests // get requests from load balancer
-      req.c <- req.fn() // do the work and send the answer back to the requestor
+      req.Result <- req.Fn() // do the work and send the answer back to the requestor
       done <- w         // tell load balancer a task has been completed by worker w.
     }
   }()

@@ -19,7 +19,7 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //-----------------------------------------------------------------------------------
 
-package main
+package load_balancer
 
 // The load balancer uses a priority queue to divide up subtree searches evenly among available 'worker'
 // goroutines, based on the expected effort required to search the subtree and its relative importance

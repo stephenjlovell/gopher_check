@@ -175,10 +175,22 @@ func get_see(brd *BRD, from, to, c int) int {
 }
 
 
-func is_in_check(brd *BRD, c, e int) bool {
+
+func side_in_check(brd *BRD, c, e int) bool {  // determines if specified side is in check
   if brd.pieces[c][KING] == 0 { return true }
   if is_attacked_by(brd, furthest_forward(c, brd.pieces[c][KING]), e, c) { return true } else { return false }
 }
+
+func is_in_check(brd *BRD) bool {  // determines if side to move is in check
+  c, e := int(brd.c), int(brd.e)
+  if is_attacked_by(brd, furthest_forward(c, brd.pieces[c][KING]), e, c) { return true } else { return false }
+}
+
+func enemy_in_check(brd *BRD) bool {  // determines if other side is in check
+  c, e := int(brd.e), int(brd.c)
+  if is_attacked_by(brd, furthest_forward(c, brd.pieces[c][KING]), e, c) { return true } else { return false }
+}
+
 
 // static VALUE move_evades_check(VALUE self, VALUE p_board, VALUE sq_board, VALUE from, VALUE to, VALUE color){
 //   BRD *brd = get_brd(p_board);
@@ -274,21 +286,5 @@ func avoids_check(brd *BRD, m MV, c, e int) bool {
   }
 }
 //     return pinned && (~pinned & sq_mask_on(NUM2INT(t))) ? Qfalse : Qtrue;
-
-
-
-
-// extern void Init_attack(){
-//   VALUE mod_chess = rb_define_module("Chess");
-//   VALUE cls_position = rb_define_class_under(mod_chess, "Position", rb_cObject);
-//   rb_define_method(cls_position, "side_in_check?", RUBY_METHOD_FUNC(is_in_check), 2);
-//   rb_define_method(cls_position, "move_is_legal?", RUBY_METHOD_FUNC(move_evades_check), 5);
-//   rb_define_method(cls_position, "move_gives_check?", RUBY_METHOD_FUNC(move_gives_check), 6);
-//   rb_define_method(cls_position, "move_avoids_check?", RUBY_METHOD_FUNC(is_pseudolegal_move_legal), 5);
-
-//   VALUE mod_search = rb_define_module_under(mod_chess, "Search");
-//   rb_define_module_function(mod_search, "static_exchange_evaluation", static_exchange_evaluation, 5);
-// }
-
 
 

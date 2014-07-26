@@ -21,43 +21,52 @@
 
 package main
 
-func scan_down(occ BB, dir, sq int) BB {
-  ray := ray_masks[dir][sq];
-  blockers := (ray & occ);
-  if(blockers>0) { ray ^= (ray_masks[dir][msb(blockers)]) }
-  return ray;
-}
-
-func scan_up(occ BB, dir, sq int) BB {
-  ray := ray_masks[dir][sq]
-  blockers := (ray & occ)
-  if(blockers>0) { ray ^= (ray_masks[dir][lsb(blockers)]) }
-  return ray;
-}
-
-func rook_attacks(occ BB, sq int) BB {
-  return scan_up(occ, NORTH, sq)|scan_up(occ, EAST, sq)|scan_down(occ, SOUTH, sq)|scan_down(occ, WEST, sq)
-}
-
-func bishop_attacks(occ BB, sq int) BB {
-  return scan_up(occ, NW, sq)|scan_up(occ, NE, sq)|scan_down(occ, SE, sq)|scan_down(occ, SW, sq)
-}
-
-func queen_attacks(occ BB, sq int) BB {
-  return (bishop_attacks(occ, sq) | rook_attacks(occ, sq))
-} 
 
 const (
   C_BK = (1 << iota)
   C_BQ
   C_WK
   C_WQ 
-)                                            
+)
 
-func get_non_captures(brd *BRD, c, e, castle int, moves chan MV){
+func split_moves(brd *BRD, in_check bool) ([]MV, []MV) {  // determine which moves should be searchd sequentially,
+  var best_moves, other_moves []MV                        // and which will be searched in parallel.
+  // moves := generate_moves(brd, in_check)
+
+
+  return best_moves, other_moves
+}
+
+
+func generate_moves(brd *BRD, in_check bool) []MV {  // generate and sort all pseudolegal moves
+  moves := make([]MV, 0)
+
+  if in_check {
+
+  } else {
+    
+  }
+
+  return moves
+}
+
+func generate_tactical_moves(brd *BRD, in_check bool) []MV {  // generate and sort non-quiet pseudolegal moves
+  moves := make([]MV, 0)
+
+  if in_check {
+
+  } else {
+
+  }
+
+  return moves
+}
+
+
+func get_non_captures(brd *BRD, castle int, moves chan MV){
   var from, to int
   var single_advances, double_advances BB
-
+  c, e := int(brd.c), int(brd.e)
   occ := brd.Occupied()
   empty := ^occ
 
@@ -169,8 +178,9 @@ func get_non_captures(brd *BRD, c, e, castle int, moves chan MV){
 
 // Pawn promotions are also generated during get_captures routine.
 
-func get_captures(brd *BRD, c, e, enp_target int, moves chan MV){
+func get_captures(brd *BRD, enp_target int, moves chan MV){
   var from, to int
+  c, e := int(brd.c), int(brd.e)
   occ := brd.Occupied()
   enemy := brd.Placement(e)
 
@@ -295,7 +305,8 @@ func get_captures(brd *BRD, c, e, enp_target int, moves chan MV){
 
 }
 
-func get_evasions(brd *BRD, c, e, enp_target int, moves chan MV){
+func get_evasions(brd *BRD, enp_target int, moves chan MV){
+  c, e := int(brd.c), int(brd.e)
 
   if brd.pieces[c][KING] == 0 { 
     close(moves)
@@ -547,6 +558,31 @@ func encode_move(from, to int, piece, captured, promoted PC) MV {
 }
 
 
+func scan_down(occ BB, dir, sq int) BB {
+  ray := ray_masks[dir][sq];
+  blockers := (ray & occ);
+  if(blockers>0) { ray ^= (ray_masks[dir][msb(blockers)]) }
+  return ray;
+}
+
+func scan_up(occ BB, dir, sq int) BB {
+  ray := ray_masks[dir][sq]
+  blockers := (ray & occ)
+  if(blockers>0) { ray ^= (ray_masks[dir][lsb(blockers)]) }
+  return ray;
+}
+
+func rook_attacks(occ BB, sq int) BB {
+  return scan_up(occ, NORTH, sq)|scan_up(occ, EAST, sq)|scan_down(occ, SOUTH, sq)|scan_down(occ, WEST, sq)
+}
+
+func bishop_attacks(occ BB, sq int) BB {
+  return scan_up(occ, NW, sq)|scan_up(occ, NE, sq)|scan_down(occ, SE, sq)|scan_down(occ, SW, sq)
+}
+
+func queen_attacks(occ BB, sq int) BB {
+  return (bishop_attacks(occ, sq) | rook_attacks(occ, sq))
+} 
 
 
 

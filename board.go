@@ -38,6 +38,8 @@ type BRD struct {
   material [2]int32  // 64 bits
   hash_key uint64   // 64 bits
   pawn_hash_key uint64 // 64 bits
+  c uint8 
+  e uint8
 }
 
 const (
@@ -73,6 +75,8 @@ func (brd *BRD) Copy() *BRD {
     brd.material,
     brd.hash_key,
     brd.pawn_hash_key,
+    brd.c,
+    brd.e,
   }
   return clone
 }

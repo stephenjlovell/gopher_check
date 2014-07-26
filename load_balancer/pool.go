@@ -20,7 +20,7 @@
 //-----------------------------------------------------------------------------------
 
 
-package main
+package load_balancer
 
 type Pool []*Worker // a heap implemented as a priority queue of pointers to worker objects.
 

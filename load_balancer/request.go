@@ -20,10 +20,10 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //-----------------------------------------------------------------------------------
 
-package main
+package load_balancer
 
 type Request struct {
-  cancel chan bool
-  result chan int
-  fn func() int    // a closure containing the function and its arguments for the worker to call.
+  Cancel chan bool
+  Result chan int
+  Fn func() int    // a closure containing the function and its arguments for the worker to call.
 }
