@@ -19,44 +19,33 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //-----------------------------------------------------------------------------------
 
+
 package main
 
-// The load balancer uses a priority queue to divide up subtree searches evenly among available 'worker'
-// goroutines, based on the expected effort required to search the subtree and its relative importance
-// based on how promising that part of the tree appears to be.
+type Pool []*Worker // a heap implemented as a priority queue of pointers to worker objects.
 
+// satisfy the container#heap interface...
 
-// Expected effort is the average branching factor for the game tree raised by the depth remaining to search.
+func (p Pool) Len() int { return len(p) }
 
+func (p Pool) Less(i, j int) bool { return p[i].pending < p[j].pending }
 
-// Subtrees rooted along the Principal Variation (PV-Nodes) should be searched first, 
-// followed by fail-high nodes (Cut-Nodes). Fail-low nodes (All-Nodes) should be searched last.
-// Nodes of the same type should be processed left to right (making use of move ordering heuristics)
+func (p Pool) Swap(i, j int) {
+  p[i], p[j] = p[j], p[i]
+  p[i].index, p[j].index = j, i
+}
 
+func (p *Pool) Push(w interface{}) {
+  n := len(*p)
+  item := w.(*Worker)
+  item.index = n
+  *p = append(*p, item)
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+func (p *Pool) Pop() interface{} {
+  old := *p
+  n := len(old)
+  item := old[n-1]
+  *p = old[0 : n-1]
+  return item
+}

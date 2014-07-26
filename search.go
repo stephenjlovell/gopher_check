@@ -34,7 +34,7 @@ package main
 
 // Alpha Updates
 
-// Bounds are stored in the call stack.
+// Bounds are stored locally in the call stack.
 // When alpha is updated, the update is piped down to all running child requests via a channel.  For requests still
 // in queue, use a closure to scope the arguments so that when a worker executes the job it does so with the latest
 // bounds from the requestor.
@@ -63,14 +63,14 @@ package main
 
 // Without a meaningful heuristic, spawning tactic could alternatively be based on node type.
 
-type Request struct {
-  cancel chan bool
-  result chan int
-  fn func() int    // a closure containing the function and its arguments for the worker to call.
-}
+import(
+  "sync"
+)
 
 
-func young_brothers_wait(brd *BRD, old_alpha, old_beta, depth, ply int, cancel chan bool, update chan int) int {
+var work chan Request
+
+func young_brothers_wait(brd *BRD, old_alpha, old_beta, depth, ply int, cancel chan bool, update, result chan int) int {
   
   alpha, beta, score := -old_beta, -old_alpha, -INF
 
@@ -79,20 +79,22 @@ func young_brothers_wait(brd *BRD, old_alpha, old_beta, depth, ply int, cancel c
 
   if depth <= 0 { return quiescence(brd, alpha, beta, depth, ply, cancel_child) } // call standard sequential q-search
 
-
   in_check := is_in_check(brd, /* c, e */ )  // move c, e into BRD struct to avoid constantly passing these around.
 
   moves := generate_moves(brd, in_check) // build an ordered move list.
 
   best_moves := get_best_moves(&moves)  // slice off the best 1-4 nodes to search sequentially
+  move_index := 0
 
   for _, m := range best_moves { // proceed like normal sequential alpha-beta
     if is_cancelled(cancel, cancel_child, update_child) { return 0 }  // make sure the job hasn't been cancelled.
     
+    // to do: make move
     score = young_brothers_wait(brd, alpha, beta, depth-1, ply+1, cancel_child, update_child) * -1  
+    // to do: unmake move
 
     if score >= beta {
-      // save result to transposition table before returning.
+      // to do: save result to transposition table before returning.
       cancel_work(cancel_child, update_child)
       return beta
     }
@@ -101,25 +103,59 @@ func young_brothers_wait(brd *BRD, old_alpha, old_beta, depth, ply int, cancel c
       alpha = score
       update_child <- alpha  // send the updated bound to child processes.
     }
-
+    move_index++
   }
+  
+  child_result := make(chan int)
+  var child_counter int
 
-  // search remaining moves in parallel.
-  result := make(chan int)
+  for _, m := range moves[move_index:] {  // search the remaining moves in parallel.
+    new_brd := brd.Copy()  // create a locally scoped deep copy of the board.
 
-  for {  // wait for a message on one of the channels
-    select {
-    case cancelled := <-cancel:  // task was cancelled.
-      cancel_work(cancel_child, update_child)
-      return 0
-    case updated := <-update:
-      if updated > alpha { alpha = updated }
-      update_child <- updated  // give updated bound to child nodes 
-    case score = <-result:     // 
-
+    req := Request{         // package the subtree search into a Request object
+      cancel: cancel_child,
+      update: update_child,
+      fn: func(){
+        // to do: make move
+        young_brothers_wait(new_brd, alpha, beta, depth-1, ply+1, cancel_child, update_child)
+        // to do: unmake move
+      }
     }
-
+    work <-req  // pipe the new request to the load balancer to execute in parallel.
+    child_counter++
   }
+
+  if child_counter > 0 {
+remaining_pieces:
+    for {  // wait for a message to come in on one of the channels
+      select {
+      case cancelled := <-cancel:  // task was cancelled.
+        
+        cancel_work(cancel_child, update_child)
+        return 0
+      
+      case updated := <-update:    // an updated bound was received from the parent node.
+        
+        if updated > alpha { alpha = updated }
+        update_child <- updated  // propegate updated bound to child nodes 
+      
+      case score = <-child_result:  // one of the child subtrees has been completely searched.
+        if score >= beta {
+          // to do: save result to transposition table before returning.
+          cancel_work(cancel_child, update_child)
+          return beta
+        }
+        if score > alpha {
+          alpha = score
+          update_child <- alpha  // send the updated bound to child processes.
+        }
+        if --child_counter == 0 { break remaining_pieces }
+      }
+    }
+  }
+
+  // to do: check for draw or checkmate
+  // to do: save result to transposition table before returning.
 
 }
 
@@ -142,6 +178,9 @@ func cancel_work(cancel_child chan bool, update_child chan int) {
 
 
 func quiescence(brd *BRD, alpha, beta, depth, ply int, cancel chan bool) int {
+  
+  // q-search will be sequential.
+
   return 0
 }
 
@@ -155,25 +194,3 @@ func quiescence(brd *BRD, alpha, beta, depth, ply int, cancel chan bool) int {
 
 
 
-// // example of concurrent move generation.
-// // Communication and deep copy cost probably would outweigh benefit of concurrent move gen...
-// func example_movegen_call(brd *BRD, depth, alpha, beta int) {
-
-//   moves := make(chan MV, 10) // create a channel that will receive moves created by MoveGen.
-
-//   go GenerateMoves(brd, moves) // generate moves concurrently.
-
-//   for {
-//     m, more_moves := <-moves // blocks until a move is ready to try.
-//     if more_moves {
-//       make_move(brd, m)  // proceed normally.
-//       value, count := alpha_beta(brd, depth, alpha, beta)
-//       unmake_move(brd, m)
-
-//       // test bounds etc.
-
-//     } else {
-//       break // no more moves to try.  Exit the loop.
-//     }
-//   }
-// }
