@@ -28,12 +28,17 @@ type Worker struct {
   index    int          // index in the heap
 }
 
-func (w *Worker) work(done chan *Worker) {
+type Done struct {
+  w *Worker
+  size int
+}
+
+func (w *Worker) work(done chan Done) {
   go func() {
     for {
       req := <-w.requests // get requests from load balancer
       req.Result <- req.Fn() // do the work and send the answer back to the requestor
-      done <- w         // tell load balancer a task has been completed by worker w.
+      done <- Done{w, req.Size}         // tell load balancer a task has been completed by worker w.
     }
   }()
 }

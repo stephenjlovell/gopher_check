@@ -65,7 +65,7 @@ package main
 
 import(
   // "sync"
-  "github.com/stephenjlovell/chess/load_balancer"
+  "github.com/stephenjlovell/gopher_check/load_balancer"
 )
 
 
@@ -113,6 +113,7 @@ func young_brothers_wait(brd *BRD, old_alpha, old_beta, depth, ply int, cancel c
     req := load_balancer.Request{         // package the subtree search into a Request object
       Cancel: cancel_child,
       Result: result_child,
+      Size: (3 << uint(depth-1)),
       Fn: func() int {
         make_move(brd, m) // to do: make move
         val := young_brothers_wait(new_brd, alpha, beta, depth-1, ply+1, cancel_child, update_child) * -1  

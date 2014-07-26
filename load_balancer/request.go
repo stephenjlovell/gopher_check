@@ -25,5 +25,6 @@ package load_balancer
 type Request struct {
   Cancel chan bool
   Result chan int
+  Size int
   Fn func() int    // a closure containing the function and its arguments for the worker to call.
 }
