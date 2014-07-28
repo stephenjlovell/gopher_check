@@ -80,8 +80,8 @@ func young_brothers_wait(brd *BRD, old_alpha, old_beta, depth, ply int, cancel c
 	cancel_child := make(chan bool)
 
 	if depth <= 0 {
-		return quiescence(brd, alpha, beta, depth, ply, cancel_child)
-	} // call standard sequential q-search
+		return quiescence(brd, alpha, beta, depth, ply, cancel_child) // q-search is sequential.
+	}
 
 	in_check := is_in_check(brd /* c, e */) // move c, e into BRD struct to avoid constantly passing these around.
 
@@ -107,7 +107,7 @@ func young_brothers_wait(brd *BRD, old_alpha, old_beta, depth, ply int, cancel c
 	// now that decent bounds have been established, search the remaining nodes in parallel.
 	result_child := make(chan int)
 	var child_counter int
-	for _, m := range other_moves { // search the remaining moves in parallel.
+	for _, m := range other_moves { 
 		new_brd := brd.Copy() // create a locally scoped deep copy of the board.
 
 		req := load_balancer.Request{ // package the subtree search into a Request object
@@ -116,7 +116,7 @@ func young_brothers_wait(brd *BRD, old_alpha, old_beta, depth, ply int, cancel c
 			Size:   (3 << uint(depth-1)), // estimate of the number of main search leaf nodes remaining
 			Fn: func() int {
 				make_move(new_brd, m) // to do: make move
-				val := young_brothers_wait(new_brd, alpha, beta, depth-1, ply+1, cancel_child, update_child) * -1
+				val := -1 * young_brothers_wait(new_brd, alpha, beta, depth-1, ply+1, cancel_child, update_child)
 				unmake_move(new_brd, m) // to do: unmake move
 				return val
 			},

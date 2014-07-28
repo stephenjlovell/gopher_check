@@ -32,19 +32,21 @@ func split_moves(brd *BRD, in_check bool) ([]MV, []MV) { // determine which move
 	var best_moves, other_moves []MV // and which will be searched in parallel.
 	// moves := generate_moves(brd, in_check)
 
+	// apply some heuristic to 
+
 	return best_moves, other_moves
 }
 
-func generate_moves(brd *BRD, in_check bool) []MV { // generate and sort all pseudolegal moves
+func generate_moves(brd *BRD, in_check bool) ([]MV, int) { // generate and sort all pseudolegal moves
 	moves := make([]MV, 0)
-
+	confidence := 0
 	if in_check {
 
 	} else {
 
 	}
-
-	return moves
+	
+	return moves, confidence
 }
 
 func generate_tactical_moves(brd *BRD, in_check bool) []MV { // generate and sort non-quiet pseudolegal moves
