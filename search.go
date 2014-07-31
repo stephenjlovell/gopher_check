@@ -44,9 +44,9 @@ package main
 
 // Cancellation
 
+// Each request made by the master node contains a pointer to a cancellation channel.
 // If a beta cutoff occurs, a cancellation flag is sent on the cancellation channel for the current master node.
 
-// Each request made by the master node contains a pointer to a cancellation channel.
 // Prior to starting work on a new request, the worker checks the cancellation channel to see if the work is still
 // needed, and discards the request if not.
 
@@ -68,11 +68,19 @@ import (
 	"github.com/stephenjlovell/gopher_check/load_balancer"
 )
 
+type PV []Move
+
+// type UnmakeInfo struct {
+// 	castle         uint8
+// 	enp_target     int
+// 	halfmove_clock uint8
+// }
+
 // channel of channels for managed closing?
 
 var work chan load_balancer.Request
 
-func young_brothers_wait(brd *BRD, old_alpha, old_beta, depth, ply int, cancel chan bool, update chan int) int {
+func young_brothers_wait(brd *Board, old_alpha, old_beta, depth, ply int, cancel chan bool, update chan int) int {
 
 	alpha, beta, score := -old_beta, -old_alpha, -INF
 
@@ -83,7 +91,7 @@ func young_brothers_wait(brd *BRD, old_alpha, old_beta, depth, ply int, cancel c
 		return quiescence(brd, alpha, beta, depth, ply, cancel_child) // q-search is sequential.
 	}
 
-	in_check := is_in_check(brd /* c, e */) // move c, e into BRD struct to avoid constantly passing these around.
+	in_check := is_in_check(brd /* c, e */) // move c, e into Board struct to avoid constantly passing these around.
 
 	best_moves, other_moves := split_moves(brd, in_check) // slice off the best few nodes to search sequentially
 
@@ -92,9 +100,9 @@ func young_brothers_wait(brd *BRD, old_alpha, old_beta, depth, ply int, cancel c
 		if is_cancelled(cancel, cancel_child, update_child) {
 			return 0
 		} // make sure the job hasn't been cancelled.
-		make_move(brd, m) // to do: make move
-		score = young_brothers_wait(brd, alpha, beta, depth-1, ply+1, cancel_child, update_child) * -1
-		unmake_move(brd, m) // to do: unmake move
+
+		score = make_search_unmake(brd, m, alpha, beta, depth-1, ply+1, cancel_child, update_child)
+
 		if score >= beta {
 			// to do: save result to transposition table before returning.
 			return beta // no communication necessary; nothing has been spawned in parallel from this node yet.
@@ -107,7 +115,7 @@ func young_brothers_wait(brd *BRD, old_alpha, old_beta, depth, ply int, cancel c
 	// now that decent bounds have been established, search the remaining nodes in parallel.
 	result_child := make(chan int)
 	var child_counter int
-	for _, m := range other_moves { 
+	for _, m := range other_moves {
 		new_brd := brd.Copy() // create a locally scoped deep copy of the board.
 
 		req := load_balancer.Request{ // package the subtree search into a Request object
@@ -115,10 +123,7 @@ func young_brothers_wait(brd *BRD, old_alpha, old_beta, depth, ply int, cancel c
 			Result: result_child,
 			Size:   (3 << uint(depth-1)), // estimate of the number of main search leaf nodes remaining
 			Fn: func() int {
-				make_move(new_brd, m) // to do: make move
-				val := -1 * young_brothers_wait(new_brd, alpha, beta, depth-1, ply+1, cancel_child, update_child)
-				unmake_move(new_brd, m) // to do: unmake move
-				return val
+				return make_search_unmake(new_brd, m, alpha, beta, depth-1, ply+1, cancel_child, update_child)
 			},
 		}
 		work <- req // pipe the new request object to the load balancer to execute in parallel.
@@ -164,6 +169,19 @@ func young_brothers_wait(brd *BRD, old_alpha, old_beta, depth, ply int, cancel c
 	return 0
 }
 
+func make_search_unmake(brd *Board, m Move, alpha, beta, depth, ply int, cancel chan bool, update chan int) int {
+	hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
+	castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
+
+	make_move(brd, m) // to do: make move
+	score := -1 * young_brothers_wait(brd, alpha, beta, depth-1, ply+1, cancel, update)
+	unmake_move(brd, m) // to do: unmake move
+
+	brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
+	brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
+	return score
+}
+
 func is_cancelled(cancel, cancel_child chan bool, update_child chan int) bool {
 	select {
 	case <-cancel:
@@ -183,7 +201,7 @@ func cancel_work(cancel_child chan bool, update_child chan int) {
 // Q-Search will always be done sequentially.
 // Q-search subtrees are taller and narrower than in the main search making benefit of parallelism
 // smaller and raising communication and synchronization overhead.
-func quiescence(brd *BRD, alpha, beta, depth, ply int, cancel chan bool) int {
+func quiescence(brd *Board, alpha, beta, depth, ply int, cancel chan bool) int {
 
 	return 0
 }

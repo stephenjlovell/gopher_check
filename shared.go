@@ -38,56 +38,16 @@ const (
 )
 
 // Transposition Table, Killer moves, History Table should be shared by all goroutines.
-type SHARED struct {
+type SharedInfo struct {
 	killer_moves KTable
 	history      HTable
 	// add transposition table
-	side_to_move [MAX_PLY]uint8
-	enemy        [MAX_PLY]uint8
 }
-
-// Each goroutine gets its own explicit stack to store the local pv and information needed to unmake moves.
-
-type StackItem struct {
-	pv             []MV
-	castle         uint8
-	enp_target     int
-	halfmove_clock uint8
-}
-
-type Stack []StackItem
-
-// type
-const (
-	PAWN = iota
-	KNIGHT
-	BISHOP
-	ROOK
-	QUEEN
-	KING
-)
 
 // color
 const (
 	BLACK = iota
 	WHITE
-)
-
-// square/ID codes (0...12)
-const (
-	B_PAWN = iota
-	W_PAWN
-	B_KNIGHT
-	W_KNIGHT
-	B_BISHOP
-	W_BISHOP
-	B_ROOK
-	W_ROOK
-	B_QUEEN
-	W_QUEEN
-	B_KING
-	W_KING
-	PC_EMPTY
 )
 
 const ( // direction codes (0...8)
@@ -125,8 +85,6 @@ var king_offsets = [8]int{-9, -7, 7, 9, -8, -1, 1, 8}
 var pawn_attack_offsets = [4]int{9, 7, -9, -7}
 var pawn_advance_offsets = [4]int{8, 16, -8, -16}
 var pawn_enpassant_offsets = [2]int{1, -1}
-
-var piece_values = [6]int{100, 320, 333, 510, 880, 10000} // default piece values
 
 var directions [64][64]int
 
@@ -170,10 +128,12 @@ func chebyshev_distance(from, to int) int {
 	return max(abs(row(from)-row(to)), abs(column(from)-column(to)))
 }
 
-func lsb(b BB) int                     { return 0 }
-func msb(b BB) int                     { return 0 }
-func furthest_forward(c int, b BB) int { return 0 }
-func pop_count(b BB) int               { return 0 }
+// Gotta track down efficient implementations of these that don't rely on inline assembly...
+
+func lsb(b BB) int                       { return 0 }
+func msb(b BB) int                       { return 0 }
+func furthest_forward(c uint8, b BB) int { return 0 }
+func pop_count(b BB) int                 { return 0 }
 
 // #define lsb(bitboard) (__builtin_ctzl(bitboard))
 // #define msb(bitboard) (63-__builtin_clzl(bitboard))

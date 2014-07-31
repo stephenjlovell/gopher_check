@@ -21,49 +21,67 @@
 
 package main
 
-type PC uint8
+// type
+const (
+	PAWN = iota
+	KNIGHT
+	BISHOP
+	ROOK
+	QUEEN
+	KING
+	EMPTY // no piece located at this square
+)
 
-func (pc PC) Type() int  { return int(pc) >> 1 }
-func (pc PC) Color() int { return int(pc) & 1 }
-func (pc PC) Value() int { return piece_values[pc.Type()] }
+var piece_values = [6]int{100, 320, 333, 510, 880, 10000} // default piece values
 
-// When spawning new goroutines for subtree search, a deep copy of the BRD struct will have to be made
+type Piece uint8
+
+func (pc Piece) Value() int { return piece_values[pc] }
+
+// When spawning new goroutines for subtree search, a deep copy of the Board struct will have to be made
 // and passed to the new goroutine.  Keep this struct as small as possible.
-type BRD struct {
-	squares       [64]PC   // 512 bits
-	pieces        [2][6]BB // 768 bits
-	occupied      [2]BB    // 128 bits
-	material      [2]int32 // 64 bits
-	hash_key      uint64   // 64 bits
-	pawn_hash_key uint64   // 64 bits
-	c             uint8
-	e             uint8
+type Board struct {
+	pieces         [2][6]BB  // 768 bits
+	squares        [64]Piece // 512 bits
+	occupied       [2]BB     // 128 bits
+	material       [2]int32  // 64 bits
+	hash_key       uint64    // 64 bits
+	pawn_hash_key  uint64    // 64 bits
+	c              uint8     // 8 bits
+	castle         uint8     // 8 bits
+	enp_target     uint8     // 8 bits
+	halfmove_clock uint8     // 8 bits
 }
 
-func (brd *BRD) ValueAt(sq int) int {
+func (brd *Board) ValueAt(sq int) int {
 	return brd.squares[sq].Value()
 }
 
-func (brd *BRD) TypeAt(sq int) int {
-	return brd.squares[sq].Type()
+func (brd *Board) TypeAt(sq int) Piece {
+	return brd.squares[sq]
 }
 
-func (brd *BRD) Occupied() BB { return brd.occupied[0] | brd.occupied[1] }
+func (brd *Board) Enemy() uint8 {
+	return brd.c ^ 1
+}
 
-func (brd *BRD) Placement(c int) BB { return brd.occupied[c] }
+func (brd *Board) Occupied() BB { return brd.occupied[0] | brd.occupied[1] }
 
-func (brd *BRD) Copy() *BRD {
-	clone := &BRD{
-		brd.squares,
-		brd.pieces,
-		brd.occupied,
-		brd.material,
-		brd.hash_key,
-		brd.pawn_hash_key,
-		brd.c,
-		brd.e,
+func (brd *Board) Placement(c uint8) BB { return brd.occupied[c] }
+
+func (brd *Board) Copy() *Board {
+	return &Board{
+		pieces:         brd.pieces,
+		squares:        brd.squares,
+		occupied:       brd.occupied,
+		material:       brd.material,
+		hash_key:       brd.hash_key,
+		pawn_hash_key:  brd.pawn_hash_key,
+		c:              brd.c,
+		castle:         brd.castle,
+		enp_target:     brd.enp_target,
+		halfmove_clock: brd.halfmove_clock,
 	}
-	return clone
 }
 
 const (

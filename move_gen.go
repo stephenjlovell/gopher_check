@@ -21,36 +21,29 @@
 
 package main
 
-const (
-	C_BK = (1 << iota)
-	C_BQ
-	C_WK
-	C_WQ
-)
-
-func split_moves(brd *BRD, in_check bool) ([]MV, []MV) { // determine which moves should be searchd sequentially,
-	var best_moves, other_moves []MV // and which will be searched in parallel.
+func split_moves(brd *Board, in_check bool) ([]Move, []Move) { // determine which moves should be searchd sequentially,
+	var best_moves, other_moves []Move // and which will be searched in parallel.
 	// moves := generate_moves(brd, in_check)
 
-	// apply some heuristic to 
+	// apply some heuristic to
 
 	return best_moves, other_moves
 }
 
-func generate_moves(brd *BRD, in_check bool) ([]MV, int) { // generate and sort all pseudolegal moves
-	moves := make([]MV, 0)
+func generate_moves(brd *Board, in_check bool) ([]Move, int) { // generate and sort all pseudolegal moves
+	moves := make([]Move, 0)
 	confidence := 0
 	if in_check {
 
 	} else {
 
 	}
-	
+
 	return moves, confidence
 }
 
-func generate_tactical_moves(brd *BRD, in_check bool) []MV { // generate and sort non-quiet pseudolegal moves
-	moves := make([]MV, 0)
+func generate_tactical_moves(brd *Board, in_check bool) []Move { // generate and sort non-quiet pseudolegal moves
+	moves := make([]Move, 0)
 
 	if in_check {
 
@@ -61,33 +54,34 @@ func generate_tactical_moves(brd *BRD, in_check bool) []MV { // generate and sor
 	return moves
 }
 
-func get_non_captures(brd *BRD, castle int, moves chan MV) {
+func get_non_captures(brd *Board) {
 	var from, to int
 	var single_advances, double_advances BB
-	c, e := int(brd.c), int(brd.e)
+	c, e := brd.c, brd.Enemy()
 	occ := brd.Occupied()
 	empty := ^occ
 
 	// Castles
-	if castle > 0 { // get_non_captures is only called when not in check.
+	castle := brd.castle
+	if castle > uint8(0) { // get_non_captures is only called when not in check.
 		if c > 0 {
-			if (castle&C_WQ > 0) && !(castle_queenside_intervening[1]&occ > 0) &&
+			if (castle&C_WQ > uint8(0)) && !(castle_queenside_intervening[1]&occ > 0) &&
 				!is_attacked_by(brd, D1, e, c) && !is_attacked_by(brd, C1, e, c) {
 
 				// build_castle(INT2NUM(0x1b), E1, C1, INT2NUM(0x17), A1, D1, moves);
 			}
-			if (castle&C_WK > 0) && !(castle_kingside_intervening[1]&occ > 0) &&
+			if (castle&C_WK > uint8(0)) && !(castle_kingside_intervening[1]&occ > 0) &&
 				!is_attacked_by(brd, F1, e, c) && !is_attacked_by(brd, G1, e, c) {
 
 				// build_castle(INT2NUM(0x1b), E1, G1, INT2NUM(0x17), H1, F1, moves);
 			}
 		} else {
-			if (castle&C_BQ > 0) && !(castle_queenside_intervening[0]&occ > 0) &&
+			if (castle&C_BQ > uint8(0)) && !(castle_queenside_intervening[0]&occ > 0) &&
 				!is_attacked_by(brd, D8, e, c) && !is_attacked_by(brd, C8, e, c) {
 
 				// build_castle(INT2NUM(0x1a), E8, C8, INT2NUM(0x16), A8, D8, moves);
 			}
-			if (castle&C_BK > 0) && !(castle_kingside_intervening[0]&occ > 0) &&
+			if (castle&C_BK > uint8(0)) && !(castle_kingside_intervening[0]&occ > 0) &&
 				!is_attacked_by(brd, F8, e, c) && !is_attacked_by(brd, G8, e, c) {
 
 				// build_castle(INT2NUM(0x1a), E8, G8, INT2NUM(0x16), H8, F8, moves);
@@ -175,9 +169,9 @@ func get_non_captures(brd *BRD, castle int, moves chan MV) {
 
 // Pawn promotions are also generated during get_captures routine.
 
-func get_captures(brd *BRD, enp_target int, moves chan MV) {
+func get_captures(brd *Board) {
 	var from, to int
-	c, e := int(brd.c), int(brd.e)
+	c, e := brd.c, brd.Enemy()
 	occ := brd.Occupied()
 	enemy := brd.Placement(e)
 
@@ -241,7 +235,8 @@ func get_captures(brd *BRD, enp_target int, moves chan MV) {
 	}
 
 	// en-passant captures
-	if enp_target != SQ_INVALID {
+	if brd.enp_target != SQ_INVALID {
+		enp_target := brd.enp_target
 		for f := (brd.pieces[c][PAWN] & pawn_side_masks[enp_target]); f > 0; f.Clear(from) {
 			from = furthest_forward(c, f)
 
@@ -301,11 +296,10 @@ func get_captures(brd *BRD, enp_target int, moves chan MV) {
 
 }
 
-func get_evasions(brd *BRD, enp_target int, moves chan MV) {
-	c, e := int(brd.c), int(brd.e)
+func get_evasions(brd *Board) {
+	c, e := brd.c, brd.Enemy()
 
 	if brd.pieces[c][KING] == 0 {
-		close(moves)
 		return
 	}
 
@@ -424,13 +418,14 @@ func get_evasions(brd *BRD, enp_target int, moves chan MV) {
 		}
 
 		// en-passant captures
-		if enp_target != SQ_INVALID {
+		if brd.enp_target != SQ_INVALID {
+			enp_target := brd.enp_target
 			for f := (brd.pieces[c][PAWN] & pawn_side_masks[enp_target]); f > 0; f.Clear(from) {
 				from = furthest_forward(c, f)
 				if c > 0 {
-					to = enp_target + 8
+					to = int(enp_target) + 8
 				} else {
-					to = enp_target - 8
+					to = int(enp_target) - 8
 				}
 				if is_pinned(brd, from, c, e) == 0 {
 
@@ -554,12 +549,12 @@ func get_evasions(brd *BRD, enp_target int, moves chan MV) {
 
 // Need to store
 
-func encode_move(from, to int, piece, captured, promoted PC) MV {
-	return MV(from) |
-		(MV(to) << 6) |
-		(MV(piece.Type()) << 12) |
-		(MV(captured.Type()) << 15) |
-		(MV(promoted.Type()) << 18)
+func encode_move(from, to int, piece, captured, promoted Piece) Move {
+	return Move(from) |
+		(Move(to) << 6) |
+		(Move(piece) << 12) |
+		(Move(captured) << 15) |
+		(Move(promoted) << 18)
 }
 
 func scan_down(occ BB, dir, sq int) BB {

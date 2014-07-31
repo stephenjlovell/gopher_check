@@ -182,11 +182,11 @@ func setup_eval_constants() {
 	mate_value = non_king_value + piece_values[KING]
 }
 
-func net_placement(c, e int, brd *BRD) int {
-	return adjusted_placement(c, e, brd) - adjusted_placement(c, e, brd)
+func net_placement(brd *Board, c, e uint8) int {
+	return adjusted_placement(brd, c, e) - adjusted_placement(brd, c, e)
 }
 
-func adjusted_placement(c, e int, brd *BRD) int {
+func adjusted_placement(brd *Board, c, e uint8) int {
 	var sq, placement int
 	var b BB
 	enemy_king_sq := furthest_forward(e, brd.pieces[e][KING])
@@ -199,14 +199,14 @@ func adjusted_placement(c, e int, brd *BRD) int {
 	}
 	for b = brd.pieces[c][KING]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
-		placement += king_pst[c][in_endgame(c, brd)][sq]
+		placement += king_pst[c][in_endgame(brd, c)][sq]
 	}
 	// Base material is incrementally updated as moves are made/unmade.
-	return int(brd.material[c]) + placement + mobility(c, e, brd) + pawn_structure(c, e, brd)
+	return int(brd.material[c]) + placement + mobility(brd, c, e) + pawn_structure(brd, c, e)
 }
 
 // Counts the total possible moves for the given side, not including any target squares defended by enemy pawns.
-func mobility(c, e int, brd *BRD) int {
+func mobility(brd *Board, c, e uint8) int {
 	friendly, enemy := brd.Placement(c), brd.Placement(e)
 	available := ^friendly
 	occ := brd.Occupied()
@@ -272,7 +272,7 @@ func mobility(c, e int, brd *BRD) int {
 // Bad structures:
 //   -Isolated pawns - Penalty for any pawn without friendly pawns on adjacent files.
 //   -Double/tripled pawns - Penalty for having multiple pawns on the same file.
-func pawn_structure(c, e int, brd *BRD) int {
+func pawn_structure(brd *Board, c, e uint8) int {
 	var structure, sq int
 	own_pawns := brd.pieces[c][PAWN]
 	enemy_pawns := brd.pieces[e][PAWN]
@@ -313,7 +313,7 @@ func pawn_structure(c, e int, brd *BRD) int {
 	return structure
 }
 
-func get_offset(c, sq, off int) int {
+func get_offset(c uint8, sq, off int) int {
 	if c > 0 {
 		return sq + off
 	} else {
@@ -321,7 +321,7 @@ func get_offset(c, sq, off int) int {
 	}
 }
 
-func in_endgame(c int, brd *BRD) int {
+func in_endgame(brd *Board, c uint8) int {
 	if int(brd.material[c]) <= endgame_value {
 		return 1
 	} else {

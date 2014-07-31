@@ -25,12 +25,12 @@ package main
 type AnyMove interface {
 	From() int
 	To() int
-	Piece() PC
-	CapturedPiece() PC
-	PromotedTo() PC
+	Piece() Piece
+	CapturedPiece() Piece
+	PromotedTo() Piece
 }
 
-type MV uint32
+type Move uint32
 
 // To to fit into transposition table entries, moves are encoded using 21 bits as follows (in LSB order):
 // From square - first 6 bits
@@ -39,24 +39,36 @@ type MV uint32
 // Captured piece - next 3 bits
 // promoted to - next 3 bits
 
-func (m MV) From() int {
+func (m Move) From() int {
 	return int(uint32(m) & uint32(63))
 }
 
-func (m MV) To() int {
+func (m Move) To() int {
 	return int((uint32(m) >> 6) & uint32(63))
 }
 
-func (m MV) Piece(c int) PC {
-	return (PC((uint32(m)>>12)&uint32(7)) << 1) | PC(c)
+func (m Move) Piece() Piece {
+	return Piece((uint32(m) >> 12) & uint32(7))
 }
 
-func (m MV) CapturedPiece(e int) PC {
-	return (PC((uint32(m)>>15)&uint32(7)) << 1) | PC(e)
+func (m Move) CapturedPiece() Piece {
+	return Piece((uint32(m) >> 15) & uint32(7))
 }
 
-func (m MV) PromotedTo(c int) PC {
-	return PC(((uint32(m)>>18)&uint32(7))<<1) | PC(c)
+func (m Move) PromotedTo() Piece {
+	return Piece((uint32(m) >> 18) & uint32(7))
+}
+
+func NewMove(from, to int, piece, captured_piece, promoted_to Piece) Move {
+	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) | (Move(captured_piece) << 15) | (Move(promoted_to) << 18)
+}
+
+func NewRegularMove(from, to int, piece Piece) Move {
+	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) | (Move(EMPTY) << 15) | (Move(EMPTY) << 18)
+}
+
+func NewCapture(from, to int, piece, captured_piece Piece) Move {
+	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) | (Move(captured_piece) << 15) | (Move(EMPTY) << 18)
 }
 
 // Generate moves in batches to save effort on move generation when cutoffs occur.

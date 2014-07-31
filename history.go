@@ -21,8 +21,8 @@
 
 package main
 
-type HTable [12][64]int
+type HTable [2][6][64]int
 
-func (h HTable) store(m MV, c, count int) {
-	h[m.Piece(c)][m.To()] += count
+func (h HTable) store(m Move, c, count int) {
+	h[c][m.Piece()][m.To()] += count
 }
