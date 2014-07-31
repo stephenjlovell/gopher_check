@@ -59,6 +59,10 @@ func (m Move) PromotedTo() Piece {
 	return Piece((uint32(m) >> 18) & uint32(7))
 }
 
+func (m Move) IsQuiet() bool {
+	if ((uint32(m) >> 15) & uint32(63)) > 0 { return false } else { return true }
+}
+
 func NewMove(from, to int, piece, captured_piece, promoted_to Piece) Move {
 	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) | (Move(captured_piece) << 15) | (Move(promoted_to) << 18)
 }

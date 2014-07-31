@@ -47,8 +47,11 @@ func make_move(brd *Board, move Move) {
 	case PAWN:
 		promoted_piece := move.PromotedTo()
 		if promoted_piece != EMPTY {
+      
       // handle promotions
+
 		}
+    
 
 		// handle en passant advances and en passant captures
 
@@ -101,6 +104,9 @@ func update_castle_rights(brd *Board, sq int) {
 	}
 }
 
+// As long as Board.squares is only used to determine the type of piece when the occupancy is already
+// known, it may be possible to only update it for the 'to' square during relocate_piece() 
+
 func relocate_piece(brd *Board, piece Piece, from, to int, c uint8) {
 	from_to := (sq_mask_on[from] | sq_mask_on[to])
 	brd.pieces[c][piece] ^= from_to
@@ -115,8 +121,17 @@ func remove_piece(brd *Board, captured_piece Piece, sq int, e uint8) {
 	mask := sq_mask_on[sq]
 	brd.pieces[e][captured_piece] ^= mask
 	brd.occupied[e] ^= mask
+  brd.material[e] -= captured_piece.Value()
 	// captured_piece is 'removed' from brd.squares by being overwritten by the attacking piece.
 	brd.hash_key ^= zobrist(captured_piece, sq, e) // XOR out the captured piece
+}
+
+func add_piece(brd *Board, added_piece Piece, sq int, c uint8) {
+  mask := sq_mask_on[sq]
+  brd.pieces[c][added_piece] ^= mask
+  brd.occupied[c] ^= mask
+  brd.squares[sq] = added_piece
+  brd.hash_key ^= zobrist(added_piece, sq, c)
 }
 
 func unmake_move(brd *Board, move Move) {
