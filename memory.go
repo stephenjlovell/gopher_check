@@ -115,7 +115,6 @@ func setup_zobrist() {
 	for i := 0; i < 16; i++ {
 		castle_table[i] = random_key()
 	}
-
 	for sq := 0; sq < 64; sq++ {
 		enp_table[sq] = random_key()
 	}
@@ -125,3 +124,16 @@ func setup_zobrist() {
 func zobrist(pc Piece, sq int, c uint8) uint64 {
 	return zobrist_table[c][pc][sq]
 }
+
+func enp_zobrist(sq int) uint64 {
+	return enp_table[sq]
+}
+
+func castle_zobrist(castle uint8) uint64 {
+	return castle_table[castle]
+}
+
+
+
+
+
