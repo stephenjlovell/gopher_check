@@ -1,0 +1,8 @@
+
+To Do:
+
+Find or write efficient implementations for bitwise operations LSB, MSB, Population Count
+
+Implement Make/Unmake
+
+  - if you could make room in the transposition table entry to store an actual Move type, then you could implement 

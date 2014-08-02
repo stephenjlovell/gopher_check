@@ -132,8 +132,3 @@ func enp_zobrist(sq int) uint64 {
 func castle_zobrist(castle uint8) uint64 {
 	return castle_table[castle]
 }
-
-
-
-
-

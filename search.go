@@ -158,7 +158,7 @@ func young_brothers_wait(brd *Board, old_alpha, old_beta, depth, ply int, cancel
 				}
 				child_counter--
 				if child_counter == 0 {
-					break remaining_pieces
+					break remaining_pieces // exit the for loop
 				}
 			}
 		}
@@ -175,7 +175,7 @@ func make_search_unmake(brd *Board, m Move, alpha, beta, depth, ply int, cancel 
 
 	make_move(brd, m) // to do: make move
 	score := -1 * young_brothers_wait(brd, alpha, beta, depth-1, ply+1, cancel, update)
-	unmake_move(brd, m) // to do: unmake move
+	unmake_move(brd, m, enp_target) // to do: unmake move
 
 	brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
 	brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
