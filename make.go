@@ -137,15 +137,22 @@ func unmake_move(brd *Board, move Move, enp_target uint8) {
 		switch captured_piece {
 		case EMPTY:
 		case PAWN:
-
-
-			// detect en passant capture.
-
-
-		default: // any non-pawn piece is captured
+      if c == WHITE { // detect en passant captures.
+        if to == int(enp_target) + 8 {
+          add_piece(brd, captured_piece, int(enp_target), brd.Enemy())
+        } else {
+          add_piece(brd, captured_piece, to, brd.Enemy())
+        }
+      } else {
+        if to == int(enp_target) - 8 {
+          add_piece(brd, PAWN, int(enp_target), brd.Enemy() )
+        } else {
+          add_piece(brd, captured_piece, to, brd.Enemy())
+        }
+      }
+		default: // any non-pawn piece was captured
 			add_piece(brd, captured_piece, to, brd.Enemy())
 		}
-
 		promoted_piece := move.PromotedTo()
 		if promoted_piece != EMPTY {
 			remove_piece(brd, promoted_piece, to, c)
@@ -155,7 +162,7 @@ func unmake_move(brd *Board, move Move, enp_target uint8) {
 		if captured_piece != EMPTY {
 			add_piece(brd, captured_piece, to, brd.Enemy())
 		} else {
-			if abs(to-from) == 2 { // king is castling.
+			if abs(to-from) == 2 { // king castled.
 				if c == WHITE {
 					if to == G1 {
 						relocate_piece(brd, ROOK, F1, H1, c)
