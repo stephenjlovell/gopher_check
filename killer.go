@@ -22,3 +22,11 @@
 package main
 
 type KTable [MAX_PLY][2]Move
+
+func (k KTable) Store() {
+
+}
+
+func (k KTable) Probe() {
+
+}

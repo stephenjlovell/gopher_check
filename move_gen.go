@@ -195,16 +195,15 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 	// promotion captures
 	for ; promotion_captures_left > 0; promotion_captures_left.Clear(to) {
 		to = furthest_forward(c, promotion_captures_left)
-		m = NewPromotionCapture(to+pawn_from_offsets[c][2], to, brd.squares[to], QUEEN)
-		if m != hash_move {
-			// best_moves.Push(SortItem{m, INF+1})
-			heap.Push(best_moves, SortItem{m, INF + 1})
-		}
-		m = NewPromotionCapture(to+pawn_from_offsets[c][2], to, brd.squares[to], KNIGHT)
+		from = to + pawn_from_offsets[c][2]
+		m = NewPromotionCapture(from, to, brd.squares[to], QUEEN)
 		if m != hash_move {
 			heap.Push(best_moves, SortItem{m, INF + 1})
 		}
-		// build_promotion_captures(piece_id, to+pawn_from_offsets[c][2], to, color, cls_promotion_capture, sq_board, promotions);
+		m = NewPromotionCapture(from, to, brd.squares[to], KNIGHT)
+		if m != hash_move {
+			heap.Push(best_moves, SortItem{m, INF + 1})
+		}
 	}
 
 	for ; promotion_captures_right > 0; promotion_captures_right.Clear(to) {
@@ -218,7 +217,6 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 		if m != hash_move {
 			heap.Push(best_moves, SortItem{m, INF + 1})
 		}
-		// build_promotion_captures(piece_id, to+pawn_from_offsets[c][3], to, color, cls_promotion_capture, sq_board, promotions);
 	}
 
 	// promotion advances
@@ -234,7 +232,6 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 		if m != hash_move {
 			heap.Push(best_moves, SortItem{m, INF})
 		}
-		// build_promotions(piece_id, to+pawn_from_offsets[c][0], to, color, cls_promotion, promotions);
 	}
 
 	var see int
@@ -249,7 +246,6 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 		} else {
 			heap.Push(remaining_moves, SortItem{m, INF - see})
 		}
-		// build_capture(piece_id, to+pawn_from_offsets[c][2], to, cls_regular_capture, sq_board, moves)
 	}
 
 	for ; right_attacks > 0; right_attacks.Clear(to) {
@@ -262,7 +258,6 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 		} else {
 			heap.Push(remaining_moves, SortItem{m, INF - see})
 		}
-		// build_capture(piece_id, to+pawn_from_offsets[c][3], to, cls_regular_capture, sq_board, moves);
 	}
 
 	// en-passant captures
@@ -282,7 +277,6 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 			} else {
 				heap.Push(remaining_moves, SortItem{m, INF - see})
 			}
-			// build_enp_capture(piece_id, from, (c?(enp_target+8):(enp_target-8)), cls_enp_capture, enp_target, sq_board, moves);
 		}
 	}
 
@@ -298,7 +292,6 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 			} else {
 				heap.Push(remaining_moves, SortItem{m, INF - see})
 			}
-			// build_capture(piece_id, from, to, cls_regular_capture, sq_board, moves);
 		}
 	}
 
@@ -314,7 +307,6 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 			} else {
 				heap.Push(remaining_moves, SortItem{m, INF - see})
 			}
-			// build_capture(piece_id, from, to, cls_regular_capture, sq_board, moves);
 		}
 	}
 
@@ -330,7 +322,6 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 			} else {
 				heap.Push(remaining_moves, SortItem{m, INF - see})
 			}
-			// build_capture(piece_id, from, to, cls_regular_capture, sq_board, moves)
 		}
 	}
 
@@ -346,7 +337,6 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 			} else {
 				heap.Push(remaining_moves, SortItem{m, INF - see})
 			}
-			// build_capture(piece_id, from, to, cls_regular_capture, sq_board, moves);
 		}
 	}
 
@@ -362,7 +352,6 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 			} else {
 				heap.Push(remaining_moves, SortItem{m, INF - see})
 			}
-			// build_capture(piece_id, from, to, cls_regular_capture, sq_board, moves);
 		}
 	}
 
@@ -374,35 +363,34 @@ func get_non_captures(brd *Board, hash_move Move, remaining_moves *MoveList) {
 	c, e := brd.c, brd.Enemy()
 	occ := brd.Occupied()
 	empty := ^occ
-
+	var m Move
 	// Castles
 	castle := brd.castle
 	if castle > uint8(0) { // get_non_captures is only called when not in check.
 		if c == WHITE {
 			if (castle&C_WQ > uint8(0)) && !(castle_queenside_intervening[1]&occ > 0) &&
 				!is_attacked_by(brd, D1, e, c) && !is_attacked_by(brd, C1, e, c) {
-				// move := NewMove(KING, E1, C1)
-
+				m = NewMove(KING, E1, C1)
+				heap.Push(remaining_moves, SortItem{m, 10})
 			}
 			if (castle&C_WK > uint8(0)) && !(castle_kingside_intervening[1]&occ > 0) &&
 				!is_attacked_by(brd, F1, e, c) && !is_attacked_by(brd, G1, e, c) {
-				// move := NewMove(KING, E1, G1)
-
+				m = NewMove(KING, E1, G1)
+				heap.Push(remaining_moves, SortItem{m, 10})
 			}
 		} else {
 			if (castle&C_BQ > uint8(0)) && !(castle_queenside_intervening[0]&occ > 0) &&
 				!is_attacked_by(brd, D8, e, c) && !is_attacked_by(brd, C8, e, c) {
-				// move := NewMove(KING, E8, C8)
-
+				m = NewMove(KING, E8, C8)
+				heap.Push(remaining_moves, SortItem{m, 10})
 			}
 			if (castle&C_BK > uint8(0)) && !(castle_kingside_intervening[0]&occ > 0) &&
 				!is_attacked_by(brd, F8, e, c) && !is_attacked_by(brd, G8, e, c) {
-				// move := NewMove(KING, E8, G8)
-
+				m = NewMove(KING, E8, G8)
+				heap.Push(remaining_moves, SortItem{m, 10})
 			}
 		}
 	}
-
 	// Pawns
 	//  Pawns behave differently than other pieces. They:
 	//  1. can move only in one direction;
@@ -420,65 +408,61 @@ func get_non_captures(brd *Board, hash_move Move, remaining_moves *MoveList) {
 
 	for ; double_advances > 0; double_advances.Clear(to) {
 		to = furthest_forward(c, double_advances)
-
-		// build_move(piece_id, to+pawn_from_offsets[c][1], to, cls_enp_advance, moves);
+		from = to + pawn_from_offsets[c][1]
+		m = NewMove(from, to, PAWN)
+		heap.Push(remaining_moves, SortItem{m, main_htable.Probe(PAWN, c, to)})
 	}
 	for ; single_advances > 0; single_advances.Clear(to) {
 		to = furthest_forward(c, single_advances)
-
-		// build_move(piece_id, to+pawn_from_offsets[c][0], to, cls_pawn_move, moves);
+		from = to + pawn_from_offsets[c][0]
+		m = NewMove(from, to, PAWN)
+		heap.Push(remaining_moves, SortItem{m, main_htable.Probe(PAWN, c, to)})
 	}
-
 	// Knights
 	for f := brd.pieces[c][KNIGHT]; f > 0; f.Clear(from) {
 		from = furthest_forward(c, f)                               // Locate each knight for the side to move.
 		for t := (knight_masks[from] & empty); t > 0; t.Clear(to) { // generate to squares
 			to = furthest_forward(c, t)
-
-			// build_move(piece_id, from, to, cls_regular_move, moves)
+			m = NewMove(from, to, KNIGHT)
+			heap.Push(remaining_moves, SortItem{m, main_htable.Probe(KNIGHT, c, to)})
 		}
 	}
-
 	// Bishops
 	for f := brd.pieces[c][BISHOP]; f > 0; f.Clear(from) {
 		from = furthest_forward(c, f)
 		for t := (bishop_attacks(occ, from) & empty); t > 0; t.Clear(to) { // generate to squares
 			to = furthest_forward(c, t)
-
-			// build_move(piece_id, from, to, cls_regular_move, moves)
+			m = NewMove(from, to, BISHOP)
+			heap.Push(remaining_moves, SortItem{m, main_htable.Probe(BISHOP, c, to)})
 		}
 	}
-
 	// Rooks
 	for f := brd.pieces[c][ROOK]; f > 0; f.Clear(from) {
 		from = furthest_forward(c, f)
 		for t := (rook_attacks(occ, from) & empty); t > 0; t.Clear(to) { // generate to squares
 			to = furthest_forward(c, t)
-
-			// build_move(piece_id, from, to, cls_regular_move, moves);
+			m = NewMove(from, to, ROOK)
+			heap.Push(remaining_moves, SortItem{m, main_htable.Probe(ROOK, c, to)})
 		}
 	}
-
 	// Queens
 	for f := brd.pieces[c][QUEEN]; f > 0; f.Clear(from) {
 		from = furthest_forward(c, f)
 		for t := (queen_attacks(occ, from) & empty); t > 0; t.Clear(to) { // generate to squares
 			to = furthest_forward(c, t)
-
-			// build_move(piece_id, from, to, cls_regular_move, moves);
+			m = NewMove(from, to, QUEEN)
+			heap.Push(remaining_moves, SortItem{m, main_htable.Probe(QUEEN, c, to)})
 		}
 	}
-
 	// Kings
 	for f := brd.pieces[c][KING]; f > 0; f.Clear(from) {
 		from = furthest_forward(c, brd.pieces[c][KING])
 		for t := (king_masks[from] & empty); t > 0; t.Clear(to) { // generate to squares
 			to = furthest_forward(c, t)
-
-			// build_move(piece_id, from, to, cls_regular_move, moves);
+			m = NewMove(from, to, KING)
+			heap.Push(remaining_moves, SortItem{m, main_htable.Probe(KING, c, to)})
 		}
 	}
-
 }
 
 func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, hash_move Move) {
@@ -522,6 +506,9 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 		defense_map |= brd.pieces[e][KING]
 	}
 
+	var m Move
+	var see int
+
 	if threat_count == 1 { // Attempt to capture or block the attack with any piece if there's only one attacker.
 		// Pawns
 		var single_advances, double_advances, left_temp, right_temp, left_attacks, right_attacks BB
@@ -554,78 +541,106 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 			right_attacks = right_temp & (^row_masks[0])
 			promotion_captures_right = right_temp & (row_masks[0])
 		}
-
 		// promotion captures
 		for ; promotion_captures_left > 0; promotion_captures_left.Clear(to) {
 			to = furthest_forward(c, promotion_captures_left)
 			from = to + pawn_from_offsets[c][2]
 			if is_pinned(brd, from, c, e) == 0 {
-				// build_promotion_captures(piece_id, from, to, color, cls_promotion_capture, sq_board, promotions)
-
+				m = NewPromotionCapture(from, to, brd.squares[to], QUEEN)
+				if m != hash_move {
+					heap.Push(best_moves, SortItem{m, INF + 1})
+				}
+				m = NewPromotionCapture(from, to, brd.squares[to], KNIGHT)
+				if m != hash_move {
+					heap.Push(best_moves, SortItem{m, INF + 1})
+				}
 			}
 		}
 		for ; promotion_captures_right > 0; promotion_captures_right.Clear(to) {
 			to = furthest_forward(c, promotion_captures_right)
 			from = to + pawn_from_offsets[c][3]
 			if is_pinned(brd, from, c, e) == 0 {
-
-				// build_promotion_captures(piece_id, from, to, color, cls_promotion_capture, sq_board, promotions);
+				m = NewPromotionCapture(from, to, brd.squares[to], QUEEN)
+				if m != hash_move {
+					heap.Push(best_moves, SortItem{m, INF + 1})
+				}
+				m = NewPromotionCapture(from, to, brd.squares[to], KNIGHT)
+				if m != hash_move {
+					heap.Push(best_moves, SortItem{m, INF + 1})
+				}
 			}
 		}
-
 		// promotion advances
 		for ; promotion_advances > 0; promotion_advances.Clear(to) {
 			to = furthest_forward(c, promotion_advances)
 			from = to + pawn_from_offsets[c][0]
 			if is_pinned(brd, from, c, e) == 0 {
-
-				// build_promotions(piece_id, from, to, color, cls_promotion, promotions)
+				m = NewPromotion(from, to, QUEEN)
+				if m != hash_move {
+					heap.Push(best_moves, SortItem{m, INF})
+				}
+				best_moves.Push(SortItem{m, INF})
+				m = NewPromotion(from, to, KNIGHT)
+				if m != hash_move {
+					heap.Push(best_moves, SortItem{m, INF})
+				}
 			}
 		}
-
 		// regular pawn attacks
 		for ; left_attacks > 0; left_attacks.Clear(to) {
 			to = furthest_forward(c, left_attacks)
 			from = to + pawn_from_offsets[c][2]
 			if is_pinned(brd, from, c, e) == 0 {
-
-				// build_capture(piece_id, from, to, cls_regular_capture, sq_board, captures)
+				m = NewCapture(from, to, PAWN, brd.squares[to])
+				see = get_see(brd, from, to, c)
+				if see >= 0 {
+					heap.Push(best_moves, SortItem{m, see})
+				} else {
+					heap.Push(remaining_moves, SortItem{m, INF - see})
+				}
 			}
 		}
-
 		for ; right_attacks > 0; right_attacks.Clear(to) {
 			to = furthest_forward(c, right_attacks)
 			from = to + pawn_from_offsets[c][3]
 			if is_pinned(brd, from, c, e) == 0 {
-
-				// build_capture(piece_id, from, to, cls_regular_capture, sq_board, captures)
+				m = NewCapture(from, to, PAWN, brd.squares[to])
+				see = get_see(brd, from, to, c)
+				if see >= 0 {
+					heap.Push(best_moves, SortItem{m, see})
+				} else {
+					heap.Push(remaining_moves, SortItem{m, INF - see})
+				}
 			}
 		}
-
 		// en-passant captures
 		if brd.enp_target != SQ_INVALID {
 			enp_target := brd.enp_target
 			for f := (brd.pieces[c][PAWN] & pawn_side_masks[enp_target]); f > 0; f.Clear(from) {
 				from = furthest_forward(c, f)
-				if c > 0 {
-					to = int(enp_target) + 8
-				} else {
-					to = int(enp_target) - 8
-				}
 				if is_pinned(brd, from, c, e) == 0 {
-
-					// build_enp_capture(piece_id, from, to, cls_enp_capture, enp_target, sq_board, captures)
+					if c == WHITE {
+						to = int(enp_target) + 8
+					} else {
+						to = int(enp_target) - 8
+					}
+					m = NewCapture(from, to, PAWN, PAWN)
+					see = get_see(brd, from, to, c)
+					if see >= 0 {
+						heap.Push(best_moves, SortItem{m, see})
+					} else {
+						heap.Push(remaining_moves, SortItem{m, INF - see})
+					}
 				}
 			}
 		}
-
 		// double advances
 		for ; double_advances > 0; double_advances.Clear(to) {
 			to = furthest_forward(c, double_advances)
 			from = to + pawn_from_offsets[c][1]
 			if is_pinned(brd, from, c, e) == 0 {
-
-				// build_move(piece_id, from, to, cls_enp_advance, moves)
+				m = NewMove(from, to, PAWN)
+				heap.Push(remaining_moves, SortItem{m, main_htable.Probe(PAWN, c, to)})
 			}
 		}
 		// single advances
@@ -633,8 +648,8 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 			to = furthest_forward(c, single_advances)
 			from = to + pawn_from_offsets[c][0]
 			if is_pinned(brd, from, c, e) == 0 {
-
-				// build_move(piece_id, from, to, cls_pawn_move, moves)
+				m = NewMove(from, to, PAWN)
+				heap.Push(remaining_moves, SortItem{m, main_htable.Probe(PAWN, c, to)})
 			}
 		}
 
@@ -645,13 +660,16 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 				for t := (knight_masks[from] & defense_map); t > 0; t.Clear(to) { // generate to squares
 					to = furthest_forward(c, t)
 					if sq_mask_on[to]&enemy > 0 {
-
-						// build_capture(piece_id, from, to, cls_regular_capture, sq_board, captures);
-
+						m = NewCapture(from, to, KNIGHT, brd.squares[to])
+						see = get_see(brd, from, to, c)
+						if see >= 0 {
+							heap.Push(best_moves, SortItem{m, see})
+						} else {
+							heap.Push(remaining_moves, SortItem{m, INF - see})
+						}
 					} else {
-
-						// build_move(piece_id, from, to, cls_regular_move, moves);
-
+						m = NewMove(from, to, KNIGHT)
+						heap.Push(remaining_moves, SortItem{m, main_htable.Probe(KNIGHT, c, to)})
 					}
 				}
 			}
@@ -664,11 +682,16 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 				for t := (bishop_attacks(occ, from) & defense_map); t > 0; t.Clear(to) { // generate to squares
 					to = furthest_forward(c, t)
 					if sq_mask_on[to]&enemy > 0 {
-
-						// build_capture(piece_id, from, to, cls_regular_capture, sq_board, captures);
+						m = NewCapture(from, to, BISHOP, brd.squares[to])
+						see = get_see(brd, from, to, c)
+						if see >= 0 {
+							heap.Push(best_moves, SortItem{m, see})
+						} else {
+							heap.Push(remaining_moves, SortItem{m, INF - see})
+						}
 					} else {
-
-						// build_move(piece_id, from, to, cls_regular_move, moves);
+						m = NewMove(from, to, BISHOP)
+						heap.Push(remaining_moves, SortItem{m, main_htable.Probe(BISHOP, c, to)})
 					}
 				}
 			}
@@ -681,11 +704,16 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 				for t := (rook_attacks(occ, from) & defense_map); t > 0; t.Clear(to) { // generate to squares
 					to = furthest_forward(c, t)
 					if sq_mask_on[to]&enemy > 0 {
-
-						// build_capture(piece_id, from, to, cls_regular_capture, sq_board, captures);
+						m = NewCapture(from, to, ROOK, brd.squares[to])
+						see = get_see(brd, from, to, c)
+						if see >= 0 {
+							heap.Push(best_moves, SortItem{m, see})
+						} else {
+							heap.Push(remaining_moves, SortItem{m, INF - see})
+						}
 					} else {
-
-						// build_move(piece_id, from, to, cls_regular_move, moves);
+						m = NewMove(from, to, BISHOP)
+						heap.Push(remaining_moves, SortItem{m, main_htable.Probe(ROOK, c, to)})
 					}
 				}
 			}
@@ -698,26 +726,34 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 				for t := (queen_attacks(occ, from) & defense_map); t > 0; t.Clear(to) { // generate to squares
 					to = furthest_forward(c, t)
 					if sq_mask_on[to]&enemy > 0 {
-
-						// build_capture(piece_id, from, to, cls_regular_capture, sq_board, captures);
+						m = NewCapture(from, to, QUEEN, brd.squares[to])
+						see = get_see(brd, from, to, c)
+						if see >= 0 {
+							heap.Push(best_moves, SortItem{m, see})
+						} else {
+							heap.Push(remaining_moves, SortItem{m, INF - see})
+						}
 					} else {
-
-						// build_move(piece_id, from, to, cls_regular_move, moves);
+						m = NewMove(from, to, BISHOP)
+						heap.Push(remaining_moves, SortItem{m, main_htable.Probe(QUEEN, c, to)})
 					}
 				}
 			}
 		}
-
 	}
-
 	// If there's more than one attacking piece, the only way out is to move the king.
 	// King captures
 	for t := (king_masks[king_sq] & enemy); t > 0; t.Clear(to) { // generate to squares
 		to = furthest_forward(c, t)
 		if !is_attacked_by(brd, to, e, c) && threat_dir_1 != directions[king_sq][to] &&
 			threat_dir_2 != directions[king_sq][to] {
-
-			// build_capture(piece_id, king_sq, to, cls_regular_capture, sq_board, captures)
+			m = NewCapture(king_sq, to, KING, brd.squares[to])
+			see = get_see(brd, king_sq, to, c)
+			if see >= 0 {
+				heap.Push(best_moves, SortItem{m, see})
+			} else {
+				heap.Push(remaining_moves, SortItem{m, INF - see})
+			}
 		}
 	}
 	// King moves
@@ -725,21 +761,11 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 		to = furthest_forward(c, t)
 		if !is_attacked_by(brd, to, e, c) && threat_dir_1 != directions[king_sq][to] &&
 			threat_dir_2 != directions[king_sq][to] {
-
-			// build_move(piece_id, king_sq, to, cls_regular_move, moves)
+			m = NewMove(king_sq, to, KING)
+			heap.Push(remaining_moves, SortItem{m, main_htable.Probe(KING, c, to)})
 		}
 	}
 
-}
-
-// Need to store
-
-func encode_move(from, to int, piece, captured, promoted Piece) Move {
-	return Move(from) |
-		(Move(to) << 6) |
-		(Move(piece) << 12) |
-		(Move(captured) << 15) |
-		(Move(promoted) << 18)
 }
 
 func scan_down(occ BB, dir, sq int) BB {

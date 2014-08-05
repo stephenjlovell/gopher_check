@@ -33,7 +33,7 @@ type SortItem struct {
 	priority int
 }
 
-type MoveList []SortItem
+type MoveList []*SortItem
 
 func (l MoveList) Len() int { return len(l) }
 
@@ -45,9 +45,7 @@ func (l MoveList) Swap(i, j int) {
 }
 
 func (l *MoveList) Push(sort_item interface{}) {
-	// n := len(*l)
-	item := sort_item.(SortItem)
-	*l = append(*l, item)
+	*l = append(*l, sort_item.(*SortItem))
 }
 
 func (l *MoveList) Pop() interface{} {

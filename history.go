@@ -23,6 +23,12 @@ package main
 
 type HTable [2][6][64]int
 
-func (h HTable) store(m Move, c, count int) {
+var main_htable HTable
+
+func (h HTable) Store(m Move, c, count int) {
 	h[c][m.Piece()][m.To()] += count
+}
+
+func (h HTable) Probe(pc Piece, c uint8, to int) int {
+	return h[c][pc][to]
 }
