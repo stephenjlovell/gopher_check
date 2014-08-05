@@ -137,19 +137,19 @@ func unmake_move(brd *Board, move Move, enp_target uint8) {
 		switch captured_piece {
 		case EMPTY:
 		case PAWN:
-      if c == WHITE { // detect en passant captures.
-        if to == int(enp_target) + 8 {
-          add_piece(brd, captured_piece, int(enp_target), brd.Enemy())
-        } else {
-          add_piece(brd, captured_piece, to, brd.Enemy())
-        }
-      } else {
-        if to == int(enp_target) - 8 {
-          add_piece(brd, PAWN, int(enp_target), brd.Enemy() )
-        } else {
-          add_piece(brd, captured_piece, to, brd.Enemy())
-        }
-      }
+			if c == WHITE { // detect en passant captures.
+				if to == int(enp_target)+8 {
+					add_piece(brd, captured_piece, int(enp_target), brd.Enemy())
+				} else {
+					add_piece(brd, captured_piece, to, brd.Enemy())
+				}
+			} else {
+				if to == int(enp_target)-8 {
+					add_piece(brd, PAWN, int(enp_target), brd.Enemy())
+				} else {
+					add_piece(brd, captured_piece, to, brd.Enemy())
+				}
+			}
 		default: // any non-pawn piece was captured
 			add_piece(brd, captured_piece, to, brd.Enemy())
 		}

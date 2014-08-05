@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	INF = 100000 // an arbitrarily large score used to signal checkmate.
+	INF = 20000 // an arbitrarily large score used to signal checkmate.
 )
 
 const (
@@ -44,12 +44,19 @@ type SharedInfo struct {
 	// add transposition table
 }
 
-// color
-const (
+const ( // color
 	BLACK = iota
 	WHITE
 )
-
+const ( // type
+	PAWN = iota
+	KNIGHT
+	BISHOP
+	ROOK
+	QUEEN
+	KING
+	EMPTY // no piece located at this square
+)
 const ( // direction codes (0...8)
 	NW = iota
 	NE

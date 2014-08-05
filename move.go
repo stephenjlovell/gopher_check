@@ -67,11 +67,7 @@ func (m Move) IsQuiet() bool {
 	}
 }
 
-func NewMove(from, to int, piece, captured_piece, promoted_to Piece) Move {
-	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) | (Move(captured_piece) << 15) | (Move(promoted_to) << 18)
-}
-
-func NewRegularMove(from, to int, piece Piece) Move {
+func NewMove(from, to int, piece Piece) Move {
 	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) | (Move(EMPTY) << 15) | (Move(EMPTY) << 18)
 }
 
@@ -79,42 +75,11 @@ func NewCapture(from, to int, piece, captured_piece Piece) Move {
 	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) | (Move(captured_piece) << 15) | (Move(EMPTY) << 18)
 }
 
-// Generate moves in batches to save effort on move generation when cutoffs occur.
+// since moving piece is always PAWN (0) for promotions, no need to merge in the moving piece.
+func NewPromotion(from, to int, promoted_to Piece) Move {
+	return Move(from) | (Move(to) << 6) | (Move(EMPTY) << 15) | (Move(promoted_to) << 18)
+}
 
-// Ordering: PV/hash, promotions, winning captures, killers, losing captures, quiet moves
-
-// # Moves are ordered based on expected subtree value. Better move ordering produces a greater
-// # number of alpha/beta cutoffs during search, reducing the size of the actual search tree toward the minimal tree.
-// def get_moves(depth, enhanced_sort=false, in_check=false)
-//   promotions, captures, moves = [], [], []
-
-//   if in_check
-//     MoveGen::get_evasions(@pieces, @side_to_move, @board.squares, @enp_target, promotions, captures, moves)
-//   else
-//     MoveGen::get_captures(@pieces, @side_to_move, @board.squares, @enp_target, captures, promotions)
-//     MoveGen::get_non_captures(@pieces, @side_to_move, @castle, moves, in_check)
-//   end
-
-//   if enhanced_sort  # At higher depths, expend additional effort on move ordering.
-//     enhanced_sort(promotions, captures, moves, depth)
-//   else
-//     promotions + sort_captures_by_see!(captures) + history_sort!(moves)
-//   end
-// end
-
-// # Generate only moves that create big swings in material balance, i.e. captures and promotions.
-// # Used during Quiescence search to seek out positions from which a stable static evaluation can
-// # be performed.
-// def get_captures(evade_check)
-//   # During quiesence search, sorting captures by SEE has the added benefit of enabling the pruning of bad
-//   # captures (those with SEE < 0). In practice, this reduced the average number of q-nodes by around half.
-//   promotions, captures = [], []
-//   if evade_check
-//     moves = []
-//     MoveGen::get_evasions(@pieces, @side_to_move, @board.squares, @enp_target, promotions, captures, moves)
-//     promotions + sort_captures_by_see!(captures) + history_sort!(moves)
-//   else
-//     MoveGen::get_winning_captures(@pieces, @side_to_move, @board.squares, @enp_target, captures, promotions)
-//     promotions + sort_winning_captures_by_see!(captures)
-//   end
-// end
+func NewPromotionCapture(from, to int, captured_piece, promoted_to Piece) Move {
+	return Move(from) | (Move(to) << 6) | (Move(captured_piece) << 15) | (Move(promoted_to) << 18)
+}

@@ -70,7 +70,7 @@ func (tt *TT) get_slot(hash_key uint64) SLOT {
 	return tt[hash_key&TT_MASK]
 }
 
-func (tt *TT) probe(brd *Board, c, depth, alpha, beta, value int) {
+func (tt *TT) probe(brd *Board, depth int) Move {
 	hash_key := brd.hash_key
 	slot := tt.get_slot(hash_key)
 
@@ -80,6 +80,7 @@ func (tt *TT) probe(brd *Board, c, depth, alpha, beta, value int) {
 		} // find an entry uncorrupted by lockless access.
 	}
 
+	return Move(0)
 }
 
 // use lockless storing to avoid concurrent write issues without incurring locking overhead.

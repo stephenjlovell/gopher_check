@@ -21,17 +21,6 @@
 
 package main
 
-// type
-const (
-	PAWN = iota
-	KNIGHT
-	BISHOP
-	ROOK
-	QUEEN
-	KING
-	EMPTY // no piece located at this square
-)
-
 var piece_values = [6]int{100, 320, 333, 510, 880, 10000} // default piece values
 
 type Piece uint8

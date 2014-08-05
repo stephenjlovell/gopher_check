@@ -63,6 +63,13 @@ package main
 
 // Without a meaningful heuristic, spawning tactic could alternatively be based on node type.
 
+// Node types:
+// YPV - Root node is type YPV.  At YPV node, first child searched is of type YPV, all others are type
+// 			 YCUT.  At YPV nodes, first child is searched sequentially and the remaining in parallel.
+// YCUT - 1st node searched is of type YALL, All other nodes are type YCUT.  At YCUT nodes, all "promising" child
+//				nodes are searched sequentially.  Remaining nodes are then searched in parallel.
+// YALL - 1st child node is searched sequentially, the rest are searched in parallel.
+
 import (
 	// "sync"
 	"github.com/stephenjlovell/gopher_check/load_balancer"
@@ -70,15 +77,13 @@ import (
 
 type PV []Move
 
-// type UnmakeInfo struct {
-// 	castle         uint8
-// 	enp_target     int
-// 	halfmove_clock uint8
-// }
-
-// channel of channels for managed closing?
-
 var work chan load_balancer.Request
+
+// const (
+// 	Y_PV
+// 	Y_CUT
+// 	Y_ALL
+// )
 
 func young_brothers_wait(brd *Board, old_alpha, old_beta, depth, ply int, cancel chan bool, update chan int) int {
 
@@ -93,29 +98,50 @@ func young_brothers_wait(brd *Board, old_alpha, old_beta, depth, ply int, cancel
 
 	in_check := is_in_check(brd /* c, e */) // move c, e into Board struct to avoid constantly passing these around.
 
-	best_moves, other_moves := split_moves(brd, in_check) // slice off the best few nodes to search sequentially
-
-	// search the best moves sequentially.
-	for _, m := range best_moves {
+	// search hash move
+	hash_move := main_tt.probe(brd, depth)
+	if hash_move > 0 {
 		if is_cancelled(cancel, cancel_child, update_child) {
 			return 0
 		} // make sure the job hasn't been cancelled.
+		score = make_search_unmake(brd, hash_move, alpha, beta, depth-1, ply+1, cancel_child, update_child)
 
-		score = make_search_unmake(brd, m, alpha, beta, depth-1, ply+1, cancel_child, update_child)
-
-		if score >= beta {
-			// to do: save result to transposition table before returning.
-			return beta // no communication necessary; nothing has been spawned in parallel from this node yet.
-		}
 		if score > alpha {
+			if score >= beta {
+				// to do: save result to transposition table before returning.
+				return beta // no communication necessary; nothing has been spawned in parallel from this node yet.
+			}
 			alpha = score // no communication necessary; nothing has been spawned in parallel from this node yet.
 		}
 	}
 
+	best_moves, remaining_moves := get_best_moves(brd, in_check, hash_move) // slice off the best few nodes to search sequentially
+	// if any losing captures are generated, they will be added to the remaining_moves list.
+
+	// search the best moves sequentially.
+	for _, item := range *best_moves {
+		m := item.move
+		if is_cancelled(cancel, cancel_child, update_child) {
+			return 0
+		} // make sure the job hasn't been cancelled.
+		score = make_search_unmake(brd, m, alpha, beta, depth-1, ply+1, cancel_child, update_child)
+
+		if score > alpha {
+			if score >= beta {
+				// to do: save result to transposition table before returning.
+				return beta // no communication necessary; nothing has been spawned in parallel from this node yet.
+			}
+			alpha = score // no communication necessary; nothing has been spawned in parallel from this node yet.
+		}
+	}
+
+	get_remaining_moves(brd, in_check, hash_move, remaining_moves)
+
 	// now that decent bounds have been established, search the remaining nodes in parallel.
-	result_child := make(chan int)
+	result_child := make(chan int, 10)
 	var child_counter int
-	for _, m := range other_moves {
+	for _, item := range *remaining_moves {
+		m := item.move
 		new_brd := brd.Copy() // create a locally scoped deep copy of the board.
 
 		req := load_balancer.Request{ // package the subtree search into a Request object
@@ -130,29 +156,25 @@ func young_brothers_wait(brd *Board, old_alpha, old_beta, depth, ply int, cancel
 		child_counter++
 	}
 
-	if child_counter > 0 {
+	if child_counter > 0 { // wait for a message to come in on one of the channels
 	remaining_pieces:
-		for { // wait for a message to come in on one of the channels
+		for {
 			select {
 			case <-cancel: // task was cancelled.
-
 				cancel_work(cancel_child, update_child)
 				return 0
-
 			case updated := <-update: // an updated bound was received from the parent node.
-
 				if updated > alpha {
 					alpha = updated
 				}
 				update_child <- updated // propegate updated bound to child nodes
-
 			case score = <-result_child: // one of the child subtrees has been completely searched.
-				if score >= beta {
-					// to do: save result to transposition table before returning.
-					cancel_work(cancel_child, update_child)
-					return beta
-				}
 				if score > alpha {
+					if score >= beta {
+						// to do: save result to transposition table before returning.
+						cancel_work(cancel_child, update_child)
+						return beta
+					}
 					alpha = score
 					update_child <- alpha // send the updated bound to child processes.
 				}
