@@ -233,7 +233,6 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 			heap.Push(best_moves, SortItem{m, INF})
 		}
 	}
-
 	var see int
 	// regular pawn attacks
 	for ; left_attacks > 0; left_attacks.Clear(to) {
@@ -247,7 +246,6 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 			heap.Push(remaining_moves, SortItem{m, INF - see})
 		}
 	}
-
 	for ; right_attacks > 0; right_attacks.Clear(to) {
 		to = furthest_forward(c, right_attacks)
 		from = to + pawn_from_offsets[c][3]
@@ -259,7 +257,6 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 			heap.Push(remaining_moves, SortItem{m, INF - see})
 		}
 	}
-
 	// en-passant captures
 	if brd.enp_target != SQ_INVALID {
 		enp_target := brd.enp_target
@@ -279,7 +276,6 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 			}
 		}
 	}
-
 	// Knights
 	for f := brd.pieces[c][KNIGHT]; f > 0; f.Clear(from) {
 		from = furthest_forward(c, f)
@@ -294,7 +290,6 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 			}
 		}
 	}
-
 	// Bishops
 	for f := brd.pieces[c][BISHOP]; f > 0; f.Clear(from) {
 		from = furthest_forward(c, f)
@@ -309,7 +304,6 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 			}
 		}
 	}
-
 	// Rooks
 	for f := brd.pieces[c][ROOK]; f > 0; f.Clear(from) {
 		from = furthest_forward(c, f)
@@ -324,7 +318,6 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 			}
 		}
 	}
-
 	// Queens
 	for f := brd.pieces[c][QUEEN]; f > 0; f.Clear(from) {
 		from = furthest_forward(c, f)
@@ -339,7 +332,6 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 			}
 		}
 	}
-
 	// King
 	for f := brd.pieces[c][KING]; f > 0; f.Clear(from) {
 		from = furthest_forward(c, brd.pieces[c][KING])
@@ -354,7 +346,6 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 			}
 		}
 	}
-
 }
 
 func get_non_captures(brd *Board, hash_move Move, remaining_moves *MoveList) {
@@ -652,7 +643,6 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 				heap.Push(remaining_moves, SortItem{m, main_htable.Probe(PAWN, c, to)})
 			}
 		}
-
 		// Knights
 		for f := brd.pieces[c][KNIGHT]; f > 0; f.Clear(from) {
 			from = furthest_forward(c, f) // Locate each knight for the side to move.
@@ -674,7 +664,6 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 				}
 			}
 		}
-
 		// Bishops
 		for f := brd.pieces[c][BISHOP]; f > 0; f.Clear(from) {
 			from = furthest_forward(c, f)
@@ -696,7 +685,6 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 				}
 			}
 		}
-
 		// Rooks
 		for f := brd.pieces[c][ROOK]; f > 0; f.Clear(from) {
 			from = furthest_forward(c, f)
@@ -718,7 +706,6 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 				}
 			}
 		}
-
 		// Queens
 		for f := brd.pieces[c][QUEEN]; f > 0; f.Clear(from) {
 			from = furthest_forward(c, f)
@@ -765,7 +752,6 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 			heap.Push(remaining_moves, SortItem{m, main_htable.Probe(KING, c, to)})
 		}
 	}
-
 }
 
 func scan_down(occ BB, dir, sq int) BB {
