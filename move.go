@@ -71,6 +71,23 @@ func (m Move) IsQuiet() bool {
 	}
 }
 
+func (m Move) IsLegal(brd *Board) bool {
+	if m.Piece() == KING {
+		if is_attacked_by(brd, m.To(), brd.c, brd.Enemy()) {
+			return false
+		} else {
+			return true
+		}
+	} else {
+		pinned := is_pinned(brd, m.From(), brd.c, brd.Enemy())
+		if pinned > 0 && ((^pinned)&sq_mask_on[m.To()]) > 0 {
+			return false
+		} else {
+			return true
+		}
+	}
+}
+
 func NewMove(from, to int, piece Piece) Move {
 	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) | (Move(EMPTY) << 15) | (Move(EMPTY) << 18)
 }

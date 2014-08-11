@@ -278,7 +278,9 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 				to = int(enp_target) - 8
 			}
 			m = NewCapture(from, to, PAWN, PAWN)
+
 			see = get_see(brd, from, to, c)
+
 			if see >= 0 {
 				heap.Push(best_moves, &SortItem{m, see})
 			} else {

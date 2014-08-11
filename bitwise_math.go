@@ -16,24 +16,21 @@ import (
 )
 
 func lsb(b BB) int {
-  return int(C.lsb(C.ulong(b)))
+	return int(C.lsb(C.ulong(b)))
 }
 
 func msb(b BB) int {
-  return int(C.msb(C.ulong(b)))
+	return int(C.msb(C.ulong(b)))
 }
 
 func furthest_forward(c uint8, b BB) int {
-  if c == WHITE {
-    return int(C.lsb(C.ulong(b)))  // LSB
-  } else {
-    return int(C.msb(C.ulong(b)))  // MSB
-  }
+	if c == WHITE {
+		return int(C.lsb(C.ulong(b))) // LSB
+	} else {
+		return int(C.msb(C.ulong(b))) // MSB
+	}
 }
 
 func pop_count(b BB) int {
-  return int(C.pop_count(C.ulong(b)))
+	return int(C.pop_count(C.ulong(b)))
 }
-
-
-

@@ -27,12 +27,12 @@ import (
 
 type BB uint64
 
-func (b BB) Clear(sq int) {
-	b &= sq_mask_off[sq]
+func (b *BB) Clear(sq int) {
+	*b &= sq_mask_off[sq]
 }
 
-func (b BB) Add(sq int) {
-	b |= sq_mask_on[sq]
+func (b *BB) Add(sq int) {
+	*b |= sq_mask_on[sq]
 }
 
 func (b BB) Print() {

@@ -5,51 +5,59 @@ import (
 	"testing"
 )
 
-func TestMakeUnmake(t *testing.T) {
-	setup()
-	brd := StartPos()
+// func TestSetup(t *testing.T) {
+// 	setup()
+// 	brd := StartPos()
+// 	brd.Print()
+// }
 
-	brd.Print()
+// func TestMakeUnmake(t *testing.T) {
+// 	setup()
+// 	brd := StartPos()
 
-	start_brd := brd.Copy()
+// 	start_brd := brd.Copy()
 
-	in_check := is_in_check(brd)
-	best_moves, remaining_moves := get_all_moves(brd, in_check, 0)
+// 	in_check := is_in_check(brd)
+// 	best_moves, remaining_moves := get_all_moves(brd, in_check, 0)
 
-	for _, item := range *best_moves {
-		fmt.Printf(".")
-		m := item.move
-		hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
-		castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
-		make_move(brd, m)               // to do: make move
-		unmake_move(brd, m, enp_target) // to do: unmake move
-		brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
-		brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
-		Assert(*brd == *start_brd, "Expected board to return to previous value after unmake.")
-	}
-	for _, item := range *remaining_moves {
-		fmt.Printf(".")
-		m := item.move
-		hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
-		castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
-		make_move(brd, m)               // to do: make move
-		unmake_move(brd, m, enp_target) // to do: unmake move
-		brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
-		brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
-		Assert(*brd == *start_brd, "Expected board to return to previous value after unmake.")
-	}
-}
+// 	for _, item := range *best_moves {
+// 		fmt.Printf(".")
+// 		m := item.move
+// 		hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
+// 		castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
+// 		make_move(brd, m)               // to do: make move
+// 		unmake_move(brd, m, enp_target) // to do: unmake move
+// 		brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
+// 		brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
+// 		Assert(*brd == *start_brd, "Expected board to return to previous value after unmake.")
+// 	}
+// 	for _, item := range *remaining_moves {
+// 		fmt.Printf(".")
+// 		m := item.move
+// 		hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
+// 		castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
+// 		make_move(brd, m)               // to do: make move
+// 		unmake_move(brd, m, enp_target) // to do: unmake move
+// 		brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
+// 		brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
+// 		Assert(*brd == *start_brd, "Expected board to return to previous value after unmake.")
+// 	}
+// }
+
+// legal perft size:
+// [1,20,400,8902,197281,4865609,119060324,3195901860,84998978956,2439530234167,69352859712417]
 
 func TestMoveGen(t *testing.T) {
 	setup()
 	brd := StartPos()
-	depth := 2
+	depth := 3
 	sum := Perft(brd, depth)
 	fmt.Printf("%d total nodes at depth %d\n", sum, depth)
 }
 
 func Assert(statement bool, message string) {
 	if !statement {
+		fmt.Printf("F")
 		panic("\nAssertion failed: " + message + "\n")
 	}
 }
@@ -81,7 +89,7 @@ func StartPos() *Board {
 		Add_piece(brd, PAWN, sq, WHITE)
 	}
 	for sq := A7; sq <= H7; sq++ {
-		Add_piece(brd, PAWN, sq, WHITE)
+		Add_piece(brd, PAWN, sq, BLACK)
 	}
 	Add_piece(brd, ROOK, A1, WHITE)
 	Add_piece(brd, KNIGHT, B1, WHITE)
@@ -105,7 +113,6 @@ func StartPos() *Board {
 }
 
 func Perft(brd *Board, depth int) int {
-	fmt.Println("Perft")
 	if depth == 0 {
 		return 1
 	}

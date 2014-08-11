@@ -108,81 +108,83 @@ func is_pinned(brd *Board, sq int, c, e uint8) BB {
 // 3. During quiescence search, SEE is used to prune losing captures. This provides a very low-risk
 //    way of reducing the size of the q-search without impacting playing strength.
 func get_see(brd *Board, from, to int, c uint8) int {
-	var next_victim int
-	var t, last_t Piece
-	temp_color := c ^ 1
-	// get initial map of all squares directly attacking this square (does not include 'discovered'/hidden attacks)
-	b_attackers := brd.pieces[WHITE][BISHOP] | brd.pieces[BLACK][BISHOP] |
-		brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]
-	r_attackers := brd.pieces[WHITE][ROOK] | brd.pieces[BLACK][ROOK] |
-		brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]
+	// var next_victim int
+	// var t, last_t Piece
+	// temp_color := c ^ 1
+	// // get initial map of all squares directly attacking this square (does not include 'discovered'/hidden attacks)
+	// b_attackers := brd.pieces[WHITE][BISHOP] | brd.pieces[BLACK][BISHOP] |
+	// 	brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]
+	// r_attackers := brd.pieces[WHITE][ROOK] | brd.pieces[BLACK][ROOK] |
+	// 	brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]
 
-	temp_map := attack_map(brd, to)
-	temp_occ := brd.Occupied()
-	var temp_pieces BB
+	// temp_map := attack_map(brd, to)
+	// temp_occ := brd.Occupied()
+	// var temp_pieces BB
 
-	var piece_list [20]int
-	count := 1
+	// var piece_list [20]int
+	// count := 1
 
-	// before entering the main loop, perform each step once for the initial attacking piece.
-	// This ensures that the moved piece is the first to capture.
-	piece_list[0] = brd.ValueAt(to)
-	next_victim = brd.ValueAt(from)
-	t = brd.TypeAt(from)
+	// // before entering the main loop, perform each step once for the initial attacking piece.
+	// // This ensures that the moved piece is the first to capture.
+	// piece_list[0] = brd.ValueAt(to)
+	// next_victim = brd.ValueAt(from)
+	// t = brd.TypeAt(from)
 
-	temp_occ.Clear(from)
-	if t != KNIGHT && t != KING { // if the attacker was a pawn, bishop, rook, or queen, re-scan for hidden attacks:
-		if t == PAWN || t == BISHOP || t == QUEEN {
-			temp_map |= bishop_attacks(temp_occ, to) & b_attackers
-		}
-		if t == PAWN || t == ROOK || t == QUEEN {
-			temp_map |= rook_attacks(temp_occ, to) & r_attackers
-		}
-	}
-	last_t = t
+	// temp_occ.Clear(from)
+	// if t != KNIGHT && t != KING { // if the attacker was a pawn, bishop, rook, or queen, re-scan for hidden attacks:
+	// 	if t == PAWN || t == BISHOP || t == QUEEN {
+	// 		temp_map |= bishop_attacks(temp_occ, to) & b_attackers
+	// 	}
+	// 	if t == PAWN || t == ROOK || t == QUEEN {
+	// 		temp_map |= rook_attacks(temp_occ, to) & r_attackers
+	// 	}
+	// }
+	// last_t = t
 
-	for temp_map &= temp_occ; temp_map > 0; temp_map &= temp_occ {
-		for t = PAWN; t <= KING; t++ { // loop over piece ts in order of value.
-			temp_pieces = brd.pieces[temp_color][t] & temp_map
-			if temp_pieces > 0 {
-				break
-			} // stop as soon as a match is found.
-		}
-		if t > KING {
-			break
-		}
+	// for temp_map &= temp_occ; temp_map > 0; temp_map &= temp_occ {
+	// 	for t = PAWN; t <= KING; t++ { // loop over piece ts in order of value.
+	// 		temp_pieces = brd.pieces[temp_color][t] & temp_map
+	// 		if temp_pieces > 0 {
+	// 			break
+	// 		} // stop as soon as a match is found.
+	// 	}
+	// 	if t > KING {
+	// 		break
+	// 	}
 
-		piece_list[count] = -piece_list[count-1] + next_victim
-		next_victim = piece_values[t]
+	// 	piece_list[count] = -piece_list[count-1] + next_victim
+	// 	next_victim = piece_values[t]
 
-		count++
-		if (piece_list[count-1] - next_victim) > 0 {
-			break
-		}
+	// 	count++
+	// 	if (piece_list[count-1] - next_victim) > 0 {
+	// 		break
+	// 	}
 
-		if last_t == KING {
-			break
-		}
+	// 	if last_t == KING {
+	// 		break
+	// 	}
 
-		temp_occ ^= (temp_pieces & -temp_pieces) // merge the first set bit of temp_pieces into temp_occ
-		if t != KNIGHT && t != KING {
-			if t == PAWN || t == BISHOP || t == QUEEN {
-				temp_map |= (bishop_attacks(temp_occ, to) & b_attackers)
-			}
-			if t == ROOK || t == QUEEN {
-				temp_map |= (rook_attacks(temp_occ, to) & r_attackers)
-			}
-		}
-		temp_color ^= 1
-		last_t = t
-	}
+	// 	temp_occ ^= (temp_pieces & -temp_pieces) // merge the first set bit of temp_pieces into temp_occ
+	// 	if t != KNIGHT && t != KING {
+	// 		if t == PAWN || t == BISHOP || t == QUEEN {
+	// 			temp_map |= (bishop_attacks(temp_occ, to) & b_attackers)
+	// 		}
+	// 		if t == ROOK || t == QUEEN {
+	// 			temp_map |= (rook_attacks(temp_occ, to) & r_attackers)
+	// 		}
+	// 	}
+	// 	temp_color ^= 1
+	// 	last_t = t
+	// }
 
-	for count-1 > 0 {
-		count--
-		piece_list[count-1] = -max(-piece_list[count-1], piece_list[count])
-	}
+	// for count-1 > 0 {
+	// 	count--
+	// 	piece_list[count-1] = -max(-piece_list[count-1], piece_list[count])
+	// }
 
-	return piece_list[0]
+	// return piece_list[0]
+	return 0
+
 }
 
 // make these methods of Board type.

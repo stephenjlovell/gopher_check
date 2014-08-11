@@ -104,8 +104,10 @@ func (brd *Board) print_row(start int, row []Piece) {
 	fmt.Printf("\n---------------------------------\n")
 }
 
-var piece_graphics = [2][6]string{{"\u2659", "\u2658", "\u2657", "\u2656", "\u2655", "\u2654"},
-	{"\u265F", "\u265E", "\u265D", "\u265C", "\u265B", "\u265A"}}
+var piece_graphics = [2][6]string{
+	{"\u265F", "\u265E", "\u265D", "\u265C", "\u265B", "\u265A"},
+	{"\u2659", "\u2658", "\u2657", "\u2656", "\u2655", "\u2654"},
+}
 
 // Parse a FEN string and return a pointer to a new Board object
 // func NewBoard(fen string) *Board {
