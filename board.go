@@ -21,6 +21,10 @@
 
 package main
 
+import (
+	"fmt"
+)
+
 var piece_values = [6]int{100, 320, 333, 510, 880, 10000} // default piece values
 
 type Piece uint8
@@ -72,6 +76,58 @@ func (brd *Board) Copy() *Board {
 		halfmove_clock: brd.halfmove_clock,
 	}
 }
+
+func (brd *Board) Print() {
+	fmt.Printf("\n---------------------------------\n")
+	row := brd.squares[56:]
+	brd.print_row(56, row)
+
+	for i := 48; i >= 0; i -= 8 {
+		row = brd.squares[i : i+8]
+		brd.print_row(i, row)
+	}
+}
+
+func (brd *Board) print_row(start int, row []Piece) {
+	fmt.Printf("| ")
+	for i, piece := range row {
+		if piece == EMPTY {
+			fmt.Printf("  | ")
+		} else {
+			if brd.occupied[WHITE]&sq_mask_on[start+i] > 0 {
+				fmt.Printf("%v | ", piece_graphics[WHITE][piece])
+			} else {
+				fmt.Printf("%v | ", piece_graphics[BLACK][piece])
+			}
+		}
+	}
+	fmt.Printf("\n---------------------------------\n")
+}
+
+var piece_graphics = [2][6]string{{"\u2659", "\u2658", "\u2657", "\u2656", "\u2655", "\u2654"},
+	{"\u265F", "\u265E", "\u265D", "\u265C", "\u265B", "\u265A"}}
+
+// Parse a FEN string and return a pointer to a new Board object
+// func NewBoard(fen string) *Board {
+
+// }
+
+// func (brd *Board) Equal(other *Board) bool {
+// 	if brd.pieces == other.pieces &&
+// 		 brd.squares == other.squares &&
+// 		 brd.occupied == other.occupied &&
+// 		 brd.material == other.material &&
+// 		 brd.hash_key == other.hash_key &&
+// 		 brd.pawn_hash_key == other.pawn_hash_key &&
+// 		 brd.c == other.c &&
+// 		 brd.castle == other.castle &&
+// 		 brd.enp_target == other.enp_target &&
+// 		 brd.halfmove_clock == other.halfmove_clock {
+// 	 	 return true
+// 	 } else {
+// 	 	 return false
+// 	 }
+// }
 
 const (
 	A1 = iota

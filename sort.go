@@ -45,7 +45,8 @@ func (l MoveList) Swap(i, j int) {
 }
 
 func (l *MoveList) Push(sort_item interface{}) {
-	*l = append(*l, sort_item.(*SortItem))
+	item := sort_item.(*SortItem)
+	*l = append(*l, item)
 }
 
 func (l *MoveList) Pop() interface{} {

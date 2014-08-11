@@ -137,17 +137,7 @@ func chebyshev_distance(from, to int) int {
 
 // Gotta track down efficient implementations of these that don't rely on inline assembly...
 
-func lsb(b BB) int                       { return 0 }
-func msb(b BB) int                       { return 0 }
-func furthest_forward(c uint8, b BB) int { return 0 }
-func pop_count(b BB) int                 { return 0 }
-
-// #define lsb(bitboard) (__builtin_ctzl(bitboard))
-// #define msb(bitboard) (63-__builtin_clzl(bitboard))
-// #define furthest_forward(color, bitboard) (color ? lsb(bitboard) : msb(bitboard))
-// #define pop_count(bitboard) (__builtin_popcountl(bitboard))
-
-func main() {
+func setup() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	rand.Seed(9) // keep the same seed each time for debugging purposes.
 	setup_zobrist()
@@ -156,5 +146,9 @@ func main() {
 	setup_bonus_table()
 
 	fmt.Println("Hello Chess World")
+}
+
+func main() {
+	setup()
 
 }

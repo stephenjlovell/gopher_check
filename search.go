@@ -71,7 +71,6 @@ package main
 // YALL - 1st child node is searched sequentially, the rest are searched in parallel.
 
 import (
-	// "sync"
 	"github.com/stephenjlovell/gopher_check/load_balancer"
 )
 
@@ -119,8 +118,9 @@ func young_brothers_wait(brd *Board, old_alpha, old_beta, depth, ply int, cancel
 	// if any losing captures are generated, they will be added to the remaining_moves list.
 
 	// search the best moves sequentially.
+	var m Move
 	for _, item := range *best_moves {
-		m := item.move
+		m = item.move
 		if is_cancelled(cancel, cancel_child, update_child) {
 			return 0
 		} // make sure the job hasn't been cancelled.
@@ -135,6 +135,8 @@ func young_brothers_wait(brd *Board, old_alpha, old_beta, depth, ply int, cancel
 		}
 	}
 
+	// Delay the generation of remaining moves until all promotions and winning captures have been searched.
+	// if a cutoff occurs, this will reduce move generation effort substantially.
 	get_remaining_moves(brd, in_check, hash_move, remaining_moves)
 
 	// now that decent bounds have been established, search the remaining nodes in parallel.
@@ -215,7 +217,7 @@ func is_cancelled(cancel, cancel_child chan bool, update_child chan int) bool {
 }
 
 func cancel_work(cancel_child chan bool, update_child chan int) {
-	cancel_child <- true
+	// cancel_child <- true
 	close(cancel_child)
 	close(update_child)
 }
@@ -224,6 +226,5 @@ func cancel_work(cancel_child chan bool, update_child chan int) {
 // Q-search subtrees are taller and narrower than in the main search making benefit of parallelism
 // smaller and raising communication and synchronization overhead.
 func quiescence(brd *Board, alpha, beta, depth, ply int, cancel chan bool) int {
-
 	return 0
 }

@@ -185,6 +185,8 @@ func get_see(brd *Board, from, to int, c uint8) int {
 	return piece_list[0]
 }
 
+// make these methods of Board type.
+
 func side_in_check(brd *Board, c, e uint8) bool { // determines if specified side is in check
 	if brd.pieces[c][KING] == 0 {
 		return true

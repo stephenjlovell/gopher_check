@@ -34,7 +34,6 @@ func make_move(brd *Board, move Move) {
 	captured_piece := move.CapturedPiece()
 
 	relocate_piece(brd, piece, from, to, c) // Relocate the piece making the move
-	update_castle := brd.castle > 0
 
 	enp_target := brd.enp_target
 	brd.enp_target = SQ_INVALID
@@ -53,13 +52,13 @@ func make_move(brd *Board, move Move) {
 				remove_piece(brd, captured_piece, to, brd.Enemy())
 			}
 		default: // any non-pawn piece is captured
+			if brd.castle > 0 {
+				update_castle_rights(brd, to) //
+			}
 			remove_piece(brd, captured_piece, to, brd.Enemy())
 		}
 		promoted_piece := move.PromotedTo()
 		if promoted_piece != EMPTY {
-			if update_castle {
-				update_castle_rights(brd, to) //
-			}
 			promote_piece(brd, piece, promoted_piece, to, c)
 		}
 		brd.halfmove_clock = 0 // All pawn moves are irreversible.
@@ -68,6 +67,7 @@ func make_move(brd *Board, move Move) {
 
 	case KING:
 		// determine if the king is castling.
+		update_castle := brd.castle > 0
 		if captured_piece != EMPTY {
 			if update_castle {
 				update_castle_rights(brd, to) //
@@ -77,7 +77,7 @@ func make_move(brd *Board, move Move) {
 		} else {
 			brd.halfmove_clock += 1
 			if update_castle && abs(to-from) == 2 { // king is castling.
-				if c > 1 {
+				if c == WHITE {
 					if to == G1 {
 						relocate_piece(brd, ROOK, H1, F1, c)
 					} else {
@@ -96,6 +96,7 @@ func make_move(brd *Board, move Move) {
 			update_castle_rights(brd, from) // only need to check this for rooks and kings
 		}
 	case ROOK:
+		update_castle := brd.castle > 0
 		if captured_piece != EMPTY {
 			if update_castle {
 				update_castle_rights(brd, to) //
@@ -110,7 +111,7 @@ func make_move(brd *Board, move Move) {
 		}
 	default:
 		if captured_piece != EMPTY {
-			if update_castle {
+			if brd.castle > 0 {
 				update_castle_rights(brd, to) //
 			}
 			remove_piece(brd, captured_piece, to, brd.Enemy())
@@ -137,30 +138,29 @@ func unmake_move(brd *Board, move Move, enp_target uint8) {
 		switch captured_piece {
 		case EMPTY:
 		case PAWN:
-			if c == WHITE { // detect en passant captures.
-				if to == int(enp_target)+8 {
-					add_piece(brd, captured_piece, int(enp_target), brd.Enemy())
+			if enp_target == SQ_INVALID {
+				if c == WHITE {
+					if to == int(enp_target)+8 {
+						Add_piece(brd, PAWN, int(enp_target), brd.Enemy())
+					}
 				} else {
-					add_piece(brd, captured_piece, to, brd.Enemy())
+					if to == int(enp_target)-8 {
+						Add_piece(brd, PAWN, int(enp_target), brd.Enemy())
+					}
 				}
 			} else {
-				if to == int(enp_target)-8 {
-					add_piece(brd, PAWN, int(enp_target), brd.Enemy())
-				} else {
-					add_piece(brd, captured_piece, to, brd.Enemy())
-				}
+				Add_piece(brd, PAWN, to, brd.Enemy())
 			}
 		default: // any non-pawn piece was captured
-			add_piece(brd, captured_piece, to, brd.Enemy())
+			Add_piece(brd, captured_piece, to, brd.Enemy())
 		}
 		promoted_piece := move.PromotedTo()
 		if promoted_piece != EMPTY {
 			remove_piece(brd, promoted_piece, to, c)
 		}
-
 	case KING:
 		if captured_piece != EMPTY {
-			add_piece(brd, captured_piece, to, brd.Enemy())
+			Add_piece(brd, captured_piece, to, brd.Enemy())
 		} else {
 			if abs(to-from) == 2 { // king castled.
 				if c == WHITE {
@@ -236,7 +236,7 @@ func remove_piece(brd *Board, removed_piece Piece, sq int, e uint8) {
 	brd.hash_key ^= zobrist(removed_piece, sq, e) // XOR out the captured piece
 }
 
-func add_piece(brd *Board, added_piece Piece, sq int, c uint8) {
+func Add_piece(brd *Board, added_piece Piece, sq int, c uint8) {
 	brd.pieces[c][added_piece].Add(sq)
 	brd.squares[sq] = added_piece
 	brd.occupied[c].Add(sq)
@@ -245,7 +245,6 @@ func add_piece(brd *Board, added_piece Piece, sq int, c uint8) {
 }
 
 func promote_piece(brd *Board, piece, promoted_piece Piece, sq int, c uint8) {
-
 	brd.pieces[c][piece].Clear(sq)
 	brd.pieces[c][promoted_piece].Add(sq)
 
