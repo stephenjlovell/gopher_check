@@ -38,7 +38,7 @@ func (b *BB) Add(sq int) {
 func (b BB) Print() {
 	row, sq := "", ""
 
-	fmt.Printf("%d\n\n", b)
+	fmt.Printf("%d\n", b)
 	for i := 63; i >= 0; i-- {
 		if sq_mask_on[i]&b > 0 {
 			sq = " 1"

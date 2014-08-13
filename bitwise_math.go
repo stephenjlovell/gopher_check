@@ -24,6 +24,7 @@ func msb(b BB) int {
 }
 
 func furthest_forward(c uint8, b BB) int {
+  // b.Print()
 	if c == WHITE {
 		return int(C.lsb(C.ulong(b))) // LSB
 	} else {

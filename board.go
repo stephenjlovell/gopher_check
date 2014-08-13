@@ -77,6 +77,20 @@ func (brd *Board) Copy() *Board {
 	}
 }
 
+func (brd *Board) PrintDetails() {
+	for i := 0; i < 2; i++ {
+		fmt.Printf("side: %d, material: %d\n", i, brd.material[i])
+		fmt.Printf("hash_key: %d, pawn_hash_key: %d\n", brd.hash_key, brd.pawn_hash_key)
+		fmt.Printf("castle: %d, enp_target: %d, halfmove_clock: %d\noccupied:\n", brd.castle, brd.enp_target, brd.halfmove_clock)
+		brd.occupied[i].Print()
+		for pc := 0; pc < 6; pc++ {
+			fmt.Printf("piece: %d\n", pc)
+			brd.pieces[i][pc].Print()			
+		}
+	}
+	brd.Print()
+}
+
 func (brd *Board) Print() {
 	fmt.Printf("\n---------------------------------\n")
 	row := brd.squares[56:]

@@ -243,6 +243,7 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 			heap.Push(best_moves, &SortItem{m, INF})
 		}
 	}
+
 	var see int
 	// regular pawn attacks
 	for ; left_attacks > 0; left_attacks.Clear(to) {
@@ -363,13 +364,14 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 func get_non_captures(brd *Board, hash_move Move, remaining_moves *MoveList) {
 	var from, to int
 	var single_advances, double_advances BB
-	c, e := brd.c, brd.Enemy()
+	c := brd.c
 	occ := brd.Occupied()
 	empty := ^occ
 	var m Move
 	// Castles
 	castle := brd.castle
 	if castle > uint8(0) { // get_non_captures is only called when not in check.
+		e := brd.Enemy()
 		if c == WHITE {
 			if (castle&C_WQ > uint8(0)) && !(castle_queenside_intervening[1]&occ > 0) &&
 				!is_attacked_by(brd, D1, e, c) && !is_attacked_by(brd, C1, e, c) {

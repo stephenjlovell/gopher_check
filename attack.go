@@ -21,6 +21,12 @@
 
 package main
 
+
+import(
+	// "fmt"
+)
+
+
 func attack_map(brd *Board, sq int) BB {
 	var attacks, b_attackers, r_attackers BB
 	occ := brd.Occupied()
@@ -52,6 +58,14 @@ func color_attack_map(brd *Board, sq int, c, e uint8) BB {
 
 func is_attacked_by(brd *Board, sq int, attacker, defender uint8) bool {
 	occ := brd.Occupied()
+
+
+	// fmt.Printf("%v, %v, %v\n", sq, attacker, defender)
+	if sq > 64 {
+		brd.PrintDetails()
+	}
+
+
 	if pawn_attack_masks[defender][sq]&brd.pieces[attacker][PAWN] > 0 { // Pawns
 		return true
 	}
@@ -192,18 +206,26 @@ func get_see(brd *Board, from, to int, c uint8) int {
 func side_in_check(brd *Board, c, e uint8) bool { // determines if specified side is in check
 	if brd.pieces[c][KING] == 0 {
 		return true
+	} else {
+		return is_attacked_by(brd, furthest_forward(c, brd.pieces[c][KING]), e, c)		
 	}
-	return is_attacked_by(brd, furthest_forward(c, brd.pieces[c][KING]), e, c)
 }
 
 func is_in_check(brd *Board) bool { // determines if side to move is in check
-	c, e := brd.c, brd.Enemy()
-	return is_attacked_by(brd, furthest_forward(c, brd.pieces[c][KING]), e, c)
+	return side_in_check(brd, brd.c, brd.Enemy())
 }
 
 func enemy_in_check(brd *Board) bool { // determines if other side is in check
-	c, e := brd.Enemy(), brd.c
-	return is_attacked_by(brd, furthest_forward(c, brd.pieces[c][KING]), e, c)
+	return side_in_check(brd, brd.Enemy(), brd.c)
+}
+
+func avoids_check(brd *Board, m Move, c, e uint8) bool {
+	if m.Piece() == KING {
+		return is_attacked_by(brd, m.To(), e, c)
+	} else {
+		pinned := is_pinned(brd, m.From(), c, e)
+		return pinned == BB(0) || ((^pinned)&sq_mask_on[m.To()]) == BB(0)
+	}
 }
 
 // static VALUE move_evades_check(VALUE self, VALUE p_board, VALUE sq_board, VALUE from, VALUE to, VALUE color){
@@ -290,13 +312,5 @@ func enemy_in_check(brd *Board) bool { // determines if other side is in check
 //   return check ? Qtrue : Qfalse;
 // }
 
-func avoids_check(brd *Board, m Move, c, e uint8) bool {
-	if m.Piece() == KING {
-		return is_attacked_by(brd, m.To(), e, c)
-	} else {
-		pinned := is_pinned(brd, m.From(), c, e)
-		return pinned == BB(0) || ((^pinned)&sq_mask_on[m.To()]) == BB(0)
-	}
-}
 
 //     return pinned && (~pinned & sq_mask_on(NUM2INT(t))) ? Qfalse : Qtrue;

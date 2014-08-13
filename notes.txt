@@ -7,3 +7,13 @@ Implement Make/Unmake
 
 If most moves are usually going to be spawned in parallel, this would substantially reduce the benefit of generating moves concurrently in batches.
 
+
+
+
+
+
+Debugging:
+
+furthest_forward() returns out of range value when passed a zero bitboard.
+
+board state is getting corrupted:

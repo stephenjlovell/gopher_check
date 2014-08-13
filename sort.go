@@ -25,8 +25,16 @@ import (
 // "container/heap"
 )
 
-// using a Pair to associate moves with their ordering will incur substantial GC overhead,
+// using a Pair to associate moves with their ordering will incur GC overhead,
 // since each new struct will be allocated on the heap...
+
+// Ordering: PV/hash, promotions, winning captures, killers, losing captures, quiet moves
+
+// "Promising" moves (winning captures, promotions, and killers) are searched sequentially.
+
+// Since all other moves are searched in parallel, it only makes sense to expend sorting effort on them in a way
+// that impacts the behavior of the load balancer.
+
 
 type SortItem struct {
 	move     Move
