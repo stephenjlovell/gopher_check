@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"testing"
+	"strconv"
 )
 
 // func TestSetup(t *testing.T) {
@@ -12,21 +13,21 @@ import (
 // }
 
 
-// legal perft size:
 var legal_max_tree = [10]int{1,20,400,8902,197281,4865609,119060324,3195901860,84998978956,2439530234167}
+				// quiet moves only: 1,20,400,8868,195185...
 
 func TestMoveGen(t *testing.T) {
 	setup()
 	brd := StartPos()
 	copy := brd.Copy()
-	depth := 5
+	depth := 3
 	sum := Perft(brd, depth)
 	fmt.Printf("%d total nodes at depth %d\n", sum, depth)
-	// if *brd != *copy {
-	// 	brd.PrintDetails()
-	// }
+
 	CompareBoards(copy, brd)
 	Assert(*brd == *copy, "move generation did not return to initial board state.")
+	Assert(sum == legal_max_tree[depth], "Expected " + strconv.Itoa(legal_max_tree[depth]) + 
+																			 " nodes, got " + strconv.Itoa(sum))
 }
 
 func CompareBoards(brd, other *Board) {
@@ -76,7 +77,6 @@ func CompareBoards(brd, other *Board) {
 
 func Assert(statement bool, failure_message string) {
 	if !statement {
-		fmt.Printf("F")
 		panic("\nAssertion failed: " + failure_message + "\n")
 	}
 }
@@ -132,15 +132,25 @@ func Perft(brd *Board, depth int) int {
 	if depth == 0 {
 		return 1
 	}
-	sum := 0
+	// sum := 0
 	in_check := is_in_check(brd)
 	best_moves, remaining_moves := get_all_moves(brd, in_check, 0)
+	m_count := 0
 	for _, item := range *best_moves {
-		sum += Perft_make_unmake(brd, item.move, depth)
+		// m_count += 1
+		if in_check || avoids_check(brd, item.move) {
+			sum += Perft_make_unmake(brd, item.move, depth)
+		}
 	}
 	for _, item := range *remaining_moves {
-		sum += Perft_make_unmake(brd, item.move, depth)
+		// m_count += 1
+		if in_check || avoids_check(brd, item.move) {
+			sum += Perft_make_unmake(brd, item.move, depth)
+		}
 	}
+
+	// Assert(m_count == best_moves.Len() + remaining_moves.Len(), "MoveList length difference")
+
 	return sum
 }
 

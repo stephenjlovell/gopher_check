@@ -23,7 +23,7 @@ package main
 
 
 import(
-	// "fmt"
+	"fmt"
 )
 
 
@@ -219,12 +219,13 @@ func enemy_in_check(brd *Board) bool { // determines if other side is in check
 	return side_in_check(brd, brd.Enemy(), brd.c)
 }
 
-func avoids_check(brd *Board, m Move, c, e uint8) bool {
+func avoids_check(brd *Board, m Move) bool {
 	if m.Piece() == KING {
-		return is_attacked_by(brd, m.To(), e, c)
+		return !is_attacked_by(brd, m.To(), brd.Enemy(), brd.c)
 	} else {
-		pinned := is_pinned(brd, m.From(), c, e)
-		return pinned == BB(0) || ((^pinned)&sq_mask_on[m.To()]) == BB(0)
+		pinned := is_pinned(brd, m.From(), brd.c, brd.Enemy())
+		if pinned > 0 { fmt.Printf("%d\n", pinned ) }
+		return !(pinned > 0 && ((^pinned)&sq_mask_on[m.To()]) > 0)
 	}
 }
 

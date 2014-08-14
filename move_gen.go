@@ -21,132 +21,22 @@
 
 package main
 
-// // determine which moves should be searchd sequentially, and which will be searched in parallel.
-// func split_moves(brd *Board, in_check bool, node_type int) ([]Move, int) {
-
-// 	// apply some heuristic to slice off n best moves based on node type.
-// 	var best_moves, other_moves []MoveList
-
-// 	if in_check {
-// 		get_evasions(brd, best_moves, other_moves)
-// 	} else {
-// 		get_captures(brd, best_moves, other_moves)
-// 		get_castles(brd, other_moves)
-// 		get_non_captures(brd, best_moves, other_moves)
-// 	}
-
-// 	// switch node_type {
-// 	// case Y_PV, Y_ALL:
-// 	// 	// only the best available legal move is searched iteratively.  The rest are searched in parallel.
-// 	// case Y_CUT:
-// 	// 	// hash move, promotions, winning captures, and killers are searched iteratively.
-// 	// 	// all remaining moves are searched concurrently.
-// 	// }
-// 	return best_moves, other_moves
-// }
-
-// Ordering: PV/hash, promotions, winning captures, killers, losing captures, quiet moves
-// const ( // ordering type
-//   S_HASH = iota
-//   S_PROMOTION
-//   S_WINNING
-//   S_KILLER  // /\ 'promising' moves
-//   S_CASTLE  // \/ other moves
-//   S_LOSING
-//   S_QUIET
-// )
-
-// // ...Search
-// func example(brd *Board) {
-// 	next := make(chan bool)
-// 	best_moves := make(chan Move) // sequential (unbuffered) channels
-// 	other_moes := make(chan Move)
-
-// 	next <- true
-// 	go get_next_move(brd, moves, next)
-// 	receive_best_moves:
-// 	for {
-// 		select {
-// 		case move, ok := <-best_moves:
-// 			if ok {
-// 				// search iteratively
-// 			} else {
-// 				break receive_best_moves  // no more moves to receive.
-// 			}
-// 		default:
-// 			next <- true
-// 		}
-// 	}
-// 	receive_moves:
-// 	for {
-// 		select {
-// 		case move, ok := <-other_moves:
-// 			if ok {
-// 				// search concurrently
-// 			} else {
-// 				break receive_moves  // no more moves to receive.
-// 			}
-// 		default:
-// 			next <- true
-// 		}
-// 	}
-
-// }
-
-// // Moves are generated in batches.  move_gen keeps track of move generation batch phase.
-// // Search sends a message to NextMove requesting a move.  If an untried move is available from the current
-// // batch, NextMove sends that move to be searched.  If no moves are left in the current batch, NextMove
-// // generates and sorts the next batch of moves, and sends the first one.  If every batch has been generated
-// // and sent, NextMove returns nil/flag.
-
-// func get_next_move(brd *Board, moves chan Move, next chan bool) {
-// 	batch := 0
-// 	var best_moves, other_moves []MoveList
-
-// 	for {
-// 		select {
-// 		case next_batch, ok := <-next:  // if next is closed
-// 			if ok {
-// 				switch batch {
-// 				case S_HASH:
-// 					get_hash_move()
-// 			  case S_PROMOTION:
-
-// 			  case S_WINNING:
-
-// 			  case S_KILLER:
-
-// 			  case S_CASTLE:
-
-// 			  case S_LOSING:
-
-// 			  case S_QUIET:
-
-// 			  default:
-// 			  	close(moves)
-// 					return
-// 				}
-// 				batch++
-// 			} else {
-// 		  	close(moves)
-// 				return
-// 			}
-// 		}
-// 	}
-// }
-
 import (
 	"container/heap"
+	// "fmt"
 )
 
 func get_all_moves(brd *Board, in_check bool, hash_move Move) (*MoveList, *MoveList) {
-	var best_moves, remaining_moves MoveList
+	// var best_moves, remaining_moves MoveList
+	best_moves, remaining_moves := make(MoveList, 0, 75), make(MoveList, 0, 75)
+
 	if in_check {
-		get_evasions(brd, &best_moves, &remaining_moves, hash_move)
+		// get_evasions(brd, &best_moves, &remaining_moves, hash_move)
 	} else {
 		get_captures(brd, &best_moves, &remaining_moves, hash_move)
 		get_non_captures(brd, hash_move, &remaining_moves)
 	}
+
 	return &best_moves, &remaining_moves
 }
 
@@ -279,9 +169,7 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 				to = int(enp_target) - 8
 			}
 			m = NewCapture(from, to, PAWN, PAWN)
-
-			see = get_see(brd, from, to, c)
-
+			see = get_see(brd, from, to, c)   //  this will not accurately value en passant capture...
 			if see >= 0 {
 				heap.Push(best_moves, &SortItem{m, see})
 			} else {
@@ -373,23 +261,23 @@ func get_non_captures(brd *Board, hash_move Move, remaining_moves *MoveList) {
 	if castle > uint8(0) { // get_non_captures is only called when not in check.
 		e := brd.Enemy()
 		if c == WHITE {
-			if (castle&C_WQ > uint8(0)) && !(castle_queenside_intervening[1]&occ > 0) &&
-				!is_attacked_by(brd, D1, e, c) && !is_attacked_by(brd, C1, e, c) {
+			if (castle&C_WQ > uint8(0)) && castle_queenside_intervening[1]&occ == 0 &&
+				!is_attacked_by(brd, B1, e, c) && !is_attacked_by(brd, C1, e, c) && !is_attacked_by(brd, D1, e, c) {
 				m = NewMove(KING, E1, C1)
 				heap.Push(remaining_moves, &SortItem{m, 10})
 			}
-			if (castle&C_WK > uint8(0)) && !(castle_kingside_intervening[1]&occ > 0) &&
+			if (castle&C_WK > uint8(0)) && castle_kingside_intervening[1]&occ == 0 &&
 				!is_attacked_by(brd, F1, e, c) && !is_attacked_by(brd, G1, e, c) {
 				m = NewMove(KING, E1, G1)
 				heap.Push(remaining_moves, &SortItem{m, 10})
 			}
 		} else {
-			if (castle&C_BQ > uint8(0)) && !(castle_queenside_intervening[0]&occ > 0) &&
-				!is_attacked_by(brd, D8, e, c) && !is_attacked_by(brd, C8, e, c) {
+			if (castle&C_BQ > uint8(0)) && castle_queenside_intervening[0]&occ == 0 &&
+				!is_attacked_by(brd, B8, e, c) && !is_attacked_by(brd, C8, e, c) && !is_attacked_by(brd, D8, e, c) {
 				m = NewMove(KING, E8, C8)
 				heap.Push(remaining_moves, &SortItem{m, 10})
 			}
-			if (castle&C_BK > uint8(0)) && !(castle_kingside_intervening[0]&occ > 0) &&
+			if (castle&C_BK > uint8(0)) && castle_kingside_intervening[0]&occ == 0 &&
 				!is_attacked_by(brd, F8, e, c) && !is_attacked_by(brd, G8, e, c) {
 				m = NewMove(KING, E8, G8)
 				heap.Push(remaining_moves, &SortItem{m, 10})
@@ -768,6 +656,19 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 	}
 }
 
+
+func queen_attacks(occ BB, sq int) BB {
+	return (bishop_attacks(occ, sq) | rook_attacks(occ, sq))
+}
+
+func rook_attacks(occ BB, sq int) BB {
+	return scan_up(occ, NORTH, sq) | scan_up(occ, EAST, sq) | scan_down(occ, SOUTH, sq) | scan_down(occ, WEST, sq)
+}
+
+func bishop_attacks(occ BB, sq int) BB {
+	return scan_up(occ, NW, sq) | scan_up(occ, NE, sq) | scan_down(occ, SE, sq) | scan_down(occ, SW, sq)
+}
+
 func scan_down(occ BB, dir, sq int) BB {
 	ray := ray_masks[dir][sq]
 	blockers := (ray & occ)
@@ -786,14 +687,3 @@ func scan_up(occ BB, dir, sq int) BB {
 	return ray
 }
 
-func rook_attacks(occ BB, sq int) BB {
-	return scan_up(occ, NORTH, sq) | scan_up(occ, EAST, sq) | scan_down(occ, SOUTH, sq) | scan_down(occ, WEST, sq)
-}
-
-func bishop_attacks(occ BB, sq int) BB {
-	return scan_up(occ, NW, sq) | scan_up(occ, NE, sq) | scan_down(occ, SE, sq) | scan_down(occ, SW, sq)
-}
-
-func queen_attacks(occ BB, sq int) BB {
-	return (bishop_attacks(occ, sq) | rook_attacks(occ, sq))
-}
