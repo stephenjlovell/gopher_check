@@ -85,7 +85,7 @@ func (brd *Board) PrintDetails() {
 		brd.occupied[i].Print()
 		for pc := 0; pc < 6; pc++ {
 			fmt.Printf("piece: %d\n", pc)
-			brd.pieces[i][pc].Print()			
+			brd.pieces[i][pc].Print()
 		}
 	}
 	brd.Print()

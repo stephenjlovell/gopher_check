@@ -135,8 +135,6 @@ func chebyshev_distance(from, to int) int {
 	return max(abs(row(from)-row(to)), abs(column(from)-column(to)))
 }
 
-// Gotta track down efficient implementations of these that don't rely on inline assembly...
-
 func setup() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	rand.Seed(9) // keep the same seed each time for debugging purposes.

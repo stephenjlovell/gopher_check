@@ -36,22 +36,21 @@ func make_move(brd *Board, move Move) {
 	enp_target := brd.enp_target
 	brd.enp_target = SQ_INVALID
 
-	// relocate_piece(brd, piece, from, to, c) // Relocate the piece making the move
-
 	switch piece {
 	case PAWN:
 		brd.halfmove_clock = 0 // All pawn moves are irreversible.
+
 		switch captured_piece {
+		case PAWN: // Destination square will be empty if en passant capture
+			if enp_target != SQ_INVALID && brd.TypeAt(to) == EMPTY {
+				remove_piece(brd, PAWN, int(enp_target), brd.Enemy())
+				brd.squares[enp_target] = EMPTY
+			} else {
+				remove_piece(brd, PAWN, to, brd.Enemy())
+			}
 		case EMPTY:
 			if abs(to-from) == 16 { // handle en passant advances
 				brd.enp_target = uint8(to)
-			}
-		case PAWN: // Destination square will be empty if en passant capture
-			if enp_target != SQ_INVALID && brd.TypeAt(to) == EMPTY {
-				remove_piece(brd, captured_piece, int(enp_target), brd.Enemy())
-				brd.squares[enp_target] = EMPTY
-			} else {
-				remove_piece(brd, captured_piece, to, brd.Enemy())
 			}
 		default: // any non-pawn piece is captured
 			if brd.castle > 0 {
@@ -62,60 +61,60 @@ func make_move(brd *Board, move Move) {
 
 		promoted_piece := move.PromotedTo()
 		if promoted_piece != EMPTY {
-			remove_piece(brd, piece, from, c)
-			Add_piece(brd, promoted_piece, to, c)
+			remove_piece(brd, PAWN, from, c)
 			brd.squares[from] = EMPTY
-			// brd.squares[to] = promoted_piece
+			add_piece(brd, promoted_piece, to, c)
 		} else {
-			relocate_piece(brd, piece, from, to, c) 
+			relocate_piece(brd, PAWN, from, to, c)
 		}
 
 		// update the pawn hash key.
 
 	case KING:
-		update_castle := brd.castle > 0
-		if update_castle {
-			update_castle_rights(brd, from) // only need to check this for rooks and kings
-		}
 		if captured_piece != EMPTY {
-			if update_castle {
+			if brd.castle > 0 {
+				update_castle_rights(brd, from)
 				update_castle_rights(brd, to) //
 			}
 			remove_piece(brd, captured_piece, to, brd.Enemy())
 			brd.halfmove_clock = 0 // All capture moves are irreversible.
 		} else {
 			brd.halfmove_clock += 1
-			if update_castle && abs(to-from) == 2 { // king is castling.
-				if c == WHITE {
-					if to == G1 {
-						relocate_piece(brd, ROOK, H1, F1, c)
+			if brd.castle > 0 {
+				update_castle_rights(brd, from)
+				if abs(to-from) == 2 { // king is castling.
+					if c == WHITE {
+						if to == G1 {
+							relocate_piece(brd, ROOK, H1, F1, c)
+						} else {
+							relocate_piece(brd, ROOK, A1, D1, c)
+						}
 					} else {
-						relocate_piece(brd, ROOK, A1, D1, c)
-					}
-				} else {
-					if to == G8 {
-						relocate_piece(brd, ROOK, H8, F8, c)
-					} else {
-						relocate_piece(brd, ROOK, A8, D8, c)
+						if to == G8 {
+							relocate_piece(brd, ROOK, H8, F8, c)
+						} else {
+							relocate_piece(brd, ROOK, A8, D8, c)
+						}
 					}
 				}
 			}
 		}
-		relocate_piece(brd, piece, from, to, c) 
+		relocate_piece(brd, KING, from, to, c)
 	case ROOK:
-		if brd.castle > 0 {
-			update_castle_rights(brd, from) // only need to check this for rooks and kings
-		}
 		if captured_piece != EMPTY {
 			if brd.castle > 0 {
-				update_castle_rights(brd, to) //
+				update_castle_rights(brd, from) // only need to check this for rooks and kings
+				update_castle_rights(brd, to)   //
 			}
 			remove_piece(brd, captured_piece, to, brd.Enemy())
 			brd.halfmove_clock = 0 // All capture moves are irreversible.
 		} else {
+			if brd.castle > 0 {
+				update_castle_rights(brd, from) // only need to check this for rooks and kings
+			}
 			brd.halfmove_clock += 1
 		}
-		relocate_piece(brd, piece, from, to, c) 
+		relocate_piece(brd, ROOK, from, to, c)
 	default:
 		if captured_piece != EMPTY {
 			if brd.castle > 0 {
@@ -126,7 +125,7 @@ func make_move(brd *Board, move Move) {
 		} else {
 			brd.halfmove_clock += 1
 		}
-		relocate_piece(brd, piece, from, to, c) 
+		relocate_piece(brd, piece, from, to, c)
 	}
 
 	brd.c ^= 1 // flip the current side to move.
@@ -142,47 +141,45 @@ func unmake_move(brd *Board, move Move, enp_target uint8) {
 	to := move.To()
 	captured_piece := move.CapturedPiece()
 
-	// relocate_piece(brd, piece, to, from, c) // Relocate the piece making the move
-
 	switch piece {
 	case PAWN:
 
 		if move.PromotedTo() != EMPTY {
 			remove_piece(brd, move.PromotedTo(), to, c)
-			Add_piece(brd, piece, from, c)
 			brd.squares[to] = captured_piece
+			add_piece(brd, piece, from, c)
 		} else {
 			relocate_piece(brd, piece, to, from, c)
 		}
 
 		switch captured_piece {
-		case EMPTY:
 		case PAWN:
 			if enp_target != SQ_INVALID {
 				if c == WHITE {
 					if to == int(enp_target)+8 {
-						Add_piece(brd, PAWN, int(enp_target), brd.Enemy())
+						add_piece(brd, PAWN, int(enp_target), brd.Enemy())
 					} else {
-						Add_piece(brd, PAWN, to, brd.Enemy())	
+						add_piece(brd, PAWN, to, brd.Enemy())
 					}
 				} else {
 					if to == int(enp_target)-8 {
-						Add_piece(brd, PAWN, int(enp_target), brd.Enemy())
+						add_piece(brd, PAWN, int(enp_target), brd.Enemy())
 					} else {
-						Add_piece(brd, PAWN, to, brd.Enemy())				
+						add_piece(brd, PAWN, to, brd.Enemy())
 					}
 				}
 			} else {
-				Add_piece(brd, PAWN, to, brd.Enemy())
+				add_piece(brd, PAWN, to, brd.Enemy())
 			}
+		case EMPTY:
 		default: // any non-pawn piece was captured
-			Add_piece(brd, captured_piece, to, brd.Enemy())
+			add_piece(brd, captured_piece, to, brd.Enemy())
 		}
 
 	case KING:
 		relocate_piece(brd, piece, to, from, c)
 		if captured_piece != EMPTY {
-			Add_piece(brd, captured_piece, to, brd.Enemy())
+			add_piece(brd, captured_piece, to, brd.Enemy())
 		} else {
 			if abs(to-from) == 2 { // king castled.
 				if c == WHITE {
@@ -200,10 +197,11 @@ func unmake_move(brd *Board, move Move, enp_target uint8) {
 				}
 			}
 		}
+
 	default:
 		relocate_piece(brd, piece, to, from, c)
 		if captured_piece != EMPTY {
-			Add_piece(brd, captured_piece, to, brd.Enemy())
+			add_piece(brd, captured_piece, to, brd.Enemy())
 		}
 	}
 
@@ -259,7 +257,7 @@ func remove_piece(brd *Board, removed_piece Piece, sq int, e uint8) {
 	brd.hash_key ^= zobrist(removed_piece, sq, e) // XOR out the captured piece
 }
 
-func Add_piece(brd *Board, added_piece Piece, sq int, c uint8) {
+func add_piece(brd *Board, added_piece Piece, sq int, c uint8) {
 	brd.pieces[c][added_piece].Add(sq)
 	brd.squares[sq] = added_piece
 	brd.occupied[c].Add(sq)

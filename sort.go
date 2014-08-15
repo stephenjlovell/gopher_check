@@ -35,7 +35,6 @@ import (
 // Since all other moves are searched in parallel, it only makes sense to expend sorting effort on them in a way
 // that impacts the behavior of the load balancer.
 
-
 type SortItem struct {
 	move     Move
 	priority int

@@ -76,7 +76,7 @@ import (
 
 type PV []Move
 
-var work chan load_balancer.Request
+var work chan load_balancer.Request = make(chan load_balancer.Request, 100)
 
 // const (
 // 	Y_PV
@@ -137,7 +137,7 @@ func young_brothers_wait(brd *Board, old_alpha, old_beta, depth, ply int, cancel
 
 	// Delay the generation of remaining moves until all promotions and winning captures have been searched.
 	// if a cutoff occurs, this will reduce move generation effort substantially.
-	get_remaining_moves(brd, in_check, hash_move, remaining_moves)
+	get_remaining_moves(brd, in_check, remaining_moves, hash_move)
 
 	// now that decent bounds have been established, search the remaining nodes in parallel.
 	result_child := make(chan int, 10)

@@ -66,19 +66,14 @@ func setup_square_masks() {
 func setup_pawn_masks() {
 	var sq int
 	for i := 0; i < 64; i++ {
-		if row(i) == 3 || row(i) == 4 {
-			if column(i) != 7 {
-				pawn_side_masks[i] |= sq_mask_on[i+1]
-			}
-			if column(i) != 0 {
-				pawn_side_masks[i] |= sq_mask_on[i+1]
-			}
-		}
+
+		pawn_side_masks[i] = (king_masks[i] & row_masks[row(i)])
+
 		if i < 56 {
 			for j := 0; j < 2; j++ {
 				sq = i + pawn_attack_offsets[j]
 				if manhattan_distance(sq, i) == 2 {
-					pawn_attack_masks[WHITE][i] |= sq_mask_on[sq]
+					pawn_attack_masks[WHITE][i].Add(sq)
 				}
 			}
 		}
@@ -86,7 +81,7 @@ func setup_pawn_masks() {
 			for j := 2; j < 4; j++ {
 				sq = i + pawn_attack_offsets[j]
 				if manhattan_distance(sq, i) == 2 {
-					pawn_attack_masks[BLACK][i] |= sq_mask_on[sq]
+					pawn_attack_masks[BLACK][i].Add(sq)
 				}
 			}
 		}
@@ -113,7 +108,7 @@ func setup_bishop_masks() {
 			offset = bishop_offsets[j]
 			current = i + offset
 			for on_board(current) && manhattan_distance(current, previous) == 2 {
-				ray_masks[j][i] |= sq_mask_on[current]
+				ray_masks[j][i].Add(current)
 				previous = current
 				current += offset
 			}
@@ -129,8 +124,8 @@ func setup_rook_masks() {
 			previous = i
 			offset = rook_offsets[j]
 			current = i + offset
-			for on_board(current) && manhattan_distance(current, previous) == 2 {
-				ray_masks[j+4][i] |= sq_mask_on[current]
+			for on_board(current) && manhattan_distance(current, previous) == 1 {
+				ray_masks[j+4][i].Add(current)
 				previous = current
 				current += offset
 			}
@@ -151,7 +146,7 @@ func setup_king_masks() {
 		for j := 0; j < 8; j++ {
 			sq = i + king_offsets[j]
 			if on_board(sq) && manhattan_distance(sq, i) <= 2 {
-				king_masks[i] |= sq_mask_on[sq]
+				king_masks[i].Add(sq)
 			}
 		}
 	}
@@ -243,15 +238,21 @@ func setup_castle_masks() {
 
 func setup_masks() {
 	setup_square_masks() // First set up masks used to add/remove bits by their index.
-	setup_pawn_masks()   // For each square, calculate bitboard attack maps showing
+	setup_king_masks()   // For each square, calculate bitboard attack maps showing
 	setup_knight_masks() // the squares to which the given piece type may move. These are
 	setup_bishop_masks() // used as bitmasks during move generation to find pseudolegal moves.
 	setup_rook_masks()
 	setup_queen_masks()
-	setup_king_masks()
 	setup_row_masks() // Create bitboard masks for each row and column.
+	setup_pawn_masks()
 	setup_column_masks()
 	setup_directions()
 	setup_pawn_structure_masks()
 	setup_castle_masks()
+
+	// for i := 0; i < 64; i++ {
+	// 	fmt.Printf("%d\n", i)
+	// 	pawn_attack_masks[BLACK][i].Print()
+	// }
+
 }

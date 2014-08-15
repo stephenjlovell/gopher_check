@@ -36,14 +36,21 @@ type Done struct {
 func (w *Worker) work(done chan Done) {
   go func() {
     for {
-      req := <-w.requests // get requests from load balancer
-      req.Result <- req.Fn() // do the work and send the answer back to the requestor
-      done <- Done{w, req.Size}         // tell load balancer a task has been completed by worker w.
+      select {
+      case req := <-w.requests: // get requests from load balancer
+        go func() {
+          req.Result <- req.Fn() // do the work and send the answer back to the requestor
+          // println("Result sent")
+          done <- Done{w, req.Size}         // tell load balancer a task has been completed by worker w.
+          // println("Done sent")
+        }()
+      }
     }
   }()
+
 }
 
-
+// work() will block forever waiting for result
 
 
 

@@ -21,11 +21,9 @@
 
 package main
 
-
-import(
-	"fmt"
+import (
+// "fmt"
 )
-
 
 func attack_map(brd *Board, sq int) BB {
 	var attacks, b_attackers, r_attackers BB
@@ -58,14 +56,6 @@ func color_attack_map(brd *Board, sq int, c, e uint8) BB {
 
 func is_attacked_by(brd *Board, sq int, attacker, defender uint8) bool {
 	occ := brd.Occupied()
-
-
-	// fmt.Printf("%v, %v, %v\n", sq, attacker, defender)
-	if sq > 64 {
-		brd.PrintDetails()
-	}
-
-
 	if pawn_attack_masks[defender][sq]&brd.pieces[attacker][PAWN] > 0 { // Pawns
 		return true
 	}
@@ -93,8 +83,7 @@ func is_attacked_by(brd *Board, sq int, attacker, defender uint8) bool {
 func is_pinned(brd *Board, sq int, c, e uint8) BB {
 	occ := brd.Occupied()
 	var threat, guarded_king BB
-	//get direction toward king
-	dir := directions[sq][furthest_forward(c, brd.pieces[c][KING])]
+	dir := directions[sq][furthest_forward(c, brd.pieces[c][KING])] // get direction toward king
 	switch dir {
 	case NW, NE:
 		threat = scan_down(occ, dir+2, sq) & (brd.pieces[e][BISHOP] | brd.pieces[e][QUEEN])
@@ -121,84 +110,82 @@ func is_pinned(brd *Board, sq int, c, e uint8) BB {
 // 2. SEE scoring of moves is used for move ordering of captures at critical nodes.
 // 3. During quiescence search, SEE is used to prune losing captures. This provides a very low-risk
 //    way of reducing the size of the q-search without impacting playing strength.
-func get_see(brd *Board, from, to int, c uint8) int {
-	// var next_victim int
-	// var t, last_t Piece
-	// temp_color := c ^ 1
-	// // get initial map of all squares directly attacking this square (does not include 'discovered'/hidden attacks)
-	// b_attackers := brd.pieces[WHITE][BISHOP] | brd.pieces[BLACK][BISHOP] |
-	// 	brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]
-	// r_attackers := brd.pieces[WHITE][ROOK] | brd.pieces[BLACK][ROOK] |
-	// 	brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]
+func get_see(brd *Board, from, to int, captured_piece Piece) int {
+	var next_victim int
+	var t, last_t Piece
+	temp_color := brd.Enemy()
+	// get initial map of all squares directly attacking this square (does not include 'discovered'/hidden attacks)
+	b_attackers := brd.pieces[WHITE][BISHOP] | brd.pieces[BLACK][BISHOP] |
+		brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]
+	r_attackers := brd.pieces[WHITE][ROOK] | brd.pieces[BLACK][ROOK] |
+		brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]
 
-	// temp_map := attack_map(brd, to)
-	// temp_occ := brd.Occupied()
-	// var temp_pieces BB
+	temp_map := attack_map(brd, to)
+	temp_occ := brd.Occupied()
+	var temp_pieces BB
 
-	// var piece_list [20]int
-	// count := 1
+	var piece_list [20]int
+	count := 1
 
-	// // before entering the main loop, perform each step once for the initial attacking piece.
-	// // This ensures that the moved piece is the first to capture.
-	// piece_list[0] = brd.ValueAt(to)
-	// next_victim = brd.ValueAt(from)
-	// t = brd.TypeAt(from)
+	// before entering the main loop, perform each step once for the initial attacking piece.
+	// This ensures that the moved piece is the first to capture.
+	piece_list[0] = piece_values[captured_piece]
+	next_victim = brd.ValueAt(from)
+	t = brd.TypeAt(from)
 
-	// temp_occ.Clear(from)
-	// if t != KNIGHT && t != KING { // if the attacker was a pawn, bishop, rook, or queen, re-scan for hidden attacks:
-	// 	if t == PAWN || t == BISHOP || t == QUEEN {
-	// 		temp_map |= bishop_attacks(temp_occ, to) & b_attackers
-	// 	}
-	// 	if t == PAWN || t == ROOK || t == QUEEN {
-	// 		temp_map |= rook_attacks(temp_occ, to) & r_attackers
-	// 	}
-	// }
-	// last_t = t
+	temp_occ.Clear(from)
+	if t != KNIGHT && t != KING { // if the attacker was a pawn, bishop, rook, or queen, re-scan for hidden attacks:
+		if t == PAWN || t == BISHOP || t == QUEEN {
+			temp_map |= bishop_attacks(temp_occ, to) & b_attackers
+		}
+		if t == PAWN || t == ROOK || t == QUEEN {
+			temp_map |= rook_attacks(temp_occ, to) & r_attackers
+		}
+	}
+	last_t = t
 
-	// for temp_map &= temp_occ; temp_map > 0; temp_map &= temp_occ {
-	// 	for t = PAWN; t <= KING; t++ { // loop over piece ts in order of value.
-	// 		temp_pieces = brd.pieces[temp_color][t] & temp_map
-	// 		if temp_pieces > 0 {
-	// 			break
-	// 		} // stop as soon as a match is found.
-	// 	}
-	// 	if t > KING {
-	// 		break
-	// 	}
+	for temp_map &= temp_occ; temp_map > 0; temp_map &= temp_occ {
+		for t = PAWN; t <= KING; t++ { // loop over piece ts in order of value.
+			temp_pieces = brd.pieces[temp_color][t] & temp_map
+			if temp_pieces > 0 {
+				break
+			} // stop as soon as a match is found.
+		}
+		if t > KING {
+			break
+		}
 
-	// 	piece_list[count] = -piece_list[count-1] + next_victim
-	// 	next_victim = piece_values[t]
+		piece_list[count] = -piece_list[count-1] + next_victim
+		next_victim = piece_values[t]
 
-	// 	count++
-	// 	if (piece_list[count-1] - next_victim) > 0 {
-	// 		break
-	// 	}
+		count++
+		if (piece_list[count-1] - next_victim) > 0 {
+			break
+		}
 
-	// 	if last_t == KING {
-	// 		break
-	// 	}
+		if last_t == KING {
+			break
+		}
 
-	// 	temp_occ ^= (temp_pieces & -temp_pieces) // merge the first set bit of temp_pieces into temp_occ
-	// 	if t != KNIGHT && t != KING {
-	// 		if t == PAWN || t == BISHOP || t == QUEEN {
-	// 			temp_map |= (bishop_attacks(temp_occ, to) & b_attackers)
-	// 		}
-	// 		if t == ROOK || t == QUEEN {
-	// 			temp_map |= (rook_attacks(temp_occ, to) & r_attackers)
-	// 		}
-	// 	}
-	// 	temp_color ^= 1
-	// 	last_t = t
-	// }
+		temp_occ ^= (temp_pieces & -temp_pieces) // merge the first set bit of temp_pieces into temp_occ
+		if t != KNIGHT && t != KING {
+			if t == PAWN || t == BISHOP || t == QUEEN {
+				temp_map |= (bishop_attacks(temp_occ, to) & b_attackers)
+			}
+			if t == ROOK || t == QUEEN {
+				temp_map |= (rook_attacks(temp_occ, to) & r_attackers)
+			}
+		}
+		temp_color ^= 1
+		last_t = t
+	}
 
-	// for count-1 > 0 {
-	// 	count--
-	// 	piece_list[count-1] = -max(-piece_list[count-1], piece_list[count])
-	// }
+	for count-1 > 0 {
+		count--
+		piece_list[count-1] = -max(-piece_list[count-1], piece_list[count])
+	}
 
-	// return piece_list[0]
-	return 0
-
+	return piece_list[0]
 }
 
 // make these methods of Board type.
@@ -207,7 +194,7 @@ func side_in_check(brd *Board, c, e uint8) bool { // determines if specified sid
 	if brd.pieces[c][KING] == 0 {
 		return true
 	} else {
-		return is_attacked_by(brd, furthest_forward(c, brd.pieces[c][KING]), e, c)		
+		return is_attacked_by(brd, furthest_forward(c, brd.pieces[c][KING]), e, c)
 	}
 }
 
@@ -224,94 +211,6 @@ func avoids_check(brd *Board, m Move) bool {
 		return !is_attacked_by(brd, m.To(), brd.Enemy(), brd.c)
 	} else {
 		pinned := is_pinned(brd, m.From(), brd.c, brd.Enemy())
-		if pinned > 0 { fmt.Printf("%d\n", pinned ) }
-		return !(pinned > 0 && ((^pinned)&sq_mask_on[m.To()]) > 0)
+		return pinned == 0 || (pinned&sq_mask_on[m.To()]) > 0
 	}
 }
-
-// static VALUE move_evades_check(VALUE self, VALUE p_board, VALUE sq_board, VALUE from, VALUE to, VALUE color){
-//   Board *brd = get_brd(p_board);
-//   int c = SYM2COLOR(color);
-//   int e = c^1;
-//   int f = NUM2INT(from), t = NUM2INT(to);
-//   int check;
-
-//   int piece = NUM2INT(rb_ary_entry(sq_board, f));  // ?
-//   int captured_piece = NUM2INT(rb_ary_entry(sq_board, t));
-
-//   if(!brd.pieces[c][KING]) return Qfalse;
-
-//   BB delta = (sq_mask_on(t)|sq_mask_on(f));
-//   brd.pieces[c][piece_type(piece)] ^= delta;
-//   brd.occupied[c] ^= delta;
-
-//   if(captured_piece){
-//     clear_sq(t, brd.pieces[e][piece_type(captured_piece)]);
-//     clear_sq(t, brd.occupied[e]);
-//     // determine if in check
-//     check = is_attacked_by(brd, furthest_forward(c, brd.pieces[c][KING]), e, c);
-//     add_sq(t, brd.pieces[e][piece_type(captured_piece)]);
-//     add_sq(t, brd.occupied[e]);
-//   } else {
-//     // determine if in check
-//     check = is_attacked_by(brd, furthest_forward(c, brd.pieces[c][KING]), e, c);
-//   }
-//   brd.pieces[c][piece_type(piece)] ^= delta;
-//   brd.occupied[c] ^= delta;
-
-//   return (check ? Qfalse : Qtrue);
-// }
-
-// // Determines if a move will put the enemy's king in check.
-// static VALUE move_gives_check(VALUE self, VALUE p_board, VALUE sq_board, VALUE from, VALUE to,
-//                               VALUE color, VALUE promoted_piece){
-//   Board *brd = get_brd(p_board);
-//   int c = SYM2COLOR(color);
-//   int e = c^1;
-//   int f = NUM2INT(from), t = NUM2INT(to);
-//   int check;
-
-//   int piece = NUM2INT(rb_ary_entry(sq_board, f));  // ?
-//   int captured_piece = NUM2INT(rb_ary_entry(sq_board, t));
-
-//   if(!brd.pieces[e][KING]) return Qtrue;
-
-//   BB delta = (sq_mask_on(t)|sq_mask_on(f));
-//   brd.occupied[c] ^= delta;
-//   if(promoted_piece != Qnil){
-//     clear_sq(f, brd.pieces[c][piece_type(piece)]);
-//     add_sq(t, brd.pieces[c][piece_type(NUM2INT(promoted_piece))]);
-//     if(captured_piece){
-//       clear_sq(t, brd.pieces[e][piece_type(captured_piece)]);
-//       clear_sq(t, brd.occupied[e]);
-//       // determine if in check
-//       check = is_attacked_by(brd, furthest_forward(e, brd.pieces[e][KING]), c, e);
-//       add_sq(t, brd.pieces[e][piece_type(captured_piece)]);
-//       add_sq(t, brd.occupied[e]);
-//     } else { // determine if in check
-//       check = is_attacked_by(brd, furthest_forward(e, brd.pieces[e][KING]), c, e);
-//     }
-//     add_sq(f, brd.pieces[c][piece_type(piece)]);
-//     clear_sq(t, brd.pieces[c][piece_type(NUM2INT(promoted_piece))]);
-
-//   } else {
-//     brd.pieces[c][piece_type(piece)] ^= delta;
-//     if(captured_piece){
-//       clear_sq(t, brd.pieces[e][piece_type(captured_piece)]);
-//       clear_sq(t, brd.occupied[e]);
-//       // determine if in check
-//       check = is_attacked_by(brd, furthest_forward(e, brd.pieces[e][KING]), c, e);
-//       add_sq(t, brd.pieces[e][piece_type(captured_piece)]);
-//       add_sq(t, brd.occupied[e]);
-//     } else { // determine if in check
-//       check = is_attacked_by(brd, furthest_forward(e, brd.pieces[e][KING]), c, e);
-//     }
-//     brd.pieces[c][piece_type(piece)] ^= delta;
-//   }
-//   brd.occupied[c] ^= delta;
-
-//   return check ? Qtrue : Qfalse;
-// }
-
-
-//     return pinned && (~pinned & sq_mask_on(NUM2INT(t))) ? Qfalse : Qtrue;

@@ -35,6 +35,7 @@ package load_balancer
 import (
   "container/heap"
   "fmt"
+  "runtime"
 )
 
 type Balancer struct {
@@ -74,7 +75,7 @@ func (b *Balancer) completed(d Done) {  // adjust the ordering of the priority q
   heap.Push(&b.pool, d.w)
 }
 
-func (b *Balancer) print() {
+func (b *Balancer) Print() {
   fmt.Printf("\n")
   total_pending := 0
   for _, worker := range b.pool {
@@ -85,7 +86,13 @@ func (b *Balancer) print() {
   fmt.Printf("| %d  ", total_pending)
 }
 
-func new_balancer(nworker int, work chan Request) *Balancer {  // Balancer constructor
+func (b *Balancer) Setup(work chan Request) {
+  b.start()
+  b.balance(work)
+}
+
+func NewBalancer(work chan Request) *Balancer {  // Balancer constructor
+  nworker := runtime.NumCPU()-2
   b := &Balancer{
     done: make(chan Done, 100),
     pool: make(Pool, nworker),
@@ -97,7 +104,13 @@ func new_balancer(nworker int, work chan Request) *Balancer {  // Balancer const
     }
   }
   heap.Init(&b.pool)
+  return b
+}
 
+func SetupNewBalancer(work chan Request) *Balancer {
+  b := NewBalancer(work)
+  b.start()
+  b.balance(work)
   return b
 }
 
