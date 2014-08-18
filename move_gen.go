@@ -23,20 +23,18 @@ package main
 
 import (
 	"container/heap"
-	// "fmt"
+	"fmt"
 )
 
 func get_all_moves(brd *Board, in_check bool, hash_move Move) (*MoveList, *MoveList) {
 	var best_moves, remaining_moves MoveList
 	// best_moves, remaining_moves := make(MoveList, 0, 75), make(MoveList, 0, 75)
-
 	if in_check {
 		get_evasions(brd, &best_moves, &remaining_moves, hash_move)
 	} else {
 		get_captures(brd, &best_moves, &remaining_moves, hash_move)
 		get_non_captures(brd, &remaining_moves, hash_move)
 	}
-
 	return &best_moves, &remaining_moves
 }
 
@@ -508,7 +506,7 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 		// en-passant captures
 		if brd.enp_target != SQ_INVALID {
 			enp_target := brd.enp_target
-			for f := (brd.pieces[c][PAWN] & pawn_side_masks[enp_target]); f > 0; f.Clear(from) {
+			for f := (brd.pieces[c][PAWN] & pawn_side_masks[enp_target] & defense_map); f > 0; f.Clear(from) {
 				from = furthest_forward(c, f)
 				if is_pinned(brd, from, c, e) == 0 {
 					if c == WHITE {
@@ -601,7 +599,7 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 							heap.Push(remaining_moves, &SortItem{m, INF - see})
 						}
 					} else {
-						m = NewMove(from, to, BISHOP)
+						m = NewMove(from, to, ROOK)
 						heap.Push(remaining_moves, &SortItem{m, main_htable.Probe(ROOK, c, to)})
 					}
 				}
@@ -613,7 +611,15 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 			if is_pinned(brd, from, c, e) == 0 {
 				for t := (queen_attacks(occ, from) & defense_map); t > 0; t.Clear(to) { // generate to squares
 					to = furthest_forward(c, t)
+
 					if sq_mask_on[to]&enemy > 0 {
+
+						if brd.squares[from] == EMPTY {
+							brd.PrintDetails()
+							fmt.Printf("from: %d\n", from)
+						}
+						// Assert(brd.squares[to] != EMPTY && brd.squares[from] != EMPTY, "board state corrupted")
+
 						m = NewCapture(from, to, QUEEN, brd.squares[to])
 						see = get_see(brd, from, to, brd.squares[to])
 						if see >= 0 {
@@ -622,7 +628,7 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, hash_move M
 							heap.Push(remaining_moves, &SortItem{m, INF - see})
 						}
 					} else {
-						m = NewMove(from, to, BISHOP)
+						m = NewMove(from, to, QUEEN)
 						heap.Push(remaining_moves, &SortItem{m, main_htable.Probe(QUEEN, c, to)})
 					}
 				}

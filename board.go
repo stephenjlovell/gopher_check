@@ -47,6 +47,9 @@ type Board struct {
 }
 
 func (brd *Board) ValueAt(sq int) int {
+	if sq < 0 || sq > 63 {
+		fmt.Printf("%d\n", sq)
+	}
 	return brd.squares[sq].Value()
 }
 
@@ -78,10 +81,10 @@ func (brd *Board) Copy() *Board {
 }
 
 func (brd *Board) PrintDetails() {
+	fmt.Printf("hash_key: %d, pawn_hash_key: %d\n", brd.hash_key, brd.pawn_hash_key)
+	fmt.Printf("castle: %d, enp_target: %d, halfmove_clock: %d\noccupied:\n", brd.castle, brd.enp_target, brd.halfmove_clock)
 	for i := 0; i < 2; i++ {
 		fmt.Printf("side: %d, material: %d\n", i, brd.material[i])
-		fmt.Printf("hash_key: %d, pawn_hash_key: %d\n", brd.hash_key, brd.pawn_hash_key)
-		fmt.Printf("castle: %d, enp_target: %d, halfmove_clock: %d\noccupied:\n", brd.castle, brd.enp_target, brd.halfmove_clock)
 		brd.occupied[i].Print()
 		for pc := 0; pc < 6; pc++ {
 			fmt.Printf("piece: %d\n", pc)

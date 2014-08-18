@@ -52,6 +52,26 @@ func (w *Worker) work(done chan Done) {
 
 // work() will block forever waiting for result
 
+// Spawning a new goroutine with each executed request defeats the purpose of the load balancer.
+
+// To avoid this, would need to come up with some way of managing incoming requests so that workers
+// are never blocked waiting on a request further up in its own queue.
+
+// One option would be to separate requests by ply, 
+// with a separate load balancer / worker pool for incoming requests from each ply.
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

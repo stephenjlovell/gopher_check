@@ -35,7 +35,7 @@ package load_balancer
 import (
   "container/heap"
   "fmt"
-  "runtime"
+  // "runtime"
 )
 
 type Balancer struct {
@@ -92,7 +92,7 @@ func (b *Balancer) Setup(work chan Request) {
 }
 
 func NewBalancer(work chan Request) *Balancer {  // Balancer constructor
-  nworker := runtime.NumCPU()-2
+  nworker := 4
   b := &Balancer{
     done: make(chan Done, 100),
     pool: make(Pool, nworker),

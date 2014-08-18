@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 	// "strconv"
+	"github.com/stephenjlovell/gopher_check/load_balancer"
 	"testing"
 	"time"
-	"github.com/stephenjlovell/gopher_check/load_balancer"
 )
 
 // func TestSetup(t *testing.T) {
@@ -65,25 +65,21 @@ func TestParallelMoveGen(t *testing.T) {
 	balancer.Setup(work)
 
 	go func() {
-		for _ = range time.Tick(time.Second) {  
-			balancer.Print()  // periodically print out the number of pending tasks assigned to each worker.
+		for _ = range time.Tick(time.Second) {
+			balancer.Print() // periodically print out the number of pending tasks assigned to each worker.
 		}
 	}()
 
 	start := time.Now()
-
 	cancel_child := make(chan bool)
 	update_child := make(chan int)
-
 	sum := PerftParallel(brd, depth, cancel_child, update_child)
 	elapsed := time.Since(start)
-	nps := int64(float64(sum)/elapsed.Seconds())
+	nps := int64(float64(sum) / elapsed.Seconds())
 
 	fmt.Printf("\n%d nodes at depth %d. %d NPS\n", sum, depth, nps)
-
 	fmt.Printf("%d total nodes in check\n", check_count)
 	fmt.Printf("%d total capture nodes\n", capture_count)
-
 	CompareBoards(copy, brd)
 	Assert(*brd == *copy, "move generation did not return to initial board state.")
 }
@@ -251,9 +247,7 @@ func Perft(brd *Board, depth int) int {
 }
 
 func Perft_make_unmake(brd *Board, m Move, depth int) int {
-
 	Assert(m != 0, "invalid move generated.")
-
 	if m.IsCapture() {
 		capture_count += 1
 	}
@@ -267,72 +261,83 @@ func Perft_make_unmake(brd *Board, m Move, depth int) int {
 	return sum
 }
 
-
-
 func PerftParallel(brd *Board, depth int, cancel chan bool, update chan int) int {
-	if depth == 0 {
-		return 1
-	}
 	sum := 0
-	in_check := is_in_check(brd)
-	if in_check {
-		check_count += 1
-	}
-	cancel_child := make(chan bool)
-	update_child := make(chan int)
-
-	best_moves, remaining_moves := get_best_moves(brd, in_check, 0)
-	for _, item := range *best_moves {
-		if is_cancelled(cancel, cancel_child, update_child) {
-			return 0
-		} // make sure the job hasn't been cancelled.
-		sum += PerftParallel_make_unmake(brd, item.move, depth-1, cancel_child, update_child)
-	}
-
-	get_remaining_moves(brd, in_check, remaining_moves, 0)  // search remaining nodes in parallel
-	result_child := make(chan int, 30)
-	child_counter := 0
-	for _, item := range *remaining_moves {
-		m := item.move
-		new_brd := brd.Copy() // create a locally scoped deep copy of the board.
-
-		req := load_balancer.Request{ // package the subtree search into a Request object
-			Cancel: cancel_child,
-			Result: result_child,
-			Size:   (3 << uint(depth-1)), // estimate of the number of main search leaf nodes remaining
-			Fn: func() int {
-				return PerftParallel_make_unmake(new_brd, m, depth-1, cancel_child, update_child)
-			},
+	if depth <= 3 { // sequential search
+		if depth == 0 {
+			return 1
 		}
-		work <- req // pipe the new request object to the load balancer to execute in parallel.
-		child_counter++
-	}
+		in_check := is_in_check(brd)
+		if in_check {
+			check_count += 1
+		}
+		cancel_child := make(chan bool)
+		update_child := make(chan int)
+		best_moves, remaining_moves := get_all_moves(brd, in_check, 0)
+		for _, item := range *best_moves {
 
-	// fmt.Printf("%d nodes spawned in parallel at depth %d\n", child_counter, depth)
+			sum += PerftParallel_make_unmake(brd, item.move, depth-1, cancel_child, update_child)
+		}
+		for _, item := range *remaining_moves {
+			sum += PerftParallel_make_unmake(brd, item.move, depth-1, cancel_child, update_child)
+		}
+		return sum
+	} else { // concurrent search
+		in_check := is_in_check(brd)
+		if in_check {
+			check_count += 1
+		}
+		cancel_child := make(chan bool)
+		update_child := make(chan int)
 
-	if child_counter > 0 { // wait for a message to come in on one of the channels
-remaining_pieces:
-		for {
-			select {
-			case <-cancel: // task was cancelled.
-				println("task cancelled")
-				cancel_work(cancel_child, update_child)
+		best_moves, remaining_moves := get_best_moves(brd, in_check, 0)
+		for _, item := range *best_moves {
+			if is_cancelled(cancel, cancel_child, update_child) {
 				return 0
-			case child_sum := <-result_child: // one of the child subtrees has been completely searched.
-				// println("response received.")
-				sum += child_sum
-				child_counter--
-				if child_counter == 0 {
-					break remaining_pieces // exit the for loop
+			} // make sure the job hasn't been cancelled.
+			sum += PerftParallel_make_unmake(brd, item.move, depth-1, cancel_child, update_child)
+		}
+
+		get_remaining_moves(brd, in_check, remaining_moves, 0) // search remaining nodes in parallel
+		result_child := make(chan int, 30)
+		child_counter := 0
+		for _, item := range *remaining_moves {
+			m := item.move
+			new_brd := brd.Copy() // create a locally scoped deep copy of the board.
+
+			req := load_balancer.Request{ // package the subtree search into a Request object
+				Cancel: cancel_child,
+				Result: result_child,
+				Size:   (3 << uint(depth-1)), // estimate of the number of main search leaf nodes remaining
+				Fn: func() int {
+					return PerftParallel_make_unmake(new_brd, m, depth-1, cancel_child, update_child)
+				},
+			}
+			work <- req // pipe the new request object to the load balancer to execute in parallel.
+			child_counter++
+		}
+
+		// fmt.Printf("%d nodes spawned in parallel at depth %d\n", child_counter, depth)
+		if child_counter > 0 { // wait for a message to come in on one of the channels
+		remaining_pieces:
+			for {
+				select {
+				case <-cancel: // task was cancelled.
+					println("task cancelled")
+					cancel_work(cancel_child, update_child)
+					return 0
+				case child_sum := <-result_child: // one of the child subtrees has been completely searched.
+					// println("response received.")
+					sum += child_sum
+					child_counter--
+					if child_counter == 0 {
+						break remaining_pieces // exit the for loop
+					}
 				}
-			// default:
-			// 	if child_counter == 0 {
-			// 		break remaining_pieces // exit the for loop
-			// 	}
-			// }
 			}
 		}
 	}
+
 	return sum
 }
 
@@ -352,15 +357,3 @@ func PerftParallel_make_unmake(brd *Board, m Move, depth int, cancel chan bool, 
 	brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
 	return sum
 }
-
-
-
-
-
-
-
-
-
-
-
-
