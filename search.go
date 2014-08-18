@@ -71,12 +71,10 @@ package main
 // YALL - 1st child node is searched sequentially, the rest are searched in parallel.
 
 import (
-	"github.com/stephenjlovell/gopher_check/load_balancer"
+	// "github.com/stephenjlovell/gopher_check/load_balancer"
 )
 
 type PV []Move
-
-var work chan load_balancer.Request = make(chan load_balancer.Request, 100)
 
 // const (
 // 	Y_PV
@@ -145,16 +143,9 @@ func young_brothers_wait(brd *Board, old_alpha, old_beta, depth, ply int, cancel
 	for _, item := range *remaining_moves {
 		m := item.move
 		new_brd := brd.Copy() // create a locally scoped deep copy of the board.
-
-		req := load_balancer.Request{ // package the subtree search into a Request object
-			Cancel: cancel_child,
-			Result: result_child,
-			Size:   (3 << uint(depth-1)), // estimate of the number of main search leaf nodes remaining
-			Fn: func() int {
-				return make_search_unmake(new_brd, m, alpha, beta, depth-1, ply+1, cancel_child, update_child)
-			},
-		}
-		work <- req // pipe the new request object to the load balancer to execute in parallel.
+		go func() {
+			result_child <- make_search_unmake(new_brd, m, alpha, beta, depth-1, ply+1, cancel_child, update_child)
+		} ()
 		child_counter++
 	}
 

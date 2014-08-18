@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	// "strconv"
-	"github.com/stephenjlovell/gopher_check/load_balancer"
+	// "github.com/stephenjlovell/gopher_check/load_balancer"
 	"testing"
 	"time"
 )
@@ -60,15 +60,15 @@ func TestParallelMoveGen(t *testing.T) {
 	setup()
 	brd := StartPos()
 	copy := brd.Copy()
-	depth := 5
-	balancer := load_balancer.NewBalancer(work)
-	balancer.Setup(work)
+	depth := 6
+	// balancer := load_balancer.NewBalancer(work)
+	// balancer.Setup(work)
 
-	go func() {
-		for _ = range time.Tick(time.Second) {
-			balancer.Print() // periodically print out the number of pending tasks assigned to each worker.
-		}
-	}()
+	// go func() {
+	// 	for _ = range time.Tick(time.Second) {
+	// 		balancer.Print() // periodically print out the number of pending tasks assigned to each worker.
+	// 	}
+	// }()
 
 	start := time.Now()
 	cancel_child := make(chan bool)
@@ -80,6 +80,7 @@ func TestParallelMoveGen(t *testing.T) {
 	fmt.Printf("\n%d nodes at depth %d. %d NPS\n", sum, depth, nps)
 	fmt.Printf("%d total nodes in check\n", check_count)
 	fmt.Printf("%d total capture nodes\n", capture_count)
+	fmt.Printf("%d total goroutines spawned\n", parallel_count)
 	CompareBoards(copy, brd)
 	Assert(*brd == *copy, "move generation did not return to initial board state.")
 }
@@ -181,8 +182,9 @@ func StartPos() *Board {
 	return brd
 }
 
-var check_count int = 0
-var capture_count int = 0
+var check_count int
+var capture_count int
+var parallel_count int
 
 func PerftLegal(brd *Board, depth int) int {
 	if depth == 0 {
@@ -275,7 +277,6 @@ func PerftParallel(brd *Board, depth int, cancel chan bool, update chan int) int
 		update_child := make(chan int)
 		best_moves, remaining_moves := get_all_moves(brd, in_check, 0)
 		for _, item := range *best_moves {
-
 			sum += PerftParallel_make_unmake(brd, item.move, depth-1, cancel_child, update_child)
 		}
 		for _, item := range *remaining_moves {
@@ -304,21 +305,15 @@ func PerftParallel(brd *Board, depth int, cancel chan bool, update chan int) int
 		for _, item := range *remaining_moves {
 			m := item.move
 			new_brd := brd.Copy() // create a locally scoped deep copy of the board.
-
-			req := load_balancer.Request{ // package the subtree search into a Request object
-				Cancel: cancel_child,
-				Result: result_child,
-				Size:   (3 << uint(depth-1)), // estimate of the number of main search leaf nodes remaining
-				Fn: func() int {
-					return PerftParallel_make_unmake(new_brd, m, depth-1, cancel_child, update_child)
-				},
-			}
-			work <- req // pipe the new request object to the load balancer to execute in parallel.
+			go func() {
+				result_child <- PerftParallel_make_unmake(new_brd, m, depth-1, cancel_child, update_child)
+			} ()
 			child_counter++
 		}
 
 		// fmt.Printf("%d nodes spawned in parallel at depth %d\n", child_counter, depth)
 		if child_counter > 0 { // wait for a message to come in on one of the channels
+			parallel_count += child_counter
 		remaining_pieces:
 			for {
 				select {
