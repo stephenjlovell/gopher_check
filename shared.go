@@ -31,12 +31,6 @@ const (
 	INF = 20000 // an arbitrarily large score used to signal checkmate.
 )
 
-const (
-	MAX_DEPTH = 10
-	EXT_MAX   = 5
-	MAX_PLY   = MAX_DEPTH + EXT_MAX
-)
-
 // Transposition Table, Killer moves, History Table should be shared by all goroutines.
 type SharedInfo struct {
 	killer_moves KTable

@@ -60,7 +60,7 @@ func TestParallelMoveGen(t *testing.T) {
 	setup()
 	brd := StartPos()
 	copy := brd.Copy()
-	depth := 6
+	depth := 5
 	// balancer := load_balancer.NewBalancer(work)
 	// balancer.Setup(work)
 
@@ -195,7 +195,7 @@ func PerftLegal(brd *Board, depth int) int {
 	if in_check {
 		check_count += 1
 	}
-	best_moves, remaining_moves := get_all_moves(brd, in_check, 0)
+	best_moves, remaining_moves := get_all_moves(brd, in_check)
 	for _, item := range *best_moves {
 		// if in_check || avoids_check(brd, item.move) {
 		sum += PerftLegal_make_unmake(brd, item.move, depth-1)
@@ -238,7 +238,7 @@ func Perft(brd *Board, depth int) int {
 	if in_check {
 		check_count += 1
 	}
-	best_moves, remaining_moves := get_all_moves(brd, in_check, 0)
+	best_moves, remaining_moves := get_all_moves(brd, in_check)
 	for _, item := range *best_moves {
 		sum += Perft_make_unmake(brd, item.move, depth-1)
 	}
@@ -275,7 +275,7 @@ func PerftParallel(brd *Board, depth int, cancel chan bool, update chan int) int
 		}
 		cancel_child := make(chan bool)
 		update_child := make(chan int)
-		best_moves, remaining_moves := get_all_moves(brd, in_check, 0)
+		best_moves, remaining_moves := get_all_moves(brd, in_check)
 		for _, item := range *best_moves {
 			sum += PerftParallel_make_unmake(brd, item.move, depth-1, cancel_child, update_child)
 		}
@@ -291,7 +291,7 @@ func PerftParallel(brd *Board, depth int, cancel chan bool, update chan int) int
 		cancel_child := make(chan bool)
 		update_child := make(chan int)
 
-		best_moves, remaining_moves := get_best_moves(brd, in_check, 0)
+		best_moves, remaining_moves := get_best_moves(brd, in_check)
 		for _, item := range *best_moves {
 			if is_cancelled(cancel, cancel_child, update_child) {
 				return 0
@@ -299,7 +299,7 @@ func PerftParallel(brd *Board, depth int, cancel chan bool, update chan int) int
 			sum += PerftParallel_make_unmake(brd, item.move, depth-1, cancel_child, update_child)
 		}
 
-		get_remaining_moves(brd, in_check, remaining_moves, 0) // search remaining nodes in parallel
+		get_remaining_moves(brd, in_check, remaining_moves) // search remaining nodes in parallel
 		result_child := make(chan int, 30)
 		child_counter := 0
 		for _, item := range *remaining_moves {
@@ -307,7 +307,7 @@ func PerftParallel(brd *Board, depth int, cancel chan bool, update chan int) int
 			new_brd := brd.Copy() // create a locally scoped deep copy of the board.
 			go func() {
 				result_child <- PerftParallel_make_unmake(new_brd, m, depth-1, cancel_child, update_child)
-			} ()
+			}()
 			child_counter++
 		}
 

@@ -56,53 +56,54 @@ package main
 
 // Spawning behavior
 
-// If some heuristic for the strength of move ordering were available at the current node
-// (variance of ordering scores?), this info could be used to influence spawning behavior.
 // When some moves are scored far better than others, those nodes would be searched sequentially in hopes of
 // achieving a cutoff without incurring communication overhead.
 
-// Without a meaningful heuristic, spawning tactic could alternatively be based on node type.
+// Search phases
 
-// Node types:
-// YPV - Root node is type YPV.  At YPV node, first child searched is of type YPV, all others are type
-// 			 YCUT.  At YPV nodes, first child is searched sequentially and the remaining in parallel.
-// YCUT - 1st node searched is of type YALL, All other nodes are type YCUT.  At YCUT nodes, all "promising" child
-//				nodes are searched sequentially.  Remaining nodes are then searched in parallel.
-// YALL - 1st child node is searched sequentially, the rest are searched in parallel.
+// To reduce synchronization overhead, all search below some depth threshold will be handled sequentially.
+
+// Hash Move (Always)
+// YBW/Parallel search allowed (Ply <= 5)
+// IID (Depth >= 4)
+// Null Move (Depth >= 3)
+// Futility pruning (Depth <= 2)
 
 import (
-	// "github.com/stephenjlovell/gopher_check/load_balancer"
+// "github.com/stephenjlovell/gopher_check/load_balancer"
+)
+
+const (
+	MAX_DEPTH = 10
+	EXT_MAX   = 4
+	MAX_PLY   = MAX_DEPTH + EXT_MAX
+	IID_MIN   = 4
 )
 
 type PV []Move
 
-// const (
-// 	Y_PV
-// 	Y_CUT
-// 	Y_ALL
-// )
+func iterative_deepening(brd *Board) int {
+	return 0
+}
 
 func young_brothers_wait(brd *Board, old_alpha, old_beta, depth, ply int, cancel chan bool, update chan int) int {
 
-	alpha, beta, score := -old_beta, -old_alpha, -INF
+	if depth <= 0 {
+		return quiescence(brd, old_alpha, old_beta, depth, ply, cancel) // q-search is sequential.
+	}
 
+	in_check := is_in_check(brd)
+	alpha, beta, score := -old_beta, -old_alpha, -INF
 	update_child := make(chan int)
 	cancel_child := make(chan bool)
 
-	if depth <= 0 {
-		return quiescence(brd, alpha, beta, depth, ply, cancel_child) // q-search is sequential.
-	}
-
-	in_check := is_in_check(brd /* c, e */) // move c, e into Board struct to avoid constantly passing these around.
-
 	// search hash move
-	hash_move := main_tt.probe(brd, depth)
-	if hash_move > 0 {
+	best_move := main_tt.probe(brd, depth)
+	if best_move > 0 {
 		if is_cancelled(cancel, cancel_child, update_child) {
 			return 0
 		} // make sure the job hasn't been cancelled.
-		score = make_search_unmake(brd, hash_move, alpha, beta, depth-1, ply+1, cancel_child, update_child)
-
+		score = make_search_unmake(brd, best_move, alpha, beta, depth-1, ply+1, cancel_child, update_child)
 		if score > alpha {
 			if score >= beta {
 				// to do: save result to transposition table before returning.
@@ -110,11 +111,13 @@ func young_brothers_wait(brd *Board, old_alpha, old_beta, depth, ply int, cancel
 			}
 			alpha = score // no communication necessary; nothing has been spawned in parallel from this node yet.
 		}
+	} else if depth > IID_MIN {
+		// To do: use IID to get a decent best move to try.
 	}
 
-	best_moves, remaining_moves := get_best_moves(brd, in_check, hash_move) // slice off the best few nodes to search sequentially
-	// if any losing captures are generated, they will be added to the remaining_moves list.
-
+	// Generate tactical (non-quiet) moves.  Good moves will be searched sequentially to establish good bounds
+	// before remaining nodes are searched in parallel.
+	best_moves, remaining_moves := get_best_moves(brd, in_check)
 	// search the best moves sequentially.
 	var m Move
 	for _, item := range *best_moves {
@@ -135,7 +138,7 @@ func young_brothers_wait(brd *Board, old_alpha, old_beta, depth, ply int, cancel
 
 	// Delay the generation of remaining moves until all promotions and winning captures have been searched.
 	// if a cutoff occurs, this will reduce move generation effort substantially.
-	get_remaining_moves(brd, in_check, remaining_moves, hash_move)
+	get_remaining_moves(brd, in_check, remaining_moves)
 
 	// now that decent bounds have been established, search the remaining nodes in parallel.
 	result_child := make(chan int, 10)
@@ -145,7 +148,7 @@ func young_brothers_wait(brd *Board, old_alpha, old_beta, depth, ply int, cancel
 		new_brd := brd.Copy() // create a locally scoped deep copy of the board.
 		go func() {
 			result_child <- make_search_unmake(new_brd, m, alpha, beta, depth-1, ply+1, cancel_child, update_child)
-		} ()
+		}()
 		child_counter++
 	}
 
@@ -208,7 +211,6 @@ func is_cancelled(cancel, cancel_child chan bool, update_child chan int) bool {
 }
 
 func cancel_work(cancel_child chan bool, update_child chan int) {
-	// cancel_child <- true
 	close(cancel_child)
 	close(update_child)
 }
