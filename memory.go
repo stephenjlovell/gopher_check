@@ -28,7 +28,6 @@ import (
 const (
 	SLOT_COUNT   = 131072 // number of main TT slots.
 	BUCKET_COUNT = 4      // number of buckets per slot
-
 	TT_MASK = SLOT_COUNT - 1 // a set bitmask of length 17
 )
 

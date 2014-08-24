@@ -235,6 +235,172 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList) {
 	}
 }
 
+func get_winning_captures(brd *Board) *MoveList {
+	best_moves := &MoveList{}
+	var from, to int
+	c, e := brd.c, brd.Enemy()
+	occ := brd.Occupied()
+	enemy := brd.Placement(e)
+	var see int
+
+	// Pawns
+	var left_temp, right_temp, left_attacks, right_attacks BB
+	var promotion_captures_left, promotion_captures_right, promotion_advances BB
+
+	if c == WHITE { // white to move
+		left_temp = ((brd.pieces[c][PAWN] & (^column_masks[0])) << 7) & enemy
+		left_attacks = left_temp & (^row_masks[7])
+		promotion_captures_left = left_temp & (row_masks[7])
+
+		right_temp = ((brd.pieces[c][PAWN] & (^column_masks[7])) << 9) & enemy
+		right_attacks = right_temp & (^row_masks[7])
+		promotion_captures_right = right_temp & (row_masks[7])
+
+		promotion_advances = ((brd.pieces[c][PAWN] << 8) & row_masks[7]) & (^occ)
+	} else { // black to move
+		left_temp = ((brd.pieces[c][PAWN] & (^column_masks[0])) >> 9) & enemy
+		left_attacks = left_temp & (^row_masks[0])
+		promotion_captures_left = left_temp & (row_masks[0])
+
+		right_temp = ((brd.pieces[c][PAWN] & (^column_masks[7])) >> 7) & enemy
+		right_attacks = right_temp & (^row_masks[0])
+		promotion_captures_right = right_temp & (row_masks[0])
+
+		promotion_advances = ((brd.pieces[c][PAWN] >> 8) & row_masks[0]) & (^occ)
+	}
+
+	var m Move
+	// promotion captures
+	for ; promotion_captures_left > 0; promotion_captures_left.Clear(to) {
+		to = furthest_forward(c, promotion_captures_left)
+		from = to + pawn_from_offsets[c][2]
+		m = NewPromotionCapture(from, to, brd.squares[to], QUEEN)
+		heap.Push(best_moves, &SortItem{m, INF + 1})
+		m = NewPromotionCapture(from, to, brd.squares[to], KNIGHT)
+		heap.Push(best_moves, &SortItem{m, INF + 1})
+	}
+
+	for ; promotion_captures_right > 0; promotion_captures_right.Clear(to) {
+		to = furthest_forward(c, promotion_captures_right)
+		from = to + pawn_from_offsets[c][2]
+		m = NewPromotionCapture(from, to, brd.squares[to], QUEEN)
+		heap.Push(best_moves, &SortItem{m, INF + 1})
+		m = NewPromotionCapture(from, to, brd.squares[to], KNIGHT)
+		heap.Push(best_moves, &SortItem{m, INF + 1})
+	}
+
+	// promotion advances
+	for ; promotion_advances > 0; promotion_advances.Clear(to) {
+		to = furthest_forward(c, promotion_advances)
+		from = to + pawn_from_offsets[c][0]
+		m = NewPromotion(from, to, QUEEN)
+		heap.Push(best_moves, &SortItem{m, INF})
+		best_moves.Push(&SortItem{m, INF})
+		m = NewPromotion(from, to, KNIGHT)
+		heap.Push(best_moves, &SortItem{m, INF})
+	}
+
+	// regular pawn attacks
+	for ; left_attacks > 0; left_attacks.Clear(to) {
+		to = furthest_forward(c, left_attacks)
+		from = to + pawn_from_offsets[c][2]
+		m = NewCapture(from, to, PAWN, brd.squares[to])
+		see = get_see(brd, from, to, brd.squares[to])
+		if see >= 0 {
+			heap.Push(best_moves, &SortItem{m, see})
+		}
+	}
+	for ; right_attacks > 0; right_attacks.Clear(to) {
+		to = furthest_forward(c, right_attacks)
+		from = to + pawn_from_offsets[c][3]
+		m = NewCapture(from, to, PAWN, brd.squares[to])
+		see = get_see(brd, from, to, brd.squares[to])
+		if see >= 0 {
+			heap.Push(best_moves, &SortItem{m, see})
+		}
+	}
+	// en-passant captures
+	if brd.enp_target != SQ_INVALID {
+		enp_target := brd.enp_target
+		for f := (brd.pieces[c][PAWN] & pawn_side_masks[enp_target]); f > 0; f.Clear(from) {
+			from = furthest_forward(c, f)
+			if c == WHITE {
+				to = int(enp_target) + 8
+			} else {
+				to = int(enp_target) - 8
+			}
+			m = NewCapture(from, to, PAWN, PAWN)
+			see = get_see(brd, from, to, PAWN) //  this will not accurately value en passant capture...
+			if see >= 0 {
+				heap.Push(best_moves, &SortItem{m, see})
+			} else {
+
+			}
+		}
+	}
+	// Knights
+	for f := brd.pieces[c][KNIGHT]; f > 0; f.Clear(from) {
+		from = furthest_forward(c, f)
+		for t := (knight_masks[from] & enemy); t > 0; t.Clear(to) { // generate to squares
+			to = furthest_forward(c, t)
+			m = NewCapture(from, to, KNIGHT, brd.squares[to])
+			see = get_see(brd, from, to, brd.squares[to])
+			if see >= 0 {
+				heap.Push(best_moves, &SortItem{m, see})
+			}
+		}
+	}
+	// Bishops
+	for f := brd.pieces[c][BISHOP]; f > 0; f.Clear(from) {
+		from = furthest_forward(c, f)
+		for t := (bishop_attacks(occ, from) & enemy); t > 0; t.Clear(to) { // generate to squares
+			to = furthest_forward(c, t)
+			m = NewCapture(from, to, BISHOP, brd.squares[to])
+			see = get_see(brd, from, to, brd.squares[to])
+			if see >= 0 {
+				heap.Push(best_moves, &SortItem{m, see})
+			}
+		}
+	}
+	// Rooks
+	for f := brd.pieces[c][ROOK]; f > 0; f.Clear(from) {
+		from = furthest_forward(c, f)
+		for t := (rook_attacks(occ, from) & enemy); t > 0; t.Clear(to) { // generate to squares
+			to = furthest_forward(c, t)
+			m = NewCapture(from, to, ROOK, brd.squares[to])
+			see = get_see(brd, from, to, brd.squares[to])
+			if see >= 0 {
+				heap.Push(best_moves, &SortItem{m, see})
+			}
+		}
+	}
+	// Queens
+	for f := brd.pieces[c][QUEEN]; f > 0; f.Clear(from) {
+		from = furthest_forward(c, f)
+		for t := (queen_attacks(occ, from) & enemy); t > 0; t.Clear(to) { // generate to squares
+			to = furthest_forward(c, t)
+			m = NewCapture(from, to, QUEEN, brd.squares[to])
+			see = get_see(brd, from, to, brd.squares[to])
+			if see >= 0 {
+				heap.Push(best_moves, &SortItem{m, see})
+			}
+		}
+	}
+	// King
+	for f := brd.pieces[c][KING]; f > 0; f.Clear(from) {
+		from = furthest_forward(c, brd.pieces[c][KING])
+		for t := (king_masks[from] & enemy); t > 0; t.Clear(to) { // generate to squares
+			to = furthest_forward(c, t)
+			m = NewCapture(from, to, KING, brd.squares[to])
+			see = get_see(brd, from, to, brd.squares[to])
+			if see >= 0 {
+				heap.Push(best_moves, &SortItem{m, see})
+			}
+		}
+	}
+	return best_moves
+}
+
 func get_non_captures(brd *Board, remaining_moves *MoveList) {
 	var from, to int
 	var single_advances, double_advances BB

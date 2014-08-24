@@ -182,10 +182,6 @@ func setup_eval_constants() {
 	mate_value = non_king_value + piece_values[KING]
 }
 
-func net_placement(brd *Board, c, e uint8) int {
-	return adjusted_placement(brd, c, e) - adjusted_placement(brd, c, e)
-}
-
 func adjusted_placement(brd *Board, c, e uint8) int {
 	var sq, placement int
 	var b BB

@@ -20,7 +20,7 @@ var legal_max_tree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 31959
 // 	setup()
 // 	brd := StartPos()
 // 	copy := brd.Copy()
-// 	depth := 6
+// 	depth := MAX_DEPTH
 // 	start := time.Now()
 // 	sum := PerftLegal(brd, depth)
 // 	elapsed := time.Since(start)
@@ -41,7 +41,7 @@ var legal_max_tree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 31959
 // 	setup()
 // 	brd := StartPos()
 // 	copy := brd.Copy()
-// 	depth := 5
+// 	depth := MAX_DEPTH
 // 	start := time.Now()
 // 	sum := Perft(brd, depth)
 // 	elapsed := time.Since(start)
@@ -60,15 +60,7 @@ func TestParallelMoveGen(t *testing.T) {
 	setup()
 	brd := StartPos()
 	copy := brd.Copy()
-	depth := 5
-	// balancer := load_balancer.NewBalancer(work)
-	// balancer.Setup(work)
-
-	// go func() {
-	// 	for _ = range time.Tick(time.Second) {
-	// 		balancer.Print() // periodically print out the number of pending tasks assigned to each worker.
-	// 	}
-	// }()
+	depth := MAX_DEPTH
 
 	start := time.Now()
 	cancel_child := make(chan bool)
@@ -134,17 +126,6 @@ func Assert(statement bool, failure_message string) {
 		panic("\nAssertion failed: " + failure_message + "\n")
 	}
 }
-
-// pieces         [2][6]BB  // 768 bits
-// squares        [64]Piece // 512 bits
-// occupied       [2]BB     // 128 bits
-// material       [2]int32  // 64 bits
-// hash_key       uint64    // 64 bits
-// pawn_hash_key  uint64    // 64 bits
-// c              uint8     // 8 bits
-// castle         uint8     // 8 bits
-// enp_target     uint8     // 8 bits
-// halfmove_clock uint8     // 8 bits
 
 func StartPos() *Board {
 	brd := &Board{
@@ -265,7 +246,7 @@ func Perft_make_unmake(brd *Board, m Move, depth int) int {
 
 func PerftParallel(brd *Board, depth int, cancel chan bool, update chan int) int {
 	sum := 0
-	if depth <= 3 { // sequential search
+	if depth <= SPLIT_MIN { // sequential search
 		if depth == 0 {
 			return 1
 		}
@@ -310,7 +291,6 @@ func PerftParallel(brd *Board, depth int, cancel chan bool, update chan int) int
 			}()
 			child_counter++
 		}
-
 		// fmt.Printf("%d nodes spawned in parallel at depth %d\n", child_counter, depth)
 		if child_counter > 0 { // wait for a message to come in on one of the channels
 			parallel_count += child_counter
@@ -332,7 +312,6 @@ func PerftParallel(brd *Board, depth int, cancel chan bool, update chan int) int
 			}
 		}
 	}
-
 	return sum
 }
 
