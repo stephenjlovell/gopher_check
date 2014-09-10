@@ -21,14 +21,9 @@
 
 package main
 
-// // define an interface shared by all moves.
-// type AnyMove interface {
-// 	From() int
-// 	To() int
-// 	Piece() Piece
-// 	CapturedPiece() Piece
-// 	PromotedTo() Piece
-// }
+const (
+	QUIET = (Move(EMPTY) << 15) | (Move(EMPTY) << 18)
+)
 
 type Move uint32
 
@@ -58,10 +53,6 @@ func (m Move) CapturedPiece() Piece {
 func (m Move) PromotedTo() Piece {
 	return Piece((uint32(m) >> 18) & uint32(7))
 }
-
-const (
-	QUIET = (Move(EMPTY) << 15) | (Move(EMPTY) << 18)
-)
 
 func (m Move) IsQuiet() bool {
 	if ((uint32(m) >> 15) & uint32(63)) == uint32(QUIET) {

@@ -83,71 +83,95 @@ const (
 
 type PV []Move
 
+type SearchResult struct {
+	move  Move
+	score int
+}
+
+type BoundUpdate struct {
+	bound        int
+	alpha_update bool
+}
+
 var search_id int = 0
 
 func iterative_deepening(brd *Board) int {
 	return 0
 }
 
-func young_brothers_wait(brd *Board, old_alpha, old_beta, depth, ply int, cancel chan bool, update chan int) int {
+func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, cancel chan bool, update chan BoundUpdate) int {
 
 	if depth <= 0 {
-		return quiescence(brd, old_alpha, old_beta, depth, ply, cancel) // q-search is sequential.
+		return quiescence(brd, alpha, beta, depth, ply, cancel) // q-search is sequential.
 	}
 
 	in_check := is_in_check(brd)
-	alpha, beta, score := -old_beta, -old_alpha, -INF
-	update_child := make(chan int)
+	old_alpha, score := alpha, -INF
+	legal_moves := false
+
 	cancel_child := make(chan bool)
+	var listeners []chan BoundUpdate
 
 	if brd.halfmove_clock >= 100 {
 		// to do: if this is not checkmate, return a draw
 	}
 
 	// to do: add adaptive depth for null move search.
-	null_depth := depth - 2 
-	
+	null_depth := depth - 2
+
 	// search hash move
-	best_move, hash_result := main_tt.probe(brd, depth, null_depth, alpha, beta, &score)
-	if best_move > 0 {
-		if is_cancelled(cancel, cancel_child, update_child) {
+	first_move, hash_result := main_tt.probe(brd, depth, null_depth, alpha, beta, &score)
+	switch hash_result {
+	case MATCH_FOUND:
+		return score
+	case NO_MATCH:
+		if depth > IID_MIN {
+			if is_cancelled(cancel, cancel_child, listeners) {
+				return 0
+			}
+			// To do: use IID to get a decent first move to try.
+		}
+	default:
+		if is_cancelled(cancel, cancel_child, listeners) {
 			return 0
-		} // make sure the job hasn't been cancelled.
-		score = ybw_make_unmake(brd, best_move, alpha, beta, depth-1, ply+1, cancel_child, update_child)
+		}
+
+		update_child := make(chan BoundUpdate, 3)
+		listeners = append(listeners, update_child)
+		legal_moves = true
+
+		score = ybw_make_unmake(brd, first_move, alpha, beta, depth-1, ply+1, cancel_child, update_child)
 		if score > alpha {
 			if score >= beta {
-				// to do: save result to transposition table before returning.
-				return beta // no communication necessary; nothing has been spawned in parallel from this node yet.
+				main_tt.store(brd, first_move, depth, LOWER_BOUND, score)
+				return beta
 			}
-			alpha = score // no communication necessary; nothing has been spawned in parallel from this node yet.
+			alpha = score
 		}
-	} else if depth > IID_MIN {
-		// To do: use IID to get a decent best move to try.
 	}
-
-	// To do: implement null move search.
-	if hash_result != AVOID_NULL {
-
-	}
-
-
 	// Generate tactical (non-quiet) moves.  Good moves will be searched sequentially to establish good bounds
 	// before remaining nodes are searched in parallel.
+
 	best_moves, remaining_moves := get_best_moves(brd, in_check)
-	var m Move
+	var m, best_move Move
 	for _, item := range *best_moves { // search the best moves sequentially.
 		m = item.move
-		if is_cancelled(cancel, cancel_child, update_child) {
+		if is_cancelled(cancel, cancel_child, listeners) {
 			return 0
 		} // make sure the job hasn't been cancelled.
-		score = ybw_make_unmake(brd, m, alpha, beta, depth-1, ply+1, cancel_child, update_child)
 
+		update_child := make(chan BoundUpdate, 3)
+		listeners = append(listeners, update_child)
+		legal_moves = true
+
+		score = ybw_make_unmake(brd, m, alpha, beta, depth-1, ply+1, cancel_child, update_child)
 		if score > alpha {
 			if score >= beta {
-				// to do: save result to transposition table before returning.
-				return beta // no communication necessary; nothing has been spawned in parallel from this node yet.
+				main_tt.store(brd, m, depth, LOWER_BOUND, score)
+				return beta
 			}
-			alpha = score // no communication necessary; nothing has been spawned in parallel from this node yet.
+			alpha = score
+			best_move = m
 		}
 	}
 	// Delay the generation of remaining moves until all promotions and winning captures have been searched.
@@ -155,52 +179,83 @@ func young_brothers_wait(brd *Board, old_alpha, old_beta, depth, ply int, cancel
 	get_remaining_moves(brd, in_check, remaining_moves)
 
 	if depth <= SPLIT_MIN { // Depth is too shallow for parallel search to be worthwhile.
-		for _, item := range *remaining_moves { // search the best moves sequentially.
+		for _, item := range *remaining_moves { // search remaining moves sequentially.
 			m = item.move
-			if is_cancelled(cancel, cancel_child, update_child) {
+			if is_cancelled(cancel, cancel_child, listeners) {
 				return 0
 			} // make sure the job hasn't been cancelled.
+
+			update_child := make(chan BoundUpdate, 3)
+			listeners = append(listeners, update_child)
+			legal_moves = true
+
 			score = ybw_make_unmake(brd, m, alpha, beta, depth-1, ply+1, cancel_child, update_child)
 			if score > alpha {
 				if score >= beta {
-					// to do: save result to transposition table before returning.
+					main_tt.store(brd, m, depth, LOWER_BOUND, score)
 					return beta
 				}
 				alpha = score
+				best_move = m
 			}
 		}
 	} else { // now that decent bounds have been established, search the remaining nodes in parallel.
-		result_child := make(chan int, 10)
+		result_child := make(chan SearchResult, 10)
 		var child_counter int
 		for _, item := range *remaining_moves {
 			m := item.move
 			new_brd := brd.Copy() // create a locally scoped deep copy of the board.
+			update_child := make(chan BoundUpdate, 3)
+			listeners = append(listeners, update_child)
+			legal_moves = true
+
 			go func() {
-				result_child <- ybw_make_unmake(new_brd, m, alpha, beta, depth-1, ply+1, cancel_child, update_child)
+				score := ybw_make_unmake(new_brd, m, alpha, beta, depth-1, ply+1, cancel_child, update_child)
+				result_child <- SearchResult{m, score}
 			}()
 			child_counter++
 		}
-		if child_counter > 0 { // wait for a message to come in on one of the channels
+
+		if child_counter > 0 {
 		remaining_pieces:
 			for {
-				select {
+				select { // wait for a message to come in on one of the channels.
 				case <-cancel: // task was cancelled.
-					cancel_work(cancel_child, update_child)
+
+					cancel_work(cancel_child, listeners)
 					return 0
-				case updated := <-update: // an updated bound was received from the parent node.
-					if updated > alpha {
-						alpha = updated
+
+				case bound_update := <-update: // an updated bound was received from the parent node.
+					// may also want to check this before sequential searches.
+					if bound_update.alpha_update {
+						if bound_update.bound < beta {
+							beta = bound_update.bound // update relevant local bound
+							for _, update_child := range listeners {
+								update_child <- BoundUpdate{-beta, false} // broadcast update to child nodes.
+							}
+						}
+					} else {
+						if bound_update.bound > alpha {
+							alpha = bound_update.bound
+							for _, update_child := range listeners {
+								update_child <- BoundUpdate{-alpha, true}
+							}
+						}
 					}
-					update_child <- updated // propegate updated bound to child nodes
-				case score = <-result_child: // one of the child subtrees has been completely searched.
-					if score > alpha {
+
+				case result := <-result_child: // one of the child subtrees has been completely searched.
+
+					if result.score > alpha {
 						if score >= beta {
-							// to do: save result to transposition table before returning.
-							cancel_work(cancel_child, update_child)
+							main_tt.store(brd, result.move, depth, LOWER_BOUND, result.score)
+							cancel_work(cancel_child, listeners)
 							return beta
 						}
-						alpha = score
-						update_child <- alpha // send the updated bound to child processes.
+						alpha = result.score
+						best_move = result.move
+						for _, update_child := range listeners {
+							update_child <- BoundUpdate{-alpha, true} // send the updated bound to child processes.
+						}
 					}
 					child_counter--
 					if child_counter == 0 {
@@ -211,8 +266,27 @@ func young_brothers_wait(brd *Board, old_alpha, old_beta, depth, ply int, cancel
 		}
 	}
 
-	// to do: check for draw or checkmate
-	// to do: save result to transposition table before returning.
+	if legal_moves { 
+		var result_type int
+		if alpha > old_alpha {
+			result_type = EXACT
+		} else {
+			result_type = UPPER_BOUND
+		}
+		main_tt.store(brd, best_move, depth, result_type, alpha)
+		return alpha
+	} else { // draw or checkmate detected.
+		if in_check {
+			score = ply - INF
+		} else {
+			score = 0
+		}
+		main_tt.store(brd, 0, MAX_PLY, EXACT, score)
+		return score
+	}
+
+
+
 	return 0
 }
 
@@ -229,6 +303,7 @@ func quiescence(brd *Board, old_alpha, old_beta, depth, ply int, cancel chan boo
 
 	in_check := is_in_check(brd)
 	alpha, beta, score := -old_beta, -old_alpha, -INF
+	legal_moves := false
 
 	if brd.halfmove_clock >= 100 {
 		// to do: if this is not checkmate, return a draw
@@ -250,6 +325,7 @@ func quiescence(brd *Board, old_alpha, old_beta, depth, ply int, cancel chan boo
 		get_evasions(brd, best_moves, remaining_moves)
 		for _, item := range *best_moves { // search the best moves sequentially.
 			m = item.move
+			legal_moves = true
 			score = q_make_unmake(brd, m, alpha, beta, depth-1, ply+1, cancel)
 			if score > alpha {
 				if score >= beta {
@@ -260,6 +336,7 @@ func quiescence(brd *Board, old_alpha, old_beta, depth, ply int, cancel chan boo
 		}
 		for _, item := range *remaining_moves { // search the best moves sequentially.
 			m = item.move
+			legal_moves = true
 			score = q_make_unmake(brd, m, alpha, beta, depth-1, ply+1, cancel)
 			if score > alpha {
 				if score >= beta {
@@ -273,6 +350,7 @@ func quiescence(brd *Board, old_alpha, old_beta, depth, ply int, cancel chan boo
 		best_moves := get_winning_captures(brd)
 		for _, item := range *best_moves { // search the best moves sequentially.
 			m = item.move
+			legal_moves = true
 			score = q_make_unmake(brd, m, alpha, beta, depth-1, ply+1, cancel)
 			if score > alpha {
 				if score >= beta {
@@ -283,16 +361,23 @@ func quiescence(brd *Board, old_alpha, old_beta, depth, ply int, cancel chan boo
 		}
 	}
 
-	// to do: check for draw or checkmate
-	return 0
+	if legal_moves { 
+		return alpha
+	} else { // draw or checkmate detected.
+		if in_check {
+			return ply - INF
+		} else {
+			return 0
+		}
+	}
 }
 
-func ybw_make_unmake(brd *Board, m Move, alpha, beta, depth, ply int, cancel chan bool, update chan int) int {
+func ybw_make_unmake(brd *Board, m Move, alpha, beta, depth, ply int, cancel chan bool, update chan BoundUpdate) int {
 	hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
 	castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
 
 	make_move(brd, m) // to do: make move
-	score := -1 * young_brothers_wait(brd, alpha, beta, depth-1, ply+1, cancel, update)
+	score := -young_brothers_wait(brd, -beta, -alpha, depth-1, ply+1, cancel, update)
 	unmake_move(brd, m, enp_target) // to do: unmake move
 
 	brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
@@ -305,7 +390,7 @@ func q_make_unmake(brd *Board, m Move, alpha, beta, depth, ply int, cancel chan 
 	castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
 
 	make_move(brd, m) // to do: make move
-	score := -1 * quiescence(brd, alpha, beta, depth-1, ply+1, cancel)
+	score := -quiescence(brd, -beta, -alpha, depth-1, ply+1, cancel)
 	unmake_move(brd, m, enp_target) // to do: unmake move
 
 	brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
@@ -313,17 +398,19 @@ func q_make_unmake(brd *Board, m Move, alpha, beta, depth, ply int, cancel chan 
 	return score
 }
 
-func is_cancelled(cancel, cancel_child chan bool, update_child chan int) bool {
+func is_cancelled(cancel, cancel_child chan bool, listeners []chan BoundUpdate) bool {
 	select {
 	case <-cancel:
-		cancel_work(cancel_child, update_child)
+		cancel_work(cancel_child, listeners)
 		return true
 	default:
 		return false
 	}
 }
 
-func cancel_work(cancel_child chan bool, update_child chan int) {
+func cancel_work(cancel_child chan bool, listeners []chan BoundUpdate) {
 	close(cancel_child)
-	close(update_child)
+	for _, update_child := range listeners {
+		close(update_child)
+	}
 }

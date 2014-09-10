@@ -37,13 +37,13 @@ type Board struct {
 	pieces         [2][6]BB  // 768 bits
 	squares        [64]Piece // 512 bits
 	occupied       [2]BB     // 128 bits
-	material       [2]int32  // 64 bits
-	hash_key       uint64    // 64 bits
-	pawn_hash_key  uint64    // 64 bits
-	c              uint8     // 8 bits
-	castle         uint8     // 8 bits
-	enp_target     uint8     // 8 bits
-	halfmove_clock uint8     // 8 bits
+	material       [2]int32  // 64  bits
+	hash_key       uint64    // 64  bits
+	pawn_hash_key  uint64    // 64  bits
+	c              uint8     // 8   bits
+	castle         uint8     // 8   bits
+	enp_target     uint8     // 8 	bits
+	halfmove_clock uint8     // 8 	bits
 }
 
 func (brd *Board) Evaluate() int {

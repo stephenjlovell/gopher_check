@@ -26,20 +26,21 @@ import (
 )
 
 const (
-	SLOT_COUNT   = 131072         // number of main TT slots. 
+	SLOT_COUNT   = 131072         // number of main TT slots.
 	BUCKET_COUNT = 4              // number of buckets per slot
 	TT_MASK      = SLOT_COUNT - 1 // a set bitmask of length 17
 )
 
 const (
 	NO_MATCH = iota
+	ORDERING_ONLY
 	AVOID_NULL
 	MATCH_FOUND
 )
 
 const (
 	LOWER_BOUND = iota
-	EXACT 
+	EXACT
 	UPPER_BOUND
 )
 
@@ -63,7 +64,7 @@ type Bucket struct {
 // XOR out b.data and return the original hash key.  If b.data has been modified by another goroutine
 // due to a race condition, the key returned will no longer match and probe() will reject the entry.
 func (b *Bucket) HashKey() uint64 {
-	return (b.key ^ b.data)  
+	return (b.key ^ b.data)
 }
 
 func (b *Bucket) Depth() int {
@@ -86,17 +87,15 @@ func NewBucket(hash_key uint64, move Move, depth, entry_type, value int) Bucket 
 	entry_data := uint64(depth) // maximum allowable depth of 31
 	entry_data |= (uint64(move) << 5) | (uint64(entry_type) << 26) |
 		(uint64(value) << 28) | (uint64(search_id) << 45)
-	return Bucket{ 
-		key : (hash_key ^ entry_data), // XOR in entry_data to provide a way to check for race conditions.
-		data : entry_data,
+	return Bucket{
+		key:  (hash_key ^ entry_data), // XOR in entry_data to provide a way to check for race conditions.
+		data: entry_data,
 	}
 }
 
 func (tt *TT) get_slot(hash_key uint64) *Slot {
 	return tt[hash_key&TT_MASK]
 }
-
-
 
 func (tt *TT) probe(brd *Board, depth, null_depth, alpha, beta int, value *int) (Move, int) {
 	hash_key := brd.hash_key
@@ -106,13 +105,12 @@ func (tt *TT) probe(brd *Board, depth, null_depth, alpha, beta int, value *int) 
 		if hash_key == slot[i].HashKey() { // look for an entry uncorrupted by lockless access.
 
 			// to do: update age (search id) of entry.
-
-			entry_type := slot[i].Type()
 			entry_depth := slot[i].Depth()
-			entry_value := slot[i].Value()
 
 			if entry_depth >= depth {
-				*value = entry_value  // set the initial value for the subtree search at this node.
+				entry_type := slot[i].Type()
+				entry_value := slot[i].Value()
+				*value = entry_value // set the initial value for the subtree search at this node.
 				switch entry_type {
 				case LOWER_BOUND:
 					if entry_value <= alpha {
@@ -129,19 +127,20 @@ func (tt *TT) probe(brd *Board, depth, null_depth, alpha, beta int, value *int) 
 					return slot[i].Move(), MATCH_FOUND
 				}
 			} else if entry_depth >= null_depth {
+				entry_type := slot[i].Type()
+				entry_value := slot[i].Value()
 				// if the entry is too shallow for an immediate cutoff but at least as deep as a potential
 				// null-move search, check if a null move search would have any chance of causing a beta cutoff.
 				if entry_type == UPPER_BOUND && entry_value < beta {
 					return slot[i].Move(), AVOID_NULL
 				}
 			}
-			break
-		} 
+			return slot[i].Move(), ORDERING_ONLY
+			// break
+		}
 	}
-
 	return Move(0), NO_MATCH
 }
-
 
 // use lockless storing to avoid concurrent write issues without incurring locking overhead.
 func (tt *TT) store(brd *Board, move Move, depth, entry_type, value int) {
@@ -151,17 +150,17 @@ func (tt *TT) store(brd *Board, move Move, depth, entry_type, value int) {
 	// to do:  store PV for exact entries.
 
 	for i := 0; i < 4; i++ {
-		if hash_key == slot[i].HashKey() {  // exact match found.  Always replace.
+		if hash_key == slot[i].HashKey() { // exact match found.  Always replace.
 			slot[i] = NewBucket(hash_key, move, depth, entry_type, value)
-			return 
+			return
 		}
 	}
 	// If entries from a previous search exist, find/replace shallowest old entry.
 	replace_index, replace_depth := 4, 32
-	for i := 0; i < 4; i++ { 
-		if search_id != slot[i].Id() {  // entry is not from the current search.
+	for i := 0; i < 4; i++ {
+		if search_id != slot[i].Id() { // entry is not from the current search.
 			if slot[i].Depth() < replace_depth {
-				replace_index, replace_depth = i, slot[i].Depth() 
+				replace_index, replace_depth = i, slot[i].Depth()
 			}
 		}
 	}
@@ -171,17 +170,14 @@ func (tt *TT) store(brd *Board, move Move, depth, entry_type, value int) {
 	}
 	// No exact match or entry from previous search found. Replace the shallowest entry.
 	replace_index, replace_depth = 4, 32
-	for i := 0; i < 4; i++ { 
+	for i := 0; i < 4; i++ {
 		if slot[i].Depth() < replace_depth {
-			replace_index, replace_depth = i, slot[i].Depth() 
+			replace_index, replace_depth = i, slot[i].Depth()
 		}
 	}
 	slot[replace_index] = NewBucket(hash_key, move, depth, entry_type, value)
 
 }
-
-
-
 
 // Zobrist Hashing
 //
