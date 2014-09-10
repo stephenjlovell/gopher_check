@@ -274,10 +274,10 @@ func get_winning_captures(brd *Board) *MoveList {
 	for ; promotion_captures_left > 0; promotion_captures_left.Clear(to) {
 		to = furthest_forward(c, promotion_captures_left)
 		from = to + pawn_from_offsets[c][2]
-		m = NewPromotionCapture(from, to, brd.squares[to], QUEEN)
-		heap.Push(best_moves, &SortItem{m, INF + 1})
-		m = NewPromotionCapture(from, to, brd.squares[to], KNIGHT)
-		heap.Push(best_moves, &SortItem{m, INF + 1})
+		m = NewPromotionCapture(from, to, brd.squares[to], QUEEN) // To help q-search terminate faster, only Queen
+		heap.Push(best_moves, &SortItem{m, INF + 1})              // promotions are generated during q-search.
+		// m = NewPromotionCapture(from, to, brd.squares[to], KNIGHT)
+		// heap.Push(best_moves, &SortItem{m, INF + 1})
 	}
 
 	for ; promotion_captures_right > 0; promotion_captures_right.Clear(to) {
@@ -285,8 +285,8 @@ func get_winning_captures(brd *Board) *MoveList {
 		from = to + pawn_from_offsets[c][2]
 		m = NewPromotionCapture(from, to, brd.squares[to], QUEEN)
 		heap.Push(best_moves, &SortItem{m, INF + 1})
-		m = NewPromotionCapture(from, to, brd.squares[to], KNIGHT)
-		heap.Push(best_moves, &SortItem{m, INF + 1})
+		// m = NewPromotionCapture(from, to, brd.squares[to], KNIGHT)
+		// heap.Push(best_moves, &SortItem{m, INF + 1})
 	}
 
 	// promotion advances
@@ -296,8 +296,8 @@ func get_winning_captures(brd *Board) *MoveList {
 		m = NewPromotion(from, to, QUEEN)
 		heap.Push(best_moves, &SortItem{m, INF})
 		best_moves.Push(&SortItem{m, INF})
-		m = NewPromotion(from, to, KNIGHT)
-		heap.Push(best_moves, &SortItem{m, INF})
+		// m = NewPromotion(from, to, KNIGHT)
+		// heap.Push(best_moves, &SortItem{m, INF})
 	}
 
 	// regular pawn attacks

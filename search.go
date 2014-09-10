@@ -83,6 +83,8 @@ const (
 
 type PV []Move
 
+var search_id int = 0
+
 func iterative_deepening(brd *Board) int {
 	return 0
 }
@@ -102,8 +104,11 @@ func young_brothers_wait(brd *Board, old_alpha, old_beta, depth, ply int, cancel
 		// to do: if this is not checkmate, return a draw
 	}
 
+	// to do: add adaptive depth for null move search.
+	null_depth := depth - 2 
+	
 	// search hash move
-	best_move := main_tt.probe(brd, depth)
+	best_move, hash_result := main_tt.probe(brd, depth, null_depth, alpha, beta, &score)
 	if best_move > 0 {
 		if is_cancelled(cancel, cancel_child, update_child) {
 			return 0
@@ -119,6 +124,12 @@ func young_brothers_wait(brd *Board, old_alpha, old_beta, depth, ply int, cancel
 	} else if depth > IID_MIN {
 		// To do: use IID to get a decent best move to try.
 	}
+
+	// To do: implement null move search.
+	if hash_result != AVOID_NULL {
+
+	}
+
 
 	// Generate tactical (non-quiet) moves.  Good moves will be searched sequentially to establish good bounds
 	// before remaining nodes are searched in parallel.
@@ -233,11 +244,10 @@ func quiescence(brd *Board, old_alpha, old_beta, depth, ply int, cancel chan boo
 		}
 	}
 
-	// to do:  add futility pruning
 	var m Move
 	if in_check {
-		var best_moves, remaining_moves MoveList
-		get_evasions(brd, &best_moves, &remaining_moves)
+		var best_moves, remaining_moves *MoveList
+		get_evasions(brd, best_moves, remaining_moves)
 		for _, item := range *best_moves { // search the best moves sequentially.
 			m = item.move
 			score = q_make_unmake(brd, m, alpha, beta, depth-1, ply+1, cancel)
@@ -259,7 +269,8 @@ func quiescence(brd *Board, old_alpha, old_beta, depth, ply int, cancel chan boo
 			}
 		}
 	} else {
-		best_moves := get_winning_captures(brd, in_check)
+		// to do:  add futility pruning
+		best_moves := get_winning_captures(brd)
 		for _, item := range *best_moves { // search the best moves sequentially.
 			m = item.move
 			score = q_make_unmake(brd, m, alpha, beta, depth-1, ply+1, cancel)
@@ -273,7 +284,7 @@ func quiescence(brd *Board, old_alpha, old_beta, depth, ply int, cancel chan boo
 	}
 
 	// to do: check for draw or checkmate
-
+	return 0
 }
 
 func ybw_make_unmake(brd *Board, m Move, alpha, beta, depth, ply int, cancel chan bool, update chan int) int {
@@ -302,7 +313,6 @@ func q_make_unmake(brd *Board, m Move, alpha, beta, depth, ply int, cancel chan 
 	return score
 }
 
-
 func is_cancelled(cancel, cancel_child chan bool, update_child chan int) bool {
 	select {
 	case <-cancel:
@@ -317,9 +327,3 @@ func cancel_work(cancel_child chan bool, update_child chan int) {
 	close(cancel_child)
 	close(update_child)
 }
-
-
-
-
-
-
