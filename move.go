@@ -66,7 +66,7 @@ func (m Move) IsCapture() bool {
 	return m.CapturedPiece() != EMPTY
 }
 
-var piece_chars = [6]string{ "p", "n", "b", "r", "q", "k"}
+var piece_chars = [6]string{"p", "n", "b", "r", "q", "k"}
 
 func (m Move) ToString() string {
 	var str string
@@ -93,7 +93,6 @@ func (m Move) ToString() string {
 // 	}
 // }
 
-
 func NewMove(from, to int, piece, captured_piece, promoted_to Piece) Move {
 	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) | (Move(captured_piece) << 15) | (Move(promoted_to) << 18)
 }
@@ -110,8 +109,3 @@ func NewCapture(from, to int, piece, captured_piece Piece) Move {
 func NewPromotion(from, to int, piece, promoted_to Piece) Move {
 	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) | (Move(EMPTY) << 15) | (Move(promoted_to) << 18)
 }
-
-
-
-
-

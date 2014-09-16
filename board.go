@@ -105,7 +105,6 @@ func (brd *Board) PrintDetails() {
 	brd.Print()
 }
 
-
 func (brd *Board) Print() {
 	fmt.Printf("\n    A   B   C   D   E   F   G   H\n")
 	fmt.Printf("  ---------------------------------\n")

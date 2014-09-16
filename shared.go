@@ -134,6 +134,8 @@ func setup() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	rand.Seed(9) // keep the same seed each time for debugging purposes.
 
+	setup_bitwise_ops()
+
 	setup_main_tt()
 	setup_zobrist()
 
@@ -147,11 +149,3 @@ func main() {
 	setup()
 	ReadUCICommand()
 }
-
-
-
-
-
-
-
-

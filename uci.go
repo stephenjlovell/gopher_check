@@ -24,11 +24,11 @@
 package main
 
 import (
-  "bufio"
-  "os"
+	"bufio"
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
-  "strconv"
 	"time"
 )
 
@@ -42,15 +42,17 @@ func Milliseconds(d time.Duration) int64 {
 // Time given in milliseconds. PV given as list of moves.
 // Example: info score cp 13  depth 1 nodes 13 time 15 pv f1b5
 func PrintInfo(score, depth, node_count int, time_elapsed time.Duration) {
-	fmt.Printf("info score cp %d depth %d nodes %d time %d\n", score, depth, node_count, Milliseconds(time_elapsed))
+	ms := Milliseconds(time_elapsed)
+	fmt.Printf("info score cp %d depth %d nodes %d nps %d time %d\n",
+		score, depth, node_count, int64(float64(node_count)/(float64(ms)/float64(1000.0))), ms)
 }
 
 func ReadUCICommand() {
-  var input string
-  reader := bufio.NewReader(os.Stdin)
+	var input string
+	reader := bufio.NewReader(os.Stdin)
 	UCIStart()
 	for {
-    input, _ = reader.ReadString('\n')
+		input, _ = reader.ReadString('\n')
 		uci_fields := strings.Fields(input)
 
 		switch uci_fields[0] {
@@ -64,31 +66,31 @@ func ReadUCICommand() {
 
 		case "position":
 			current_board = ParseUCIPosition(uci_fields[1:])
-      fmt.Printf("readyok\n")
+			fmt.Printf("readyok\n")
 
 		case "ucinewgame":
 			ResetAll() // reset all shared data structures and prepare to start a new game.
 			current_board = ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-      fmt.Printf("readyok\n")
+			fmt.Printf("readyok\n")
 
 		case "ponderhit":
 
 		case "go":
 			ParseUCIGo(uci_fields[1:])
 
-    case "print":
-      current_board.Print()
+		case "print":
+			current_board.Print()
 
 		case "stop":
-      AbortSearch()
+			AbortSearch()
 			// stop calculating and return a result as soon as possible.
 
 		case "quit":
-      AbortSearch()
-      return
+			AbortSearch()
+			return
 
-    default:
-      fmt.Println("invalid command.")
+		default:
+			fmt.Println("invalid command.")
 		}
 	}
 }
@@ -100,31 +102,31 @@ func UCIStart() {
 }
 
 func ParseUCIGo(uci_fields []string) {
-  depth, time := int64(MAX_DEPTH), MAX_TIME
-  var restrict_search []Move
+	depth, time := int64(MAX_DEPTH), MAX_TIME
+	var restrict_search []Move
 
-  for len(uci_fields) > 0 {
-    switch uci_fields[0] {
-    case "depth":
-      depth, _ = strconv.ParseInt(uci_fields[1], 10, 8)
-      uci_fields = uci_fields[2:]
-    case "ponder":
-      depth = 32
-    case "searchmoves":
-      uci_fields = uci_fields[:1]
-      for len(uci_fields) > 0 && IsMove(uci_fields[0]) {
-        restrict_search = append(restrict_search, ParseMove(current_board, uci_fields[0]))
-        uci_fields = uci_fields[:1]
-      }
-    default:
-      uci_fields = uci_fields[:1]
-    }
-  }
+	for len(uci_fields) > 0 {
+		switch uci_fields[0] {
+		case "depth":
+			depth, _ = strconv.ParseInt(uci_fields[1], 10, 8)
+			uci_fields = uci_fields[2:]
+		case "ponder":
+			depth = 32
+		case "searchmoves":
+			uci_fields = uci_fields[:1]
+			for len(uci_fields) > 0 && IsMove(uci_fields[0]) {
+				restrict_search = append(restrict_search, ParseMove(current_board, uci_fields[0]))
+				uci_fields = uci_fields[:1]
+			}
+		default:
+			uci_fields = uci_fields[:1]
+		}
+	}
 
-  go func() {
-    move := Search(current_board, restrict_search, int(depth), time)
-    fmt.Printf("bestmove %s\n", move.ToString())
-  }()
+	go func() {
+		move := Search(current_board, restrict_search, int(depth), time)
+		fmt.Printf("bestmove %s\n", move.ToString())
+	}()
 }
 
 // position [fen  | startpos ]  moves  ....
@@ -141,7 +143,7 @@ func ParseUCIPosition(uci_fields []string) *Board {
 			PlayMoveSequence(brd, uci_fields[5:])
 		}
 	} else {
-    fmt.Println("Empty board created.")
+		fmt.Println("Empty board created.")
 		brd = EmptyBoard()
 	}
 	return brd
@@ -163,7 +165,7 @@ func PlayMoveSequence(brd *Board, uci_fields []string) {
 }
 
 func StartPos() *Board {
-  return ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	return ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 }
 
 func ResetAll() {

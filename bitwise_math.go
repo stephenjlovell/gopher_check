@@ -1,37 +1,87 @@
+//-----------------------------------------------------------------------------------
+// Copyright (c) 2014 Stephen J. Lovell
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy of
+// this software and associated documentation files (the "Software"), to deal in
+// the Software without restriction, including without limitation the rights to
+// use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+// the Software, and to permit persons to whom the Software is furnished to do so,
+// subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+// FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+// COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+// IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+// CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//-----------------------------------------------------------------------------------
+
+// Bit manipulation resources:
+// https://chessprogramming.wikispaces.com/Bit-Twiddling
+
 package main
 
-/*
-static int lsb(unsigned long bitboard) {
-  return (__builtin_ctzl(bitboard));
-}
-static int msb(unsigned long bitboard) {
-  return (63-__builtin_clzl(bitboard));
-}
-static int pop_count(unsigned long bitboard) {
-  return (__builtin_popcountl(bitboard));
-}
-*/
-import (
-	"C"
-)
-
-func lsb(b BB) int {
-	return int(C.lsb(C.ulong(b)))
-}
-
-func msb(b BB) int {
-	return int(C.msb(C.ulong(b)))
-}
-
 func furthest_forward(c uint8, b BB) int {
-	// b.Print()
 	if c == WHITE {
-		return int(C.lsb(C.ulong(b))) // LSB
+		return lsb(b)
 	} else {
-		return int(C.msb(C.ulong(b))) // MSB
+		return msb(b)
 	}
 }
 
+func msb(b BB) int {
+	if b>>48 > 0 {
+		return msb_table[b>>48] + 48
+	}
+	if (b>>32)&65535 > 0 {
+		return msb_table[(b>>32)&65535] + 32
+	}
+	if (b>>16)&65535 > 0 {
+		return msb_table[(b>>16)&65535] + 16
+	}
+	return msb_table[b&65535]
+}
+
+func lsb(b BB) int {
+	if b&65535 > 0 {
+		return lsb_table[b&65535]
+	}
+	if (b>>16)&65535 > 0 {
+		return lsb_table[(b>>16)&65535] + 16
+	}
+	if (b>>32)&65535 > 0 {
+		return lsb_table[(b>>32)&65535] + 32
+	}
+	return lsb_table[b>>48] + 48
+}
+
 func pop_count(b BB) int {
-	return int(C.pop_count(C.ulong(b)))
+	c := 0
+	for b > 0 {
+		c++
+		b &= (b - 1)
+	}
+	return c
+}
+
+var msb_table [65536]int
+var lsb_table [65536]int
+
+func setup_bitwise_ops() {
+	msb_table[0] = 64
+	lsb_table[0] = 16
+	for i := 1; i < 65536; i++ {
+		lsb_table[i] = 16
+		for j := 0; j < 16; j++ {
+			if (1<<uint(j))&i > 0 {
+				msb_table[i] = j
+				if lsb_table[i] == 16 {
+					lsb_table[i] = j
+				}
+			}
+		}
+	}
 }

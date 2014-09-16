@@ -22,7 +22,7 @@
 package main
 
 import (
-"fmt"
+	"fmt"
 )
 
 func attack_map(brd *Board, sq int) BB {

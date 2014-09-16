@@ -275,7 +275,7 @@ func get_winning_captures(brd *Board) *MoveList {
 		to = furthest_forward(c, promotion_captures_left)
 		from = to + pawn_from_offsets[c][2]
 		m = NewMove(from, to, PAWN, brd.squares[to], QUEEN) // To help q-search terminate faster, only Queen
-		heap.Push(best_moves, &SortItem{m, INF + 1})                    // promotions are generated during q-search.
+		heap.Push(best_moves, &SortItem{m, INF + 1})        // promotions are generated during q-search.
 		// m = NewMove(from, to, brd.squares[to], KNIGHT)
 		// heap.Push(best_moves, &SortItem{m, INF + 1})
 	}

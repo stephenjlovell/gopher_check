@@ -11,6 +11,8 @@ Finish lockless hash table implementation.  Write Probe() and Store() methods.
 
 Validate and finalize move ordering.
 
+Create native go implementations for MSB, LSB, PopCount.
+
 
 
 Ideas:

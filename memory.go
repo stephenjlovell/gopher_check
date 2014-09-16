@@ -26,8 +26,8 @@ import (
 )
 
 const (
-	SLOT_COUNT   = 131072         // number of main TT slots. 4 buckets per slot.
-	TT_MASK      = SLOT_COUNT - 1 // a set bitmask of length 17
+	SLOT_COUNT = 131072         // number of main TT slots. 4 buckets per slot.
+	TT_MASK    = SLOT_COUNT - 1 // a set bitmask of length 17
 )
 
 const (
@@ -47,7 +47,7 @@ var main_tt TT
 
 func setup_main_tt() {
 	for i, _ := range main_tt {
-		main_tt[i] = &Slot{ Bucket{}, Bucket{}, Bucket{}, Bucket{} }
+		main_tt[i] = &Slot{Bucket{}, Bucket{}, Bucket{}, Bucket{}}
 	}
 }
 

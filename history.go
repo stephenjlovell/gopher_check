@@ -22,7 +22,7 @@
 package main
 
 import (
-  // "fmt"
+// "fmt"
 )
 
 type HTable [2][6][64]int
@@ -48,9 +48,3 @@ func (h *HTable) Clear() {
 	}
 
 }
-
-
-
-
-
-

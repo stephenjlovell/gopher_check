@@ -186,16 +186,13 @@ var column_chars = map[string]int{
 	"h": 7,
 }
 
-var column_names = [8]string{ "a", "b", "c", "d", "e", "f", "g", "h" }
-
+var column_names = [8]string{"a", "b", "c", "d", "e", "f", "g", "h"}
 
 // create regular expression to match valid move string.
 func IsMove(str string) bool {
 	match, _ := regexp.MatchString("[a-h][1-8][a-h][1-8][nbrq]", str)
 	return match
 }
-
-
 
 func ParseSquare(str string) int {
 	column := column_chars[string(str[0])]
@@ -210,11 +207,3 @@ func SquareString(sq int) string {
 func ParseCoordinates(row, col int) string {
 	return column_names[col] + strconv.FormatInt(int64(row+1), 10)
 }
-
-
-
-
-
-
-
-

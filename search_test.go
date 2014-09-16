@@ -27,23 +27,23 @@ package main
 // )
 
 // func TestSearch(t *testing.T) {
+//   fmt.Println("Running TestSearch")
+
 //   setup()
 //   ResetAll() // reset all shared data structures and prepare to start a new game.
-//   current_board := StartPos()
-//   // brd.PrintDetails()
-//   move := Search(current_board, make([]Move, 0), MAX_DEPTH, MAX_TIME)
+//   current_board = StartPos()
+//   current_board.Print()
+
+//   move := Search(current_board, make([]Move, 0), MAX_DEPTH+2, MAX_TIME)
 //   fmt.Printf("bestmove %s\n", move.ToString())
 
 // }
 
-
 // func TestBoardCopy(t *testing.T) {
 //   setup()
 //   brd := StartPos()
-
 //   result := make(chan *Board)
 //   counter := 0
-
 //   for i := 8; i < 16; i++ {
 //     copy := brd.Copy()
 //     move := NewMove(i, i+8, PAWN, EMPTY, EMPTY)
@@ -54,9 +54,7 @@ package main
 //       result <- copy
 //     }(i)
 //   }
-
 //   fmt.Printf("\n")
-
 //   for counter > 0 {
 //     select {
 //     case r := <-result:
@@ -67,22 +65,3 @@ package main
 //   brd.Print()
 //   fmt.Println("TestBoardCopy complete.")
 // }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

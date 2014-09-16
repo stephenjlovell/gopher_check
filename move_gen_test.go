@@ -40,7 +40,7 @@ var legal_max_tree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 31959
 // 	setup()
 // 	brd := StartPos()
 // 	copy := brd.Copy()
-// 	depth := MAX_DEPTH-3
+// 	depth := 6
 // 	start := time.Now()
 // 	sum := PerftLegal(brd, depth)
 // 	elapsed := time.Since(start)
@@ -61,7 +61,7 @@ var legal_max_tree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 31959
 // 	setup()
 // 	brd := StartPos()
 // 	copy := brd.Copy()
-// 	depth := MAX_DEPTH-1
+// 	depth := 6
 // 	start := time.Now()
 // 	sum := Perft(brd, depth)
 // 	elapsed := time.Since(start)
@@ -80,7 +80,7 @@ func TestParallelMoveGen(t *testing.T) {
 	setup()
 	brd := StartPos()
 	copy := brd.Copy()
-	depth := MAX_DEPTH-1
+	depth := 7
 
 	start := time.Now()
 	cancel_child := make(chan bool, 1)
@@ -258,7 +258,6 @@ func PerftParallel(brd *Board, depth int, cancel chan bool, update chan BoundUpd
 			check_count += 1
 		}
 		cancel_child := make(chan bool)
-
 
 		best_moves, remaining_moves := get_best_moves(brd, in_check)
 		for _, item := range *best_moves {
