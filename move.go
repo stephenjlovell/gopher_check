@@ -66,6 +66,24 @@ func (m Move) IsCapture() bool {
 	return m.CapturedPiece() != EMPTY
 }
 
+var piece_chars = [6]string{ "p", "n", "b", "r", "q", "k"}
+
+func (m Move) ToString() string {
+	var str string
+
+	from_row := row(m.From())
+	from_col := column(m.From())
+	str += ParseCoordinates(from_row, from_col)
+	to_row := row(m.To())
+	to_col := column(m.To())
+	str += ParseCoordinates(to_row, to_col)
+
+	if m.PromotedTo() != EMPTY {
+		str += piece_chars[m.PromotedTo()]
+	}
+	return str
+}
+
 // func (m Move) IsLegal(brd *Board) bool {
 // 	if m.Piece() == KING {
 // 		return !is_attacked_by(brd, m.To(), brd.c, brd.Enemy()) {
@@ -75,7 +93,12 @@ func (m Move) IsCapture() bool {
 // 	}
 // }
 
-func NewMove(from, to int, piece Piece) Move {
+
+func NewMove(from, to int, piece, captured_piece, promoted_to Piece) Move {
+	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) | (Move(captured_piece) << 15) | (Move(promoted_to) << 18)
+}
+
+func NewRegularMove(from, to int, piece Piece) Move {
 	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) | (Move(EMPTY) << 15) | (Move(EMPTY) << 18)
 }
 
@@ -84,10 +107,11 @@ func NewCapture(from, to int, piece, captured_piece Piece) Move {
 }
 
 // since moving piece is always PAWN (0) for promotions, no need to merge in the moving piece.
-func NewPromotion(from, to int, promoted_to Piece) Move {
-	return Move(from) | (Move(to) << 6) | (Move(EMPTY) << 15) | (Move(promoted_to) << 18)
+func NewPromotion(from, to int, piece, promoted_to Piece) Move {
+	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) | (Move(EMPTY) << 15) | (Move(promoted_to) << 18)
 }
 
-func NewPromotionCapture(from, to int, captured_piece, promoted_to Piece) Move {
-	return Move(from) | (Move(to) << 6) | (Move(captured_piece) << 15) | (Move(promoted_to) << 18)
-}
+
+
+
+

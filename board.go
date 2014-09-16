@@ -25,8 +25,6 @@ import (
 	"fmt"
 )
 
-var piece_values = [6]int{100, 320, 333, 510, 880, 10000} // default piece values
-
 type Piece uint8
 
 func (pc Piece) Value() int { return piece_values[pc] }
@@ -44,6 +42,14 @@ type Board struct {
 	castle         uint8     // 8   bits
 	enp_target     uint8     // 8 	bits
 	halfmove_clock uint8     // 8 	bits
+}
+
+func EmptyBoard() *Board {
+	brd := &Board{enp_target: SQ_INVALID}
+	for sq := 0; sq < 64; sq++ {
+		brd.squares[sq] = EMPTY
+	}
+	return brd
 }
 
 func (brd *Board) Evaluate() int {
@@ -99,15 +105,20 @@ func (brd *Board) PrintDetails() {
 	brd.Print()
 }
 
+
 func (brd *Board) Print() {
-	fmt.Printf("\n---------------------------------\n")
+	fmt.Printf("\n    A   B   C   D   E   F   G   H\n")
+	fmt.Printf("  ---------------------------------\n")
 	row := brd.squares[56:]
+	fmt.Printf("8 ")
 	brd.print_row(56, row)
 
 	for i := 48; i >= 0; i -= 8 {
 		row = brd.squares[i : i+8]
+		fmt.Printf("%v ", 1+(i/8))
 		brd.print_row(i, row)
 	}
+	fmt.Printf("    A   B   C   D   E   F   G   H\n")
 }
 
 func (brd *Board) print_row(start int, row []Piece) {
@@ -123,13 +134,16 @@ func (brd *Board) print_row(start int, row []Piece) {
 			}
 		}
 	}
-	fmt.Printf("\n---------------------------------\n")
+	fmt.Printf("\n  ---------------------------------\n")
 }
 
 var piece_graphics = [2][6]string{
 	{"\u265F", "\u265E", "\u265D", "\u265C", "\u265B", "\u265A"},
 	{"\u2659", "\u2658", "\u2657", "\u2656", "\u2655", "\u2654"},
 }
+
+var current_board *Board = EmptyBoard()
+var piece_values = [6]int{100, 320, 333, 510, 880, 10000} // default piece values
 
 // Parse a FEN string and return a pointer to a new Board object
 // func NewBoard(fen string) *Board {

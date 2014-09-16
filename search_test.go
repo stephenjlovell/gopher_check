@@ -22,32 +22,33 @@
 package main
 
 import (
-  // "fmt"
+  "fmt"
+  "testing"
 )
 
-type HTable [2][6][64]int
-
-var main_htable HTable
-
-func (h *HTable) Store(m Move, c, count int) {
-	h[c][m.Piece()][m.To()] += count
-}
-
-func (h *HTable) Probe(pc Piece, c uint8, to int) int {
-	return h[c][pc][to]
-}
-
-func (h *HTable) Clear() {
-
-	for i := 0; i < 2; i++ {
-		for j := 0; j < 6; j++ {
-			for k := 0; k < 64; k++ {
-				h[i][j][k] = 0
-			}
-		}
-	}
+func TestSearch(t *testing.T) {
+  setup()
+  ResetAll() // reset all shared data structures and prepare to start a new game.
+  brd := ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") 
+  brd.Print()
+  move := Search(brd, make([]Move, 0), MAX_DEPTH-3, MAX_TIME)
+  fmt.Printf("bestmove %s\n", move.ToString())
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -46,6 +46,16 @@ const (
 
 var main_tt TT
 
+func setup_main_tt() {
+	for i, _ := range main_tt {
+		slot := Slot{}
+		for j, _ := range slot {
+			slot[j] = Bucket{}
+		}
+		main_tt[i] = &slot
+	}
+}
+
 type TT [SLOT_COUNT]*Slot
 
 type Slot [BUCKET_COUNT]Bucket

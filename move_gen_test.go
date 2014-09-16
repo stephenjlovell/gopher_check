@@ -1,3 +1,24 @@
+//-----------------------------------------------------------------------------------
+// Copyright (c) 2014 Stephen J. Lovell
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy of
+// this software and associated documentation files (the "Software"), to deal in
+// the Software without restriction, including without limitation the rights to
+// use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+// the Software, and to permit persons to whom the Software is furnished to do so,
+// subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+// FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+// COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+// IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+// CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//-----------------------------------------------------------------------------------
+
 package main
 
 import (
@@ -20,7 +41,7 @@ var legal_max_tree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 31959
 // 	setup()
 // 	brd := StartPos()
 // 	copy := brd.Copy()
-// 	depth := MAX_DEPTH
+// 	depth := MAX_DEPTH-3
 // 	start := time.Now()
 // 	sum := PerftLegal(brd, depth)
 // 	elapsed := time.Since(start)
@@ -41,7 +62,7 @@ var legal_max_tree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 31959
 // 	setup()
 // 	brd := StartPos()
 // 	copy := brd.Copy()
-// 	depth := MAX_DEPTH
+// 	depth := MAX_DEPTH-3
 // 	start := time.Now()
 // 	sum := Perft(brd, depth)
 // 	elapsed := time.Since(start)
@@ -60,11 +81,11 @@ func TestParallelMoveGen(t *testing.T) {
 	setup()
 	brd := StartPos()
 	copy := brd.Copy()
-	depth := MAX_DEPTH
+	depth := MAX_DEPTH-3
 
 	start := time.Now()
-	cancel_child := make(chan bool)
-	update_child := make(chan int)
+	cancel_child := make(chan bool, 1)
+	update_child := make(chan BoundUpdate, 3)
 	sum := PerftParallel(brd, depth, cancel_child, update_child)
 	elapsed := time.Since(start)
 	nps := int64(float64(sum) / elapsed.Seconds())
@@ -128,39 +149,7 @@ func Assert(statement bool, failure_message string) {
 }
 
 func StartPos() *Board {
-	brd := &Board{
-		c:              WHITE,
-		castle:         uint8(15),
-		enp_target:     SQ_INVALID,
-		halfmove_clock: uint8(0),
-	}
-	for sq := 0; sq < 64; sq++ {
-		brd.squares[sq] = EMPTY
-	}
-	for sq := A2; sq <= H2; sq++ {
-		add_piece(brd, PAWN, sq, WHITE)
-	}
-	for sq := A7; sq <= H7; sq++ {
-		add_piece(brd, PAWN, sq, BLACK)
-	}
-	add_piece(brd, ROOK, A1, WHITE)
-	add_piece(brd, KNIGHT, B1, WHITE)
-	add_piece(brd, BISHOP, C1, WHITE)
-	add_piece(brd, QUEEN, D1, WHITE)
-	add_piece(brd, KING, E1, WHITE)
-	add_piece(brd, BISHOP, F1, WHITE)
-	add_piece(brd, KNIGHT, G1, WHITE)
-	add_piece(brd, ROOK, H1, WHITE)
-	add_piece(brd, ROOK, A8, BLACK)
-	add_piece(brd, KNIGHT, B8, BLACK)
-	add_piece(brd, BISHOP, C8, BLACK)
-	add_piece(brd, QUEEN, D8, BLACK)
-	add_piece(brd, KING, E8, BLACK)
-	add_piece(brd, BISHOP, F8, BLACK)
-	add_piece(brd, KNIGHT, G8, BLACK)
-	add_piece(brd, ROOK, H8, BLACK)
-
-	return brd
+	return ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 }
 
 var check_count int
@@ -244,8 +233,9 @@ func Perft_make_unmake(brd *Board, m Move, depth int) int {
 	return sum
 }
 
-func PerftParallel(brd *Board, depth int, cancel chan bool, update chan int) int {
+func PerftParallel(brd *Board, depth int, cancel chan bool, update chan BoundUpdate) int {
 	sum := 0
+	var listeners []chan BoundUpdate
 	if depth <= SPLIT_MIN { // sequential search
 		if depth == 0 {
 			return 1
@@ -255,12 +245,15 @@ func PerftParallel(brd *Board, depth int, cancel chan bool, update chan int) int
 			check_count += 1
 		}
 		cancel_child := make(chan bool)
-		update_child := make(chan int)
 		best_moves, remaining_moves := get_all_moves(brd, in_check)
 		for _, item := range *best_moves {
+			update_child := make(chan BoundUpdate, 3)
+			listeners = append(listeners, update_child)
 			sum += PerftParallel_make_unmake(brd, item.move, depth-1, cancel_child, update_child)
 		}
 		for _, item := range *remaining_moves {
+			update_child := make(chan BoundUpdate, 3)
+			listeners = append(listeners, update_child)
 			sum += PerftParallel_make_unmake(brd, item.move, depth-1, cancel_child, update_child)
 		}
 		return sum
@@ -270,13 +263,15 @@ func PerftParallel(brd *Board, depth int, cancel chan bool, update chan int) int
 			check_count += 1
 		}
 		cancel_child := make(chan bool)
-		update_child := make(chan int)
+
 
 		best_moves, remaining_moves := get_best_moves(brd, in_check)
 		for _, item := range *best_moves {
-			if is_cancelled(cancel, cancel_child, update_child) {
+			if is_cancelled(cancel, cancel_child, listeners) {
 				return 0
 			} // make sure the job hasn't been cancelled.
+			update_child := make(chan BoundUpdate, 3)
+			listeners = append(listeners, update_child)
 			sum += PerftParallel_make_unmake(brd, item.move, depth-1, cancel_child, update_child)
 		}
 
@@ -286,6 +281,8 @@ func PerftParallel(brd *Board, depth int, cancel chan bool, update chan int) int
 		for _, item := range *remaining_moves {
 			m := item.move
 			new_brd := brd.Copy() // create a locally scoped deep copy of the board.
+			update_child := make(chan BoundUpdate, 3)
+			listeners = append(listeners, update_child)
 			go func() {
 				result_child <- PerftParallel_make_unmake(new_brd, m, depth-1, cancel_child, update_child)
 			}()
@@ -299,7 +296,7 @@ func PerftParallel(brd *Board, depth int, cancel chan bool, update chan int) int
 				select {
 				case <-cancel: // task was cancelled.
 					println("task cancelled")
-					cancel_work(cancel_child, update_child)
+					cancel_work(cancel_child, listeners)
 					return 0
 				case child_sum := <-result_child: // one of the child subtrees has been completely searched.
 					// println("response received.")
@@ -315,7 +312,7 @@ func PerftParallel(brd *Board, depth int, cancel chan bool, update chan int) int
 	return sum
 }
 
-func PerftParallel_make_unmake(brd *Board, m Move, depth int, cancel chan bool, update chan int) int {
+func PerftParallel_make_unmake(brd *Board, m Move, depth int, cancel chan bool, update chan BoundUpdate) int {
 
 	Assert(m != 0, "invalid move generated.")
 

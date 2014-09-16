@@ -118,9 +118,10 @@ func round(x float64) int {
 	}
 }
 
-func on_board(sq int) bool { return 0 <= sq && sq <= 63 }
-func row(sq int) int       { return sq >> 3 }
-func column(sq int) int    { return sq & 7 }
+func on_board(sq int) bool       { return 0 <= sq && sq <= 63 }
+func row(sq int) int             { return sq >> 3 }
+func column(sq int) int          { return sq & 7 }
+func Square(row, column int) int { return (row * 8) + column }
 
 func manhattan_distance(from, to int) int {
 	return abs(row(from)-row(to)) + abs(column(from)-column(to))
@@ -132,15 +133,25 @@ func chebyshev_distance(from, to int) int {
 func setup() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	rand.Seed(9) // keep the same seed each time for debugging purposes.
+
+	setup_main_tt()
 	setup_zobrist()
 
 	setup_masks()
 	setup_bonus_table()
 
-	fmt.Println("Hello Chess World")
+	fmt.Println("GopherCheck, by Steve Lovell")
 }
 
 func main() {
 	setup()
-
+	ReadUCICommand()
 }
+
+
+
+
+
+
+
+
