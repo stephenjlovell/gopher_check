@@ -24,7 +24,6 @@ package main
 import (
 	"fmt"
 	// "strconv"
-	// "github.com/stephenjlovell/gopher_check/load_balancer"
 	"testing"
 	"time"
 )
@@ -62,7 +61,7 @@ var legal_max_tree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 31959
 // 	setup()
 // 	brd := StartPos()
 // 	copy := brd.Copy()
-// 	depth := MAX_DEPTH-3
+// 	depth := MAX_DEPTH-1
 // 	start := time.Now()
 // 	sum := Perft(brd, depth)
 // 	elapsed := time.Since(start)
@@ -81,7 +80,7 @@ func TestParallelMoveGen(t *testing.T) {
 	setup()
 	brd := StartPos()
 	copy := brd.Copy()
-	depth := MAX_DEPTH-3
+	depth := MAX_DEPTH-1
 
 	start := time.Now()
 	cancel_child := make(chan bool, 1)
@@ -146,10 +145,6 @@ func Assert(statement bool, failure_message string) {
 	if !statement {
 		panic("\nAssertion failed: " + failure_message + "\n")
 	}
-}
-
-func StartPos() *Board {
-	return ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 }
 
 var check_count int

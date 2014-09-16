@@ -230,10 +230,10 @@ func setup_pawn_structure_masks() {
 }
 
 func setup_castle_masks() {
-	castle_queenside_intervening[1] |= (sq_mask_on[B1] | sq_mask_on[C1] | sq_mask_on[D1])
-	castle_kingside_intervening[1] |= (sq_mask_on[F1] | sq_mask_on[G1])
-	castle_queenside_intervening[0] = (castle_queenside_intervening[1] << 56)
-	castle_kingside_intervening[0] = (castle_kingside_intervening[1] << 56)
+	castle_queenside_intervening[WHITE] |= (sq_mask_on[B1] | sq_mask_on[C1] | sq_mask_on[D1])
+	castle_kingside_intervening[WHITE] |= (sq_mask_on[F1] | sq_mask_on[G1])
+	castle_queenside_intervening[BLACK] = (castle_queenside_intervening[WHITE] << 56)
+	castle_kingside_intervening[BLACK] = (castle_kingside_intervening[WHITE] << 56)
 }
 
 func setup_masks() {
@@ -249,10 +249,5 @@ func setup_masks() {
 	setup_directions()
 	setup_pawn_structure_masks()
 	setup_castle_masks()
-
-	// for i := 0; i < 64; i++ {
-	// 	fmt.Printf("%d\n", i)
-	// 	pawn_attack_masks[BLACK][i].Print()
-	// }
 
 }

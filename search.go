@@ -71,6 +71,7 @@ package main
 
 import (
 // "github.com/stephenjlovell/gopher_check/load_balancer"
+	"fmt"
 	"time"
 )
 
@@ -103,6 +104,7 @@ var iid_cancel chan bool
 
 func AbortSearch() {
 	if iid_cancel != nil {
+		iid_cancel <- true
 		close(iid_cancel)		
 	}
 }
@@ -110,6 +112,7 @@ func AbortSearch() {
 func search_timer(timer *time.Timer) {
 	select {
 	case <-timer.C:
+		fmt.Println("Time up. Aborting search.")
 		AbortSearch()		
 	}
 }
@@ -123,7 +126,8 @@ func Search(brd *Board, restrict_search []Move, depth, time_limit int) Move {
 
 	go search_timer(timer) // abort the current search after time_limit seconds.
 
-	move := iterative_deepening(current_board, depth, start, iid_cancel)
+	move := iterative_deepening(brd, depth, start, iid_cancel)
+	fmt.Println("IID Search complete.")
 	timer.Stop()  // cancel the timer to prevent it from interfering with the next search if it's not 
 								// garbage collected before then.
 	return move
@@ -143,7 +147,7 @@ func iterative_deepening(brd *Board, depth int, start time.Time, cancel chan boo
 		case <-cancel:
 			return iid_move[c]
 		default:
-			if time.Since(start) > time.Second {  // don't print info for first few plys to reduce communication traffic.
+			if time.Since(start) > 100*time.Millisecond {  // don't print info for first few plys to reduce communication traffic.
 				PrintInfo(guess, d, sum, time.Since(start))
 			}
 			iid_move[c], iid_score[c] = move, guess
@@ -155,39 +159,44 @@ func iterative_deepening(brd *Board, depth int, start time.Time, cancel chan boo
 
 func ybw_root(brd *Board, alpha, beta, guess, depth int, cancel chan bool) (Move, int, int) {
 
-	sum, count, ply := 1, 0, 0
+	sum, count := 1, 0
+	// brd.PrintDetails()
 	in_check := is_in_check(brd)
+	if in_check {
+		fmt.Println("In check at root.")
+	}
 	old_alpha, score := alpha, -INF
 	legal_moves := false
 
 	cancel_child := make(chan bool, 1)
 	var listeners []chan BoundUpdate
 
-	if brd.halfmove_clock >= 100 {
-		// to do: if this is not checkmate, return a draw
-	}
+	// if brd.halfmove_clock >= 100 {
+	// 	// to do: if this is not checkmate, return a draw
+	// }
 
-	// search hash move
-	first_move, hash_result := main_tt.probe(brd, depth, depth-2, alpha, beta, &score)
-	if hash_result != NO_MATCH {
-		if is_cancelled(cancel, cancel_child, listeners) {
-			return first_move, score, sum
-		}
+	// // search hash move
+	// first_move, hash_result := main_tt.probe(brd, depth, depth-2, alpha, beta, &score)
+	// if hash_result != NO_MATCH && first_move != 0 {
 
-		update_child := make(chan BoundUpdate, 3)
-		listeners = append(listeners, update_child)
-		legal_moves = true
+	// 	if is_cancelled(cancel, cancel_child, listeners) {
+	// 		return first_move, score, sum
+	// 	}
+	// 	fmt.Printf("first_move: %s hash_result: %d\n", first_move.ToString(), hash_result)
+	// 	update_child := make(chan BoundUpdate, 3)
+	// 	listeners = append(listeners, update_child)
+	// 	legal_moves = true
 
-		score, count = ybw_make_unmake(brd, first_move, alpha, beta, depth-1, ply+1, cancel_child, update_child)
-		sum += count
-		if score > alpha {
-			if score >= beta {
-				main_tt.store(brd, first_move, depth, LOWER_BOUND, score)
-				return first_move, beta, sum
-			}
-			alpha = score
-		}
-	}
+	// 	score, count = ybw_make_unmake(brd, first_move, alpha, beta, depth-1, 1, cancel_child, update_child)
+	// 	sum += count
+	// 	if score > alpha {
+	// 		if score >= beta {
+	// 			main_tt.store(brd, first_move, depth, LOWER_BOUND, score)
+	// 			return first_move, beta, sum
+	// 		}
+	// 		alpha = score
+	// 	}
+	// }
 	// Generate tactical (non-quiet) moves.  Good moves will be searched sequentially to establish good bounds
 	// before remaining nodes are searched in parallel.
 
@@ -203,7 +212,7 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int, cancel chan bool) (Move
 		listeners = append(listeners, update_child)
 		legal_moves = true
 
-		score, count = ybw_make_unmake(brd, m, alpha, beta, depth-1, ply+1, cancel_child, update_child)
+		score, count = ybw_make_unmake(brd, m, alpha, beta, depth-1, 1, cancel_child, update_child)
 		sum += count
 		if score > alpha {
 			if score >= beta {
@@ -229,7 +238,7 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int, cancel chan bool) (Move
 			listeners = append(listeners, update_child)
 			legal_moves = true
 
-			score, count = ybw_make_unmake(brd, m, alpha, beta, depth-1, ply+1, cancel_child, update_child)
+			score, count = ybw_make_unmake(brd, m, alpha, beta, depth-1, 1, cancel_child, update_child)
 			sum += count
 			if score > alpha {
 				if score >= beta {
@@ -249,12 +258,11 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int, cancel chan bool) (Move
 			update_child := make(chan BoundUpdate, 3)
 			listeners = append(listeners, update_child)
 			legal_moves = true
-
-			go func() {
-				score, count := ybw_make_unmake(new_brd, m, alpha, beta, depth-1, ply+1, cancel_child, update_child)
-				result_child <- SearchResult{m, score, count}
-			}()
 			child_counter++
+			go func() {
+				score, count := ybw_make_unmake(new_brd, m, alpha, beta, depth-1, 1, cancel_child, update_child)
+				result_child <- SearchResult{ m, score, count }
+			}()
 		}
 
 		if child_counter > 0 {
@@ -298,8 +306,9 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int, cancel chan bool) (Move
 		main_tt.store(brd, best_move, depth, result_type, alpha)
 		return best_move, alpha, sum
 	} else { // draw or checkmate detected.
+		fmt.Println("No moves available at root.")
 		if in_check {
-			score = ply - INF
+			score = -INF
 		} else {
 			score = 0
 		}
@@ -325,44 +334,45 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, cancel chan bo
 	cancel_child := make(chan bool, 1)
 	var listeners []chan BoundUpdate
 
-	if brd.halfmove_clock >= 100 {
-		// to do: if this is not checkmate, return a draw
-	}
+	// if brd.halfmove_clock >= 100 {
+	// 	// to do: if this is not checkmate, return a draw
+	// }
 
 	// to do: add adaptive depth for null move search.
-	null_depth := depth - 2
+	// null_depth := depth - 2
 
-	// search hash move
-	first_move, hash_result := main_tt.probe(brd, depth, null_depth, alpha, beta, &score)
-	switch hash_result {
-	case MATCH_FOUND:
-		return score, sum
-	case NO_MATCH:
-		if depth > IID_MIN {
-			if is_cancelled(cancel, cancel_child, listeners) {
-				return 0, sum
-			}
-			// To do: use IID to get a decent first move to try.
-		}
-	default:
-		if is_cancelled(cancel, cancel_child, listeners) {
-			return 0, sum
-		}
+	// // search hash move
+	// first_move, hash_result := main_tt.probe(brd, depth, null_depth, alpha, beta, &score)
+	// switch hash_result {
+	// case MATCH_FOUND:
+	// 	return score, sum
+	// case NO_MATCH:
+	// 	if depth > IID_MIN {
+	// 		if is_cancelled(cancel, cancel_child, listeners) {
+	// 			return 0, sum
+	// 		}
+	// 		// To do: use IID to get a decent first move to try.
+	// 	}
+	// default:
+	// 	if is_cancelled(cancel, cancel_child, listeners) {
+	// 		return 0, sum
+	// 	}
 
-		update_child := make(chan BoundUpdate, 3)
-		listeners = append(listeners, update_child)
-		legal_moves = true
+	// 	update_child := make(chan BoundUpdate, 3)
+	// 	listeners = append(listeners, update_child)
+	// 	legal_moves = true
 
-		score, count = ybw_make_unmake(brd, first_move, alpha, beta, depth-1, ply+1, cancel_child, update_child)
-		sum += count
-		if score > alpha {
-			if score >= beta {
-				main_tt.store(brd, first_move, depth, LOWER_BOUND, score)
-				return beta, sum
-			}
-			alpha = score
-		}
-	}
+	// 	score, count = ybw_make_unmake(brd, first_move, alpha, beta, depth-1, ply+1, cancel_child, update_child)
+	// 	sum += count
+	// 	if score > alpha {
+	// 		if score >= beta {
+	// 			main_tt.store(brd, first_move, depth, LOWER_BOUND, score)
+	// 			return beta, sum
+	// 		}
+	// 		alpha = score
+	// 	}
+	// }
+
 	// Generate tactical (non-quiet) moves.  Good moves will be searched sequentially to establish good bounds
 	// before remaining nodes are searched in parallel.
 
@@ -424,12 +434,12 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, cancel chan bo
 			update_child := make(chan BoundUpdate, 3)
 			listeners = append(listeners, update_child)
 			legal_moves = true
-
+			child_counter++
 			go func() {
 				score, count := ybw_make_unmake(new_brd, m, alpha, beta, depth-1, ply+1, cancel_child, update_child)
 				result_child <- SearchResult{m, score, count}
 			}()
-			child_counter++
+
 		}
 
 		if child_counter > 0 {
@@ -628,6 +638,7 @@ func is_cancelled(cancel, cancel_child chan bool, listeners []chan BoundUpdate) 
 }
 
 func cancel_work(cancel_child chan bool, listeners []chan BoundUpdate) {
+	cancel_child <- true
 	close(cancel_child)
 	for _, update_child := range listeners {
 		close(update_child)

@@ -203,6 +203,10 @@ func ParseSquare(str string) int {
 	return Square(int(row-1), column)
 }
 
+func SquareString(sq int) string {
+	return ParseCoordinates(row(sq), column(sq))
+}
+
 func ParseCoordinates(row, col int) string {
 	return column_names[col] + strconv.FormatInt(int64(row+1), 10)
 }

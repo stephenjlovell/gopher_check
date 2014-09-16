@@ -408,34 +408,36 @@ func get_non_captures(brd *Board, remaining_moves *MoveList) {
 	occ := brd.Occupied()
 	empty := ^occ
 	var m Move
+
 	// Castles
 	castle := brd.castle
 	if castle > uint8(0) { // get_non_captures is only called when not in check.
 		e := brd.Enemy()
 		if c == WHITE {
-			if (castle&C_WQ > uint8(0)) && castle_queenside_intervening[1]&occ == 0 &&
+			if (castle&C_WQ > uint8(0)) && castle_queenside_intervening[WHITE]&occ == 0 &&
 				!is_attacked_by(brd, B1, e, c) && !is_attacked_by(brd, C1, e, c) && !is_attacked_by(brd, D1, e, c) {
-				m = NewRegularMove(KING, E1, C1)
+				m = NewRegularMove(E1, C1, KING)
 				heap.Push(remaining_moves, &SortItem{m, 10})
 			}
-			if (castle&C_WK > uint8(0)) && castle_kingside_intervening[1]&occ == 0 &&
+			if (castle&C_WK > uint8(0)) && castle_kingside_intervening[WHITE]&occ == 0 &&
 				!is_attacked_by(brd, F1, e, c) && !is_attacked_by(brd, G1, e, c) {
-				m = NewRegularMove(KING, E1, G1)
+				m = NewRegularMove(E1, G1, KING)
 				heap.Push(remaining_moves, &SortItem{m, 10})
 			}
 		} else {
-			if (castle&C_BQ > uint8(0)) && castle_queenside_intervening[0]&occ == 0 &&
+			if (castle&C_BQ > uint8(0)) && castle_queenside_intervening[BLACK]&occ == 0 &&
 				!is_attacked_by(brd, B8, e, c) && !is_attacked_by(brd, C8, e, c) && !is_attacked_by(brd, D8, e, c) {
-				m = NewRegularMove(KING, E8, C8)
+				m = NewRegularMove(E8, C8, KING)
 				heap.Push(remaining_moves, &SortItem{m, 10})
 			}
-			if (castle&C_BK > uint8(0)) && castle_kingside_intervening[0]&occ == 0 &&
+			if (castle&C_BK > uint8(0)) && castle_kingside_intervening[BLACK]&occ == 0 &&
 				!is_attacked_by(brd, F8, e, c) && !is_attacked_by(brd, G8, e, c) {
-				m = NewRegularMove(KING, E8, G8)
+				m = NewRegularMove(E8, G8, KING)
 				heap.Push(remaining_moves, &SortItem{m, 10})
 			}
 		}
 	}
+
 	// Pawns
 	//  Pawns behave differently than other pieces. They:
 	//  1. can move only in one direction;
@@ -757,8 +759,8 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList) {
 					if sq_mask_on[to]&enemy > 0 {
 
 						if brd.squares[from] == EMPTY {
-							brd.PrintDetails()
-							fmt.Printf("from: %d\n", from)
+							// brd.Print()
+							fmt.Printf("Warning: Invalid move. from: %s\n", SquareString(from))
 						}
 						// Assert(brd.squares[to] != EMPTY && brd.squares[from] != EMPTY, "board state corrupted")
 

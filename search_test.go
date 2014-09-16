@@ -21,21 +21,52 @@
 
 package main
 
-import (
-  "fmt"
-  "testing"
-)
+// import (
+//   "fmt"
+//   "testing"
+// )
 
-func TestSearch(t *testing.T) {
-  setup()
-  ResetAll() // reset all shared data structures and prepare to start a new game.
-  brd := ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") 
-  brd.Print()
-  move := Search(brd, make([]Move, 0), MAX_DEPTH-3, MAX_TIME)
-  fmt.Printf("bestmove %s\n", move.ToString())
+// func TestSearch(t *testing.T) {
+//   setup()
+//   ResetAll() // reset all shared data structures and prepare to start a new game.
+//   current_board := StartPos()
+//   // brd.PrintDetails()
+//   move := Search(current_board, make([]Move, 0), MAX_DEPTH, MAX_TIME)
+//   fmt.Printf("bestmove %s\n", move.ToString())
 
-}
+// }
 
+
+// func TestBoardCopy(t *testing.T) {
+//   setup()
+//   brd := StartPos()
+
+//   result := make(chan *Board)
+//   counter := 0
+
+//   for i := 8; i < 16; i++ {
+//     copy := brd.Copy()
+//     move := NewMove(i, i+8, PAWN, EMPTY, EMPTY)
+//     counter++
+//     go func(i int) {
+//       make_move(copy, move)
+//       fmt.Printf("%d ", i)
+//       result <- copy
+//     }(i)
+//   }
+
+//   fmt.Printf("\n")
+
+//   for counter > 0 {
+//     select {
+//     case r := <-result:
+//       r.Print()
+//       counter--
+//     }
+//   }
+//   brd.Print()
+//   fmt.Println("TestBoardCopy complete.")
+// }
 
 
 

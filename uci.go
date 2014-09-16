@@ -162,6 +162,10 @@ func PlayMoveSequence(brd *Board, uci_fields []string) {
 	}
 }
 
+func StartPos() *Board {
+  return ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+}
+
 func ResetAll() {
 	main_htable.Clear()
 

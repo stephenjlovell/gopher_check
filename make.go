@@ -83,6 +83,7 @@ func make_move(brd *Board, move Move) {
 			if brd.castle > 0 {
 				update_castle_rights(brd, from)
 				if abs(to-from) == 2 { // king is castling.
+					brd.halfmove_clock = 0
 					if c == WHITE {
 						if to == G1 {
 							relocate_piece(brd, ROOK, H1, F1, c)
@@ -184,15 +185,15 @@ func unmake_move(brd *Board, move Move, enp_target uint8) {
 			if abs(to-from) == 2 { // king castled.
 				if c == WHITE {
 					if to == G1 {
-						relocate_piece(brd, ROOK, F1, H1, c)
+						relocate_piece(brd, ROOK, F1, H1, WHITE)
 					} else {
-						relocate_piece(brd, ROOK, D1, A1, c)
+						relocate_piece(brd, ROOK, D1, A1, WHITE)
 					}
 				} else {
 					if to == G8 {
-						relocate_piece(brd, ROOK, F8, H8, c)
+						relocate_piece(brd, ROOK, F8, H8, BLACK)
 					} else {
-						relocate_piece(brd, ROOK, D8, A8, c)
+						relocate_piece(brd, ROOK, D8, A8, BLACK)
 					}
 				}
 			}
