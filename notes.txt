@@ -7,7 +7,7 @@ Debugging:
 
 To Do:
 
-Finish lockless hash table implementation.  Write Probe() and Store() methods.
+Debug move generation.  Localized problem to pawn promotion captures.
 
 Validate and finalize move ordering.
 

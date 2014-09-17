@@ -41,16 +41,16 @@ func make_move(brd *Board, move Move) {
 		brd.halfmove_clock = 0 // All pawn moves are irreversible.
 
 		switch captured_piece {
+		case EMPTY:
+			if abs(to-from) == 16 { // handle en passant advances
+				brd.enp_target = uint8(to)
+			}
 		case PAWN: // Destination square will be empty if en passant capture
 			if enp_target != SQ_INVALID && brd.TypeAt(to) == EMPTY {
 				remove_piece(brd, PAWN, int(enp_target), brd.Enemy())
 				brd.squares[enp_target] = EMPTY
 			} else {
 				remove_piece(brd, PAWN, to, brd.Enemy())
-			}
-		case EMPTY:
-			if abs(to-from) == 16 { // handle en passant advances
-				brd.enp_target = uint8(to)
 			}
 		default: // any non-pawn piece is captured
 			if brd.castle > 0 {

@@ -54,13 +54,13 @@ func EmptyBoard() *Board {
 
 func (brd *Board) Evaluate() int {
 	c, e := brd.c, brd.Enemy()
-	return adjusted_placement(brd, c, e) - adjusted_placement(brd, c, e)
+	return adjusted_placement(brd, c, e) - adjusted_placement(brd, e, c)
 }
 
 func (brd *Board) ValueAt(sq int) int {
-	if sq < 0 || sq > 63 {
-		fmt.Printf("%d\n", sq)
-	}
+	// if sq < 0 || sq > 63 {
+	// 	fmt.Printf("Invalid square at: %d\n", SquareString(sq))
+	// }
 	return brd.squares[sq].Value()
 }
 

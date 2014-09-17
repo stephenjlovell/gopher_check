@@ -34,8 +34,6 @@ func ParseEPD(str string) {
 
 }
 
-// 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
-
 func ParseFENSlice(fen_fields []string) *Board {
 	brd := EmptyBoard()
 
@@ -57,8 +55,9 @@ func ParseFENString(str string) *Board {
 	brd.c = ParseSide(fen_fields[1])
 	brd.castle = ParseCastleRights(brd, fen_fields[2])
 	brd.enp_target = ParseEnpTarget(fen_fields[3])
-	brd.halfmove_clock = ParseHalfmoveClock(fen_fields[4])
-
+	if len(fen_fields) > 4 {
+		brd.halfmove_clock = ParseHalfmoveClock(fen_fields[4])
+	}
 	return brd
 }
 

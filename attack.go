@@ -211,11 +211,22 @@ func enemy_in_check(brd *Board) bool { // determines if other side is in check
 	return side_in_check(brd, brd.Enemy(), brd.c)
 }
 
-func avoids_check(brd *Board, m Move) bool {
+func avoids_check(brd *Board, m Move, in_check bool) bool {
+	return in_check || pseudolegal_avoids_check(brd, m)
+}
+
+func pseudolegal_avoids_check(brd *Board, m Move) bool {
 	if m.Piece() == KING {
 		return !is_attacked_by(brd, m.To(), brd.Enemy(), brd.c)
 	} else {
 		pinned := is_pinned(brd, m.From(), brd.c, brd.Enemy())
-		return pinned == 0 || (pinned&sq_mask_on[m.To()]) > 0
+		return !((pinned > 0) && ((^pinned)&sq_mask_on[m.To()]) > 0)
 	}
 }
+
+// if(piece_type(NUM2INT(piece)) == KING){ // determine if the to square is attacked by an enemy piece.
+//   return is_attacked_by(cBoard, NUM2INT(t), e, c) ? Qfalse : Qtrue;  // castle moves are pre-checked for legality
+// } else { // determine if the piece being moved is pinned on the king and can't move without putting king at risk.
+//   BB pinned = is_pinned(cBoard, NUM2INT(f), c, e);
+//   return pinned && (~pinned & sq_mask_on(NUM2INT(t))) ? Qfalse : Qtrue;
+// }

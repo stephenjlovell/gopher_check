@@ -24,8 +24,8 @@ package main
 import (
 	"fmt"
 	// "strconv"
-	"testing"
-	"time"
+	// "testing"
+	// "time"
 )
 
 // func TestSetup(t *testing.T) {
@@ -76,26 +76,26 @@ var legal_max_tree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 31959
 // 	Assert(*brd == *copy, "move generation did not return to initial board state.")
 // }
 
-func TestParallelMoveGen(t *testing.T) {
-	setup()
-	brd := StartPos()
-	copy := brd.Copy()
-	depth := 7
+// func TestParallelMoveGen(t *testing.T) {
+// 	setup()
+// 	brd := StartPos()
+// 	copy := brd.Copy()
+// 	depth := 6
 
-	start := time.Now()
-	cancel_child := make(chan bool, 1)
-	update_child := make(chan BoundUpdate, 3)
-	sum := PerftParallel(brd, depth, cancel_child, update_child)
-	elapsed := time.Since(start)
-	nps := int64(float64(sum) / elapsed.Seconds())
+// 	start := time.Now()
+// 	cancel_child := make(chan bool, 1)
+// 	update_child := make(chan BoundUpdate, 3)
+// 	sum := PerftParallel(brd, depth, cancel_child, update_child)
+// 	elapsed := time.Since(start)
+// 	nps := int64(float64(sum) / elapsed.Seconds())
 
-	fmt.Printf("\n%d nodes at depth %d. %d NPS\n", sum, depth, nps)
-	fmt.Printf("%d total nodes in check\n", check_count)
-	fmt.Printf("%d total capture nodes\n", capture_count)
-	fmt.Printf("%d total goroutines spawned\n", parallel_count)
-	CompareBoards(copy, brd)
-	Assert(*brd == *copy, "move generation did not return to initial board state.")
-}
+// 	fmt.Printf("\n%d nodes at depth %d. %d NPS\n", sum, depth, nps)
+// 	fmt.Printf("%d total nodes in check\n", check_count)
+// 	fmt.Printf("%d total capture nodes\n", capture_count)
+// 	fmt.Printf("%d total goroutines spawned\n", parallel_count)
+// 	CompareBoards(copy, brd)
+// 	Assert(*brd == *copy, "move generation did not return to initial board state.")
+// }
 
 func CompareBoards(brd, other *Board) {
 	if brd.pieces != other.pieces {
@@ -289,7 +289,7 @@ func PerftParallel(brd *Board, depth int, cancel chan bool, update chan BoundUpd
 			for {
 				select {
 				case <-cancel: // task was cancelled.
-					println("task cancelled")
+					fmt.Println("task cancelled")
 					cancel_work(cancel_child, listeners)
 					return 0
 				case child_sum := <-result_child: // one of the child subtrees has been completely searched.

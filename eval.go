@@ -21,12 +21,21 @@
 
 package main
 
+import (
+	"fmt"
+)
+
 var non_king_value, endgame_value, mate_value int
 
-var passed_pawn_bonus = [2][8]int{{0, 49, 28, 16, 9, 5, 3, 0},
-	{0, 3, 5, 9, 16, 16, 28, 49}}
+var passed_pawn_bonus = [2][8]int{
+	{0, 49, 28, 16, 9, 5, 3, 0},
+	{0, 3, 5, 9, 16, 16, 28, 49},
+}
 
-var promote_row = [2][2]int{{1, 2}, {6, 5}}
+var promote_row = [2][2]int{
+	{1, 2},
+	{6, 5},
+}
 
 const isolated_pawn_penalty int = -5
 const double_pawn_penalty int = -10
@@ -183,9 +192,16 @@ func setup_eval_constants() {
 }
 
 func adjusted_placement(brd *Board, c, e uint8) int {
+
 	var sq, placement int
 	var b BB
 	enemy_king_sq := furthest_forward(e, brd.pieces[e][KING])
+
+	if enemy_king_sq > 63 || enemy_king_sq < 0 {
+		brd.Print()
+		fmt.Printf("%d, %d", brd.material[c], brd.material[e])
+		fmt.Printf("Invalid King Square: %d\n", enemy_king_sq)
+	}
 
 	for t := PAWN; t < KING; t++ {
 		for b = brd.pieces[c][t]; b > 0; b.Clear(sq) {

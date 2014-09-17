@@ -21,7 +21,7 @@
 
 package main
 
-var tropism_bonus [64][64][6]int
+var tropism_bonus [64][64][5]int
 
 func setup_bonus_table() {
 	base_bonus_ratio := float64(0.15)

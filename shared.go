@@ -78,6 +78,13 @@ var castle_queenside_intervening, castle_kingside_intervening [2]BB
 
 var knight_masks, bishop_masks, rook_masks, queen_masks, king_masks, sq_mask_on, sq_mask_off [64]BB
 
+const (
+	OFF_SINGLE = iota
+	OFF_DOUBLE
+	OFF_LEFT
+	OFF_RIGHT
+)
+
 var pawn_from_offsets = [2][4]int{{8, 16, 9, 7}, {-8, -16, -7, -9}}
 var knight_offsets = [8]int{-17, -15, -10, -6, 6, 10, 15, 17}
 var bishop_offsets = [4]int{7, 9, -7, -9}
@@ -141,8 +148,9 @@ func setup() {
 
 	setup_masks()
 	setup_bonus_table()
+	setup_eval_constants()
 
-	fmt.Println("GopherCheck, by Steve Lovell")
+	fmt.Println("\nGopherCheck\nCopyright (c) 2014 Stephen J. Lovell\n")
 }
 
 func main() {

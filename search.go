@@ -137,7 +137,6 @@ func iterative_deepening(brd *Board, depth int, start time.Time, cancel chan boo
 	c := brd.c
 
 	for d := 1; d <= depth; d++ {
-
 		move, guess, count = ybw_root(brd, -INF, INF, iid_score[c], d, cancel)
 		sum += count
 
@@ -145,7 +144,7 @@ func iterative_deepening(brd *Board, depth int, start time.Time, cancel chan boo
 		case <-cancel:
 			return iid_move[c]
 		default:
-			if time.Since(start) > 10*time.Millisecond { // don't print info for first few plys to reduce communication traffic.
+			if time.Since(start) > 15*time.Millisecond { // don't print info for first few plys to reduce communication traffic.
 				PrintInfo(guess, d, sum, time.Since(start))
 			}
 			iid_move[c], iid_score[c] = move, guess
@@ -186,7 +185,7 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int, cancel chan bool) (Move
 	// 	listeners = append(listeners, update_child)
 	// 	legal_moves = true
 
-	// 	score, count = ybw_make_unmake(brd, first_move, alpha, beta, depth-1, 1, cancel_child, update_child)
+	// 	score, count = ybw_make(brd, first_move, alpha, beta, depth-1, 1, cancel_child, update_child)
 	// 	sum += count
 	// 	if score > alpha {
 	// 		if score >= beta {
@@ -203,16 +202,22 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int, cancel chan bool) (Move
 	best_moves, remaining_moves := get_best_moves(brd, in_check)
 	var m, best_move Move
 	for _, item := range *best_moves { // search the best moves sequentially.
-		m = item.move
+
 		if is_cancelled(cancel, cancel_child, listeners) {
 			return best_move, 0, sum
 		} // make sure the job hasn't been cancelled.
+		m = item.move
+		if !avoids_check(brd, m, in_check) {
+			// brd.Print()
+			// fmt.Printf("illegal move: %s\n", m.ToString())
+			continue
+		}
 
 		update_child := make(chan BoundUpdate, 3)
 		listeners = append(listeners, update_child)
 		legal_moves = true
 
-		score, count = ybw_make_unmake(brd, m, alpha, beta, depth-1, 1, cancel_child, update_child)
+		score, count = ybw_make(brd, m, alpha, beta, depth-1, 1, cancel_child, update_child)
 		sum += count
 		if score > alpha {
 			if score >= beta {
@@ -227,74 +232,85 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int, cancel chan bool) (Move
 	// if a cutoff occurs, this will reduce move generation effort substantially.
 	get_remaining_moves(brd, in_check, remaining_moves)
 
-	// if depth <= SPLIT_MIN { // Depth is too shallow for parallel search to be worthwhile.
-	for _, item := range *remaining_moves { // search remaining moves sequentially.
-		m = item.move
-		if is_cancelled(cancel, cancel_child, listeners) {
-			return best_move, 0, sum
-		} // make sure the job hasn't been cancelled.
+	if depth <= SPLIT_MIN { // Depth is too shallow for parallel search to be worthwhile.
+		for _, item := range *remaining_moves { // search remaining moves sequentially.
 
-		update_child := make(chan BoundUpdate, 3)
-		listeners = append(listeners, update_child)
-		legal_moves = true
+			if is_cancelled(cancel, cancel_child, listeners) {
+				return best_move, 0, sum
+			} // make sure the job hasn't been cancelled.
 
-		score, count = ybw_make_unmake(brd, m, alpha, beta, depth-1, 1, cancel_child, update_child)
-		sum += count
-		if score > alpha {
-			if score >= beta {
-				main_tt.store(brd, m, depth, LOWER_BOUND, score)
-				return m, beta, sum
+			m = item.move
+			if !avoids_check(brd, m, in_check) {
+				// brd.Print()
+				// fmt.Printf("in check:%v\n", in_check)
+				// fmt.Printf("illegal move: %s\n", m.ToString())
+				continue
 			}
-			alpha = score
-			best_move = m
+
+			update_child := make(chan BoundUpdate, 3)
+			listeners = append(listeners, update_child)
+			legal_moves = true
+
+			score, count = ybw_make(brd, m, alpha, beta, depth-1, 1, cancel_child, update_child)
+			sum += count
+			if score > alpha {
+				if score >= beta {
+					main_tt.store(brd, m, depth, LOWER_BOUND, score)
+					return m, beta, sum
+				}
+				alpha = score
+				best_move = m
+			}
+		}
+	} else { // now that decent bounds have been established, search the remaining nodes in parallel.
+		result_child := make(chan SearchResult, 10)
+		var child_counter int
+		for _, item := range *remaining_moves {
+			m := item.move
+			if !avoids_check(brd, m, in_check) {
+				continue
+			}
+			new_brd := brd.Copy() // create a locally scoped deep copy of the board.
+			update_child := make(chan BoundUpdate, 3)
+			listeners = append(listeners, update_child)
+			legal_moves = true
+			child_counter++
+			go func() {
+				score, count := ybw_make(new_brd, m, alpha, beta, depth-1, 1, cancel_child, update_child)
+				result_child <- SearchResult{m, score, count}
+			}()
+		}
+
+		if child_counter > 0 {
+		remaining_pieces:
+			for {
+				select { // wait for a message to come in on one of the channels.
+				case <-cancel: // task was cancelled.
+					cancel_work(cancel_child, listeners)
+					return best_move, 0, sum
+
+				case result := <-result_child: // one of the child subtrees has been completely searched.
+					sum += result.count
+					if result.score > alpha {
+						if score >= beta {
+							main_tt.store(brd, result.move, depth, LOWER_BOUND, result.score)
+							cancel_work(cancel_child, listeners)
+							return result.move, beta, sum
+						}
+						alpha = result.score
+						best_move = result.move
+						// for _, update_child := range listeners {
+						// 	update_child <- BoundUpdate{-alpha, true} // send the updated bound to child processes.
+						// }
+					}
+					child_counter--
+					if child_counter == 0 {
+						break remaining_pieces // exit the for loop
+					}
+				}
+			}
 		}
 	}
-	// } else { // now that decent bounds have been established, search the remaining nodes in parallel.
-	// 	result_child := make(chan SearchResult, 10)
-	// 	var child_counter int
-	// 	for _, item := range *remaining_moves {
-	// 		m := item.move
-	// 		new_brd := brd.Copy() // create a locally scoped deep copy of the board.
-	// 		update_child := make(chan BoundUpdate, 3)
-	// 		listeners = append(listeners, update_child)
-	// 		legal_moves = true
-	// 		child_counter++
-	// 		go func() {
-	// 			score, count := ybw_make_unmake(new_brd, m, alpha, beta, depth-1, 1, cancel_child, update_child)
-	// 			result_child <- SearchResult{ m, score, count }
-	// 		}()
-	// 	}
-
-	// 	if child_counter > 0 {
-	// 	remaining_pieces:
-	// 		for {
-	// 			select { // wait for a message to come in on one of the channels.
-	// 			case <-cancel: // task was cancelled.
-	// 				cancel_work(cancel_child, listeners)
-	// 				return best_move, 0, sum
-
-	// 			case result := <-result_child: // one of the child subtrees has been completely searched.
-	// 				sum += result.count
-	// 				if result.score > alpha {
-	// 					if score >= beta {
-	// 						main_tt.store(brd, result.move, depth, LOWER_BOUND, result.score)
-	// 						cancel_work(cancel_child, listeners)
-	// 						return result.move, beta, sum
-	// 					}
-	// 					alpha = result.score
-	// 					best_move = result.move
-	// 					for _, update_child := range listeners {
-	// 						update_child <- BoundUpdate{-alpha, true} // send the updated bound to child processes.
-	// 					}
-	// 				}
-	// 				child_counter--
-	// 				if child_counter == 0 {
-	// 					break remaining_pieces // exit the for loop
-	// 				}
-	// 			}
-	// 		}
-	// 	}
-	// }
 
 	if legal_moves {
 		var result_type int
@@ -306,7 +322,7 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int, cancel chan bool) (Move
 		main_tt.store(brd, best_move, depth, result_type, alpha)
 		return best_move, alpha, sum
 	} else { // draw or checkmate detected.
-		fmt.Println("No moves available at root.")
+		// fmt.Println("No moves available at root.")
 		if in_check {
 			score = -INF
 		} else {
@@ -361,7 +377,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, cancel chan bo
 	// 	listeners = append(listeners, update_child)
 	// 	legal_moves = true
 
-	// 	score, count = ybw_make_unmake(brd, first_move, alpha, beta, depth-1, ply+1, cancel_child, update_child)
+	// 	score, count = ybw_make(brd, first_move, alpha, beta, depth-1, ply+1, cancel_child, update_child)
 	// 	sum += count
 	// 	if score > alpha {
 	// 		if score >= beta {
@@ -374,20 +390,21 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, cancel chan bo
 
 	// Generate tactical (non-quiet) moves.  Good moves will be searched sequentially to establish good bounds
 	// before remaining nodes are searched in parallel.
-
 	best_moves, remaining_moves := get_best_moves(brd, in_check)
 	var m, best_move Move
 	for _, item := range *best_moves { // search the best moves sequentially.
-		m = item.move
 		if is_cancelled(cancel, cancel_child, listeners) {
 			return 0, sum
 		} // make sure the job hasn't been cancelled.
-
+		m = item.move
+		if !avoids_check(brd, m, in_check) {
+			continue
+		}
 		update_child := make(chan BoundUpdate, 3)
 		listeners = append(listeners, update_child)
 		legal_moves = true
 
-		score, count = ybw_make_unmake(brd, m, alpha, beta, depth-1, ply+1, cancel_child, update_child)
+		score, count = ybw_make(brd, m, alpha, beta, depth-1, ply+1, cancel_child, update_child)
 		sum += count
 		if score > alpha {
 			if score >= beta {
@@ -402,95 +419,98 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, cancel chan bo
 	// if a cutoff occurs, this will reduce move generation effort substantially.
 	get_remaining_moves(brd, in_check, remaining_moves)
 
-	// if depth <= SPLIT_MIN { // Depth is too shallow for parallel search to be worthwhile.
-	for _, item := range *remaining_moves { // search remaining moves sequentially.
-		m = item.move
-		if is_cancelled(cancel, cancel_child, listeners) {
-			return 0, sum
-		} // make sure the job hasn't been cancelled.
+	if depth <= SPLIT_MIN { // Depth is too shallow for parallel search to be worthwhile.
+		for _, item := range *remaining_moves { // search remaining moves sequentially.
 
-		update_child := make(chan BoundUpdate, 3)
-		listeners = append(listeners, update_child)
-		legal_moves = true
-
-		score, count = ybw_make_unmake(brd, m, alpha, beta, depth-1, ply+1, cancel_child, update_child)
-		sum += count
-		if score > alpha {
-			if score >= beta {
-				main_tt.store(brd, m, depth, LOWER_BOUND, score)
-				return beta, sum
+			if is_cancelled(cancel, cancel_child, listeners) {
+				return 0, sum
+			} // make sure the job hasn't been cancelled.
+			m = item.move
+			if !avoids_check(brd, m, in_check) {
+				continue
 			}
-			alpha = score
-			best_move = m
+			update_child := make(chan BoundUpdate, 3)
+			listeners = append(listeners, update_child)
+			legal_moves = true
+
+			score, count = ybw_make(brd, m, alpha, beta, depth-1, ply+1, cancel_child, update_child)
+			sum += count
+			if score > alpha {
+				if score >= beta {
+					main_tt.store(brd, m, depth, LOWER_BOUND, score)
+					return beta, sum
+				}
+				alpha = score
+				best_move = m
+			}
+		}
+	} else { // now that decent bounds have been established, search the remaining nodes in parallel.
+		result_child := make(chan SearchResult, 10)
+		var child_counter int
+		for _, item := range *remaining_moves {
+			m := item.move
+			if !avoids_check(brd, m, in_check) {
+				continue
+			}
+			new_brd := brd.Copy() // create a locally scoped deep copy of the board.
+			update_child := make(chan BoundUpdate, 3)
+			listeners = append(listeners, update_child)
+			legal_moves = true
+			child_counter++
+			go func() {
+				score, count := ybw_make(new_brd, m, alpha, beta, depth-1, ply+1, cancel_child, update_child)
+				result_child <- SearchResult{m, score, count}
+			}()
+
+		}
+
+		if child_counter > 0 {
+		remaining_pieces:
+			for {
+				select { // wait for a message to come in on one of the channels.
+				case <-cancel: // task was cancelled.
+					cancel_work(cancel_child, listeners)
+					return 0, sum
+					// case bound_update := <-update: // an updated bound was received from the parent node.
+					// // may also want to check this before sequential searches.
+					// if bound_update.alpha_update {
+					// 	if bound_update.bound < beta {
+					// 		beta = bound_update.bound // update relevant local bound
+					// 		for _, update_child := range listeners {
+					// 			update_child <- BoundUpdate{-beta, false} // broadcast update to child nodes.
+					// 		}
+					// 	}
+					// } else {
+					// 	if bound_update.bound > alpha {
+					// 		alpha = bound_update.bound
+					// 		for _, update_child := range listeners {
+					// 			update_child <- BoundUpdate{-alpha, true}
+					// 		}
+					// 	}
+					// }
+
+				case result := <-result_child: // one of the child subtrees has been completely searched.
+					sum += result.count
+					if result.score > alpha {
+						if score >= beta {
+							main_tt.store(brd, result.move, depth, LOWER_BOUND, result.score)
+							cancel_work(cancel_child, listeners)
+							return beta, sum
+						}
+						alpha = result.score
+						best_move = result.move
+						// for _, update_child := range listeners {
+						// 	update_child <- BoundUpdate{-alpha, true} // send the updated bound to child processes.
+						// }
+					}
+					child_counter--
+					if child_counter == 0 {
+						break remaining_pieces // exit the for loop
+					}
+				}
+			}
 		}
 	}
-	// } else { // now that decent bounds have been established, search the remaining nodes in parallel.
-	// 	result_child := make(chan SearchResult, 10)
-	// 	var child_counter int
-	// 	for _, item := range *remaining_moves {
-	// 		m := item.move
-	// 		new_brd := brd.Copy() // create a locally scoped deep copy of the board.
-	// 		update_child := make(chan BoundUpdate, 3)
-	// 		listeners = append(listeners, update_child)
-	// 		legal_moves = true
-	// 		child_counter++
-	// 		go func() {
-	// 			score, count := ybw_make_unmake(new_brd, m, alpha, beta, depth-1, ply+1, cancel_child, update_child)
-	// 			result_child <- SearchResult{m, score, count}
-	// 		}()
-
-	// 	}
-
-	// 	if child_counter > 0 {
-	// 	remaining_pieces:
-	// 		for {
-	// 			select { // wait for a message to come in on one of the channels.
-	// 			case <-cancel: // task was cancelled.
-	// 				cancel_work(cancel_child, listeners)
-	// 				return 0, sum
-	// 			default:
-	// 				select {
-	// 				case bound_update := <-update: // an updated bound was received from the parent node.
-	// 					// may also want to check this before sequential searches.
-	// 					if bound_update.alpha_update {
-	// 						if bound_update.bound < beta {
-	// 							beta = bound_update.bound // update relevant local bound
-	// 							for _, update_child := range listeners {
-	// 								update_child <- BoundUpdate{-beta, false} // broadcast update to child nodes.
-	// 							}
-	// 						}
-	// 					} else {
-	// 						if bound_update.bound > alpha {
-	// 							alpha = bound_update.bound
-	// 							for _, update_child := range listeners {
-	// 								update_child <- BoundUpdate{-alpha, true}
-	// 							}
-	// 						}
-	// 					}
-
-	// 				case result := <-result_child: // one of the child subtrees has been completely searched.
-	// 					sum += result.count
-	// 					if result.score > alpha {
-	// 						if score >= beta {
-	// 							main_tt.store(brd, result.move, depth, LOWER_BOUND, result.score)
-	// 							cancel_work(cancel_child, listeners)
-	// 							return beta, sum
-	// 						}
-	// 						alpha = result.score
-	// 						best_move = result.move
-	// 						for _, update_child := range listeners {
-	// 							update_child <- BoundUpdate{-alpha, true} // send the updated bound to child processes.
-	// 						}
-	// 					}
-	// 					child_counter--
-	// 					if child_counter == 0 {
-	// 						break remaining_pieces // exit the for loop
-	// 					}
-	// 				}
-	// 			}
-	// 		}
-	// 	}
-	// }
 
 	if legal_moves {
 		var result_type int
@@ -519,7 +539,6 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, cancel chan bo
 func quiescence(brd *Board, alpha, beta, depth, ply int, cancel chan bool) (int, int) {
 
 	// return brd.Evaluate(), 1
-
 	sum, count := 1, 0
 
 	select {
@@ -554,7 +573,7 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, cancel chan bool) (int,
 		for _, item := range *best_moves { // search the best moves sequentially.
 			m = item.move
 			legal_moves = true
-			score, count = q_make_unmake(brd, m, alpha, beta, depth-1, ply+1, cancel)
+			score, count = q_make(brd, m, alpha, beta, depth-1, ply+1, cancel)
 			sum += count
 			if score > alpha {
 				if score >= beta {
@@ -566,7 +585,7 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, cancel chan bool) (int,
 		for _, item := range *remaining_moves { // search the best moves sequentially.
 			m = item.move
 			legal_moves = true
-			score, count = q_make_unmake(brd, m, alpha, beta, depth-1, ply+1, cancel)
+			score, count = q_make(brd, m, alpha, beta, depth-1, ply+1, cancel)
 			sum += count
 			if score > alpha {
 				if score >= beta {
@@ -581,7 +600,7 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, cancel chan bool) (int,
 		for _, item := range *best_moves { // search the best moves sequentially.
 			m = item.move
 			legal_moves = true
-			score, count = q_make_unmake(brd, m, alpha, beta, depth-1, ply+1, cancel)
+			score, count = q_make(brd, m, alpha, beta, depth-1, ply+1, cancel)
 			sum += count
 			if score > alpha {
 				if score >= beta {
@@ -603,7 +622,7 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, cancel chan bool) (int,
 	}
 }
 
-func ybw_make_unmake(brd *Board, m Move, alpha, beta, depth, ply int, cancel chan bool, update chan BoundUpdate) (int, int) {
+func ybw_make(brd *Board, m Move, alpha, beta, depth, ply int, cancel chan bool, update chan BoundUpdate) (int, int) {
 	hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
 	castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
 
@@ -616,7 +635,13 @@ func ybw_make_unmake(brd *Board, m Move, alpha, beta, depth, ply int, cancel cha
 	return -score, sum
 }
 
-func q_make_unmake(brd *Board, m Move, alpha, beta, depth, ply int, cancel chan bool) (int, int) {
+func ybw_parallell_make(brd *Board, m Move, alpha, beta, depth, ply int, cancel chan bool, update chan BoundUpdate) (int, int) {
+	make_move(brd, m) // to do: make move
+	score, sum := young_brothers_wait(brd, -beta, -alpha, depth-1, ply+1, cancel, update)
+	return -score, sum
+}
+
+func q_make(brd *Board, m Move, alpha, beta, depth, ply int, cancel chan bool) (int, int) {
 	hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
 	castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
 
@@ -632,6 +657,7 @@ func q_make_unmake(brd *Board, m Move, alpha, beta, depth, ply int, cancel chan 
 func is_cancelled(cancel, cancel_child chan bool, listeners []chan BoundUpdate) bool {
 	select {
 	case <-cancel:
+		// fmt.Println("task cancelled")
 		cancel_work(cancel_child, listeners)
 		return true
 	default:
