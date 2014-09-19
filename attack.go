@@ -22,7 +22,7 @@
 package main
 
 import (
-	"fmt"
+// "fmt"
 )
 
 func attack_map(brd *Board, sq int) BB {
@@ -127,10 +127,10 @@ func get_see(brd *Board, from, to int, captured_piece Piece) int {
 	var piece_list [20]int
 	count := 1
 
-	if captured_piece < 0 || captured_piece > 5 {
-		brd.PrintDetails()
-		fmt.Printf("from: %s, to: %s, captured piece: %d\n", SquareString(from), SquareString(to), captured_piece)
-	}
+	// if captured_piece < 0 || captured_piece > 5 {
+	// 	brd.PrintDetails()
+	// 	fmt.Printf("from: %s, to: %s, captured piece: %d\n", SquareString(from), SquareString(to), captured_piece)
+	// }
 
 	// before entering the main loop, perform each step once for the initial attacking piece.
 	// This ensures that the moved piece is the first to capture.

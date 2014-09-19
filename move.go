@@ -21,6 +21,10 @@
 
 package main
 
+import (
+	"fmt"
+)
+
 const (
 	QUIET = (Move(EMPTY) << 15) | (Move(EMPTY) << 18)
 )
@@ -33,6 +37,36 @@ type Move uint32
 // Piece - next 3 bits
 // Captured piece - next 3 bits
 // promoted to - next 3 bits
+
+func is_valid_move(brd *Board, m Move, d int) bool {
+	if m == 0 {
+		fmt.Printf("Warning: Invalid move %s at depth %d for key %#x\n", m.ToString(), d, brd.hash_key)
+		return false
+	}
+	// determine if there really is a piece of this type on the from square.
+	piece := m.Piece()
+	from := m.From()
+	if brd.TypeAt(from) != piece {
+		fmt.Printf("Warning: Invalid move  %s at depth %d  for key %#x\n", m.ToString(), d, brd.hash_key)
+		return false
+	}
+	captured_piece := m.CapturedPiece()
+	to := m.To()
+	if captured_piece != EMPTY {
+		if !(brd.TypeAt(to) == captured_piece || (piece == PAWN && brd.enp_target == uint8(to))) {
+			fmt.Printf("Warning: Invalid move  %s at depth %d  for key %#x\n", m.ToString(), d, brd.hash_key)
+			return false
+		}
+	}
+	promoted_to := m.PromotedTo()
+	if promoted_to != EMPTY {
+		if piece != PAWN || promoted_to == PAWN {
+			fmt.Printf("Warning: Invalid move  %s  at depth %d for key %#x\n", m.ToString(), d, brd.hash_key)
+			return false
+		}
+	}
+	return true
+}
 
 func (m Move) From() int {
 	return int(uint32(m) & uint32(63))

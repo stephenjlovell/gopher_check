@@ -228,9 +228,9 @@ func Perft_make_unmake(brd *Board, m Move, depth int) int {
 	return sum
 }
 
-func PerftParallel(brd *Board, depth int, cancel chan bool, update chan BoundUpdate) int {
+func PerftParallel(brd *Board, depth int) int {
 	sum := 0
-	var listeners []chan BoundUpdate
+
 	if depth <= SPLIT_MIN { // sequential search
 		if depth == 0 {
 			return 1
@@ -239,17 +239,13 @@ func PerftParallel(brd *Board, depth int, cancel chan bool, update chan BoundUpd
 		if in_check {
 			check_count += 1
 		}
-		cancel_child := make(chan bool)
+
 		best_moves, remaining_moves := get_all_moves(brd, in_check)
 		for _, item := range *best_moves {
-			update_child := make(chan BoundUpdate, 3)
-			listeners = append(listeners, update_child)
-			sum += PerftParallel_make_unmake(brd, item.move, depth-1, cancel_child, update_child)
+			sum += PerftParallel_make_unmake(brd, item.move, depth-1)
 		}
 		for _, item := range *remaining_moves {
-			update_child := make(chan BoundUpdate, 3)
-			listeners = append(listeners, update_child)
-			sum += PerftParallel_make_unmake(brd, item.move, depth-1, cancel_child, update_child)
+			sum += PerftParallel_make_unmake(brd, item.move, depth-1)
 		}
 		return sum
 	} else { // concurrent search
@@ -257,16 +253,10 @@ func PerftParallel(brd *Board, depth int, cancel chan bool, update chan BoundUpd
 		if in_check {
 			check_count += 1
 		}
-		cancel_child := make(chan bool)
 
 		best_moves, remaining_moves := get_best_moves(brd, in_check)
 		for _, item := range *best_moves {
-			if is_cancelled(cancel, cancel_child, listeners) {
-				return 0
-			} // make sure the job hasn't been cancelled.
-			update_child := make(chan BoundUpdate, 3)
-			listeners = append(listeners, update_child)
-			sum += PerftParallel_make_unmake(brd, item.move, depth-1, cancel_child, update_child)
+			sum += PerftParallel_make_unmake(brd, item.move, depth-1)
 		}
 
 		get_remaining_moves(brd, in_check, remaining_moves) // search remaining nodes in parallel
@@ -275,10 +265,8 @@ func PerftParallel(brd *Board, depth int, cancel chan bool, update chan BoundUpd
 		for _, item := range *remaining_moves {
 			m := item.move
 			new_brd := brd.Copy() // create a locally scoped deep copy of the board.
-			update_child := make(chan BoundUpdate, 3)
-			listeners = append(listeners, update_child)
 			go func() {
-				result_child <- PerftParallel_make_unmake(new_brd, m, depth-1, cancel_child, update_child)
+				result_child <- PerftParallel_make_unmake(new_brd, m, depth-1)
 			}()
 			child_counter++
 		}
@@ -288,10 +276,6 @@ func PerftParallel(brd *Board, depth int, cancel chan bool, update chan BoundUpd
 		remaining_pieces:
 			for {
 				select {
-				case <-cancel: // task was cancelled.
-					fmt.Println("task cancelled")
-					cancel_work(cancel_child, listeners)
-					return 0
 				case child_sum := <-result_child: // one of the child subtrees has been completely searched.
 					// println("response received.")
 					sum += child_sum
@@ -306,7 +290,7 @@ func PerftParallel(brd *Board, depth int, cancel chan bool, update chan BoundUpd
 	return sum
 }
 
-func PerftParallel_make_unmake(brd *Board, m Move, depth int, cancel chan bool, update chan BoundUpdate) int {
+func PerftParallel_make_unmake(brd *Board, m Move, depth int) int {
 
 	Assert(m != 0, "invalid move generated.")
 
@@ -316,7 +300,7 @@ func PerftParallel_make_unmake(brd *Board, m Move, depth int, cancel chan bool, 
 	hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
 	castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
 	make_move(brd, m) // to do: make move
-	sum := PerftParallel(brd, depth, cancel, update)
+	sum := PerftParallel(brd, depth)
 	unmake_move(brd, m, enp_target) // to do: unmake move
 	brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
 	brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock

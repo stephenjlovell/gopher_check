@@ -149,8 +149,9 @@ func setup() {
 	setup_masks()
 	setup_bonus_table()
 	setup_eval_constants()
-
-	fmt.Println("\nGopherCheck\nCopyright (c) 2014 Stephen J. Lovell\n")
+	fmt.Println("\n------------------------------------------------------------------")
+	fmt.Println("\u265B GopherCheck \u265B\nCopyright \u00A9 2014 Stephen J. Lovell")
+	fmt.Println("------------------------------------------------------------------\n")
 }
 
 func main() {
