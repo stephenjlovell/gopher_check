@@ -22,7 +22,7 @@
 package main
 
 import (
-	"fmt"
+	// "fmt"
 	"math/rand"
 )
 
@@ -106,7 +106,6 @@ func (tt *TT) get_slot(hash_key uint64) *Slot {
 // https://cis.uab.edu/hyatt/hashing.html
 
 func (tt *TT) probe(brd *Board, depth, null_depth, alpha, beta int, value *int) (Move, int) {
-	// return 0, NO_MATCH
 
 	hash_key := brd.hash_key
 	slot := tt.get_slot(hash_key)
@@ -137,10 +136,11 @@ func (tt *TT) probe(brd *Board, depth, null_depth, alpha, beta int, value *int) 
 				case EXACT:
 					if alpha < entry_value && entry_value < beta {
 						// to do: if exact entry is valid for current bounds, save the PV.
+						return slot[i].Move(), MATCH_FOUND
 					}
 					// brd.Print()
 					// fmt.Printf("retrieved EXACT: %s\n", slot[i].Move().ToString())
-					return slot[i].Move(), MATCH_FOUND
+
 				}
 			} else if entry_depth >= null_depth {
 				entry_type := slot[i].Type()
@@ -175,10 +175,10 @@ func (tt *TT) store(brd *Board, move Move, depth, entry_type, value int) {
 
 	for i := 0; i < 4; i++ {
 		if hash_key == slot[i].HashKey() { // exact match found.  Always replace.
-			if move == 0 {
-				// brd.Print()
-				fmt.Printf("replacing matching entry: %s value: %d\n", move.ToString(), value)
-			}
+			// if move == 0 {
+			// 	// brd.Print()
+			// 	fmt.Printf("replacing matching entry: %s value: %d\n", move.ToString(), value)
+			// }
 			slot[i] = NewBucket(hash_key, move, depth, entry_type, value)
 			return
 		}
@@ -193,10 +193,14 @@ func (tt *TT) store(brd *Board, move Move, depth, entry_type, value int) {
 		}
 	}
 	if replace_index != 4 {
-		if move == 0 {
-			// brd.Print()
-			fmt.Printf("replacing old entry: %s value: %d\n", move.ToString(), value)
-		}
+		// if move == 0 {
+		// 	// brd.Print()
+		// 	if slot[replace_index].Id() > 0 {
+		// 		fmt.Printf("replacing old entry %s with id %d value: %d\n", move.ToString(), slot[replace_index].Id(), value)
+		// 	} else {
+		// 		fmt.Printf("adding new entry %s with id %d value: %d\n", move.ToString(), search_id, value)
+		// 	}
+		// }
 		slot[replace_index] = NewBucket(hash_key, move, depth, entry_type, value)
 		return
 	}
@@ -207,10 +211,10 @@ func (tt *TT) store(brd *Board, move Move, depth, entry_type, value int) {
 			replace_index, replace_depth = i, slot[i].Depth()
 		}
 	}
-	if move == 0 {
-		// brd.Print()
-		fmt.Printf("replacing shallowest entry: %s value: %d\n", move.ToString(), value)
-	}
+	// if move == 0 {
+	// 	// brd.Print()
+	// 	fmt.Printf("replacing shallowest entry: %s value: %d\n", move.ToString(), value)
+	// }
 	slot[replace_index] = NewBucket(hash_key, move, depth, entry_type, value)
 }
 

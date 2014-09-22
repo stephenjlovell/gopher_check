@@ -142,7 +142,7 @@ var piece_graphics = [2][6]string{
 }
 
 var current_board *Board = EmptyBoard()
-var piece_values = [6]int{100, 320, 333, 510, 880, 10000} // default piece values
+var piece_values = [6]int{100, 320, 333, 510, 880, 5000} // default piece values
 
 // Parse a FEN string and return a pointer to a new Board object
 // func NewBoard(fen string) *Board {

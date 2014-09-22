@@ -25,16 +25,16 @@ import (
 // "fmt"
 )
 
-type HTable [2][6][64]int
+type HTable [2][6][64]uint64
 
 var main_htable HTable
 
-func (h *HTable) Store(m Move, c, count int) {
-	h[c][m.Piece()][m.To()] += count
+func (h *HTable) Store(m Move, c uint8, count int) {
+	h[c][m.Piece()][m.To()] += uint64(count)
 }
 
-func (h *HTable) Probe(pc Piece, c uint8, to int) int {
-	return h[c][pc][to]
+func (h *HTable) Probe(pc Piece, c uint8, to int) uint64 {
+	return (h[c][pc][to] >> 2) & 268435455
 }
 
 func (h *HTable) Clear() {

@@ -110,9 +110,15 @@ func is_pinned(brd *Board, sq int, c, e uint8) BB {
 // 2. SEE scoring of moves is used for move ordering of captures at critical nodes.
 // 3. During quiescence search, SEE is used to prune losing captures. This provides a very low-risk
 //    way of reducing the size of the q-search without impacting playing strength.
+const (
+	SEE_MIN = -780 // worst possible outcome (trading a queen for a pawn)
+	SEE_MAX = 880  // best outcome (capturing an undefended queen)
+)
+
 func get_see(brd *Board, from, to int, captured_piece Piece) int {
 	var next_victim int
-	var t, last_t Piece
+	var t Piece
+	// var t, last_t Piece
 	temp_color := brd.Enemy()
 	// get initial map of all squares directly attacking this square (does not include 'discovered'/hidden attacks)
 	b_attackers := brd.pieces[WHITE][BISHOP] | brd.pieces[BLACK][BISHOP] |
@@ -127,16 +133,24 @@ func get_see(brd *Board, from, to int, captured_piece Piece) int {
 	var piece_list [20]int
 	count := 1
 
-	// if captured_piece < 0 || captured_piece > 5 {
-	// 	brd.PrintDetails()
-	// 	fmt.Printf("from: %s, to: %s, captured piece: %d\n", SquareString(from), SquareString(to), captured_piece)
-	// }
-
+	if captured_piece == KING {
+		// this move is illegal and will be discarded by search.  return the lowest possible
+		// SEE value so that this move will be put at end of list.  If cutoff occurs before then,
+		// the cost of detecting the illegal move will be saved.
+		return SEE_MIN
+	}
+	t = brd.TypeAt(from)
+	if t == KING { // Only commit to the attack if target piece is undefended.
+		if temp_map&brd.occupied[temp_color] > 0 {
+			return SEE_MIN
+		} else {
+			return piece_values[captured_piece]
+		}
+	}
 	// before entering the main loop, perform each step once for the initial attacking piece.
 	// This ensures that the moved piece is the first to capture.
 	piece_list[0] = piece_values[captured_piece]
 	next_victim = brd.ValueAt(from)
-	t = brd.TypeAt(from)
 
 	temp_occ.Clear(from)
 	if t != KNIGHT && t != KING { // if the attacker was a pawn, bishop, rook, or queen, re-scan for hidden attacks:
@@ -147,7 +161,7 @@ func get_see(brd *Board, from, to int, captured_piece Piece) int {
 			temp_map |= rook_attacks(temp_occ, to) & r_attackers
 		}
 	}
-	last_t = t
+	// last_t = t
 
 	for temp_map &= temp_occ; temp_map > 0; temp_map &= temp_occ {
 		for t = PAWN; t <= KING; t++ { // loop over piece ts in order of value.
@@ -156,21 +170,27 @@ func get_see(brd *Board, from, to int, captured_piece Piece) int {
 				break
 			} // stop as soon as a match is found.
 		}
-		if t > KING {
+		if t >= KING {
+			if t == KING {
+				if temp_map&brd.occupied[temp_color^1] > 0 {
+					break // only commit a king to the attack if the other side has no defenders left.
+				}
+			}
 			break
 		}
 
-		piece_list[count] = -piece_list[count-1] + next_victim
+		piece_list[count] = next_victim - piece_list[count-1]
 		next_victim = piece_values[t]
 
 		count++
-		if (piece_list[count-1] - next_victim) > 0 {
+
+		if (piece_list[count-1] - next_victim) > 0 { // validate this.
 			break
 		}
 
-		if last_t == KING {
-			break
-		}
+		// if last_t == KING {
+		// 	break
+		// }
 
 		temp_occ ^= (temp_pieces & -temp_pieces) // merge the first set bit of temp_pieces into temp_occ
 		if t != KNIGHT && t != KING {
@@ -182,14 +202,14 @@ func get_see(brd *Board, from, to int, captured_piece Piece) int {
 			}
 		}
 		temp_color ^= 1
-		last_t = t
+		// last_t = t
 	}
 
 	for count-1 > 0 {
 		count--
 		piece_list[count-1] = -max(-piece_list[count-1], piece_list[count])
 	}
-
+	// fmt.Printf(" %d ", piece_list[0])
 	return piece_list[0]
 }
 

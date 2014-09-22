@@ -22,55 +22,73 @@
 package main
 
 import (
-// "container/heap"
+	// "container/heap"
+	"sort"
 )
 
-// using a Pair to associate moves with their ordering will incur GC overhead,
-// since each new struct will be allocated on the heap...
+// Ordering: PV/hash (handled by search), promotions, winning captures, killers,
+// 					 losing captures, quiet moves (history heuristic order)
 
-// Ordering: PV/hash, promotions, winning captures, killers, losing captures, quiet moves
+// what is the range of return values for SEE function?  {-4900, 5000} (min 13 bits)
+// if king saftey were handled properly by SEE, range would be {-780, 880} (min 11 bits)
+
+// In MSB order:
+// promotion captures : (11 bits) always set 1st bit
+// winning captures : (11 bits)
+// killer 1 / killer 2 :  (2 bits)
+// castles : (1 bit)
+// losing captures : (11 bits)
+// history heuristic : (28 bits)  shift history score right by 2 bits
+// 268435455
+
+const (
+	SORT_CASTLE    = (1 << 39)
+	SORT_K2        = (1 << 40)
+	SORT_K1        = (1 << 41)
+	SORT_PROMOTION = (1 << 53)
+)
+
+func mvv_lva(victim, attacker Piece) int { // returns value between 0 and 64
+	return int((victim << 3) | attacker)
+}
+
+func SortPromotionCapture(see int) uint64 {
+	return ((uint64(see) + 780) | 1) << 53
+}
+
+func SortWinningCapture(see int) uint64 {
+	return ((uint64(see) + 780) | 1) << 42
+}
+
+func SortLosingCapture(see int) uint64 {
+	return ((uint64(see) + 780) | 1) << 28
+}
+
+func SortHistory(h int) uint64 {
+	return (uint64(h) >> 2) & 268435455 // 28 bit-wide set bitmask
+}
 
 // "Promising" moves (winning captures, promotions, and killers) are searched sequentially.
 
-// Since all other moves are searched in parallel, it only makes sense to expend sorting effort on them in a way
-// that impacts the behavior of the load balancer.
-
 type SortItem struct {
-	move     Move
-	priority int
+	move  Move
+	order uint64
 }
 
 type MoveList []*SortItem
 
+func (l *MoveList) Sort() {
+	sort.Sort(l)
+}
+
 func (l MoveList) Len() int { return len(l) }
 
-func (l MoveList) Less(i, j int) bool { return l[i].priority < l[j].priority }
+func (l MoveList) Less(i, j int) bool { return l[i].order > l[j].order }
 
 func (l MoveList) Swap(i, j int) {
 	l[i], l[j] = l[j], l[i]
-	// l[i].index, l[j].index = j, i
 }
 
 func (l *MoveList) Push(sort_item interface{}) {
 	*l = append(*l, sort_item.(*SortItem))
-}
-
-func (l *MoveList) Pop() interface{} {
-	old := *l
-	n := len(old)
-	// if n > 0 {
-	item := old[n-1] // not safe for zero-length slice.
-	*l = old[0 : n-1]
-	return item
-	// } else {
-	//   return nil
-	// }
-
-}
-
-// SEE score can be stored in 16 bits (max value +/- 20000).  Could add INF to
-// score to make it always positive.
-
-func mvv_lva(victim, attacker Piece) int { // returns value between 0 and 64
-	return int((victim << 3) | attacker)
 }

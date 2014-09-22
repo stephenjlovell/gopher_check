@@ -26,7 +26,7 @@ import (
 	"testing"
 )
 
-var test_positions = [6]string{
+var test_positions = [...]string{
 	"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
 	"3r2k1/ppp2ppp/6q1/b4n2/3nQB2/2p5/P4PPP/RN3RK1 b - -",
 	"r4rk1/1bR1bppp/4pn2/1p2N3/1P6/P3P3/4BPPP/3R2K1 b - -",
@@ -43,7 +43,7 @@ func TestSearch(t *testing.T) {
 		ResetAll() // reset all shared data structures and prepare to start a new game.
 		current_board = ParseFENString(pos)
 		// current_board.Print()
-		move := Search(current_board, make([]Move, 0), MAX_DEPTH-5, MAX_TIME)
+		move := Search(current_board, make([]Move, 0), MAX_DEPTH-6, MAX_TIME)
 		fmt.Printf("bestmove %s\n\n", move.ToString())
 	}
 }
