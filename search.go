@@ -68,7 +68,7 @@ import (
 const (
 	MAX_TIME  = 120 // default search time limit in seconds
 	MAX_DEPTH = 12
-	SPLIT_MIN = 4 // set > MAX_DEPTH to disable parallel search.
+	SPLIT_MIN = 13 // set > MAX_DEPTH to disable parallel search.
 	EXT_MAX   = 4
 	MAX_PLY   = MAX_DEPTH + EXT_MAX
 	IID_MIN   = 4
@@ -104,7 +104,7 @@ func search_timer(timer *time.Timer) {
 	}
 }
 
-func Search(brd *Board, restrict_search []Move, depth, time_limit int) Move {
+func Search(brd *Board, restrict_search []Move, depth, time_limit int) (Move, int) {
 	cancel_search = false
 	iid_move[brd.c] = 0
 	start := time.Now()
@@ -118,13 +118,13 @@ func Search(brd *Board, restrict_search []Move, depth, time_limit int) Move {
 
 	go search_timer(timer) // abort the current search after time_limit seconds.
 
-	move := iterative_deepening(brd, depth, start)
+	move, sum := iterative_deepening(brd, depth, start)
 	// timer.Stop() // cancel the timer to prevent it from interfering with the next search if it's not
 	// 						  // garbage collected before then.
-	return move
+	return move, sum
 }
 
-func iterative_deepening(brd *Board, depth int, start time.Time) Move {
+func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 	var move Move
 	var guess, count, first_count, sum int
 	// var previous_count int
@@ -140,7 +140,7 @@ func iterative_deepening(brd *Board, depth int, start time.Time) Move {
 				// fmt.Println("------------------------------------------------------------------")
 				fmt.Printf("Average Branching: %v\n", avg_branch)
 			}
-			return iid_move[c]
+			return iid_move[c], sum
 		} else {
 			// if d > 5 { // don't print info for first few plys to reduce communication traffic.
 			// PrintInfo(guess, d, sum, time.Since(start))
@@ -161,7 +161,7 @@ func iterative_deepening(brd *Board, depth int, start time.Time) Move {
 		// fmt.Println("------------------------------------------------------------------")
 		fmt.Printf("Average Branching: %v\n", avg_branch)
 	}
-	return iid_move[c]
+	return iid_move[c], sum
 }
 
 func ybw_root(brd *Board, alpha, beta, guess, depth int) (Move, int, int) {
@@ -195,8 +195,6 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int) (Move, int, int) {
 		score, count = ybw_make(brd, first_move, alpha, beta, depth-1, 1, &alpha, &beta)
 		sum += count
 		if score > best {
-			best_move = first_move
-			best = score
 			if score > alpha {
 				if score >= beta {
 					store_cutoff(brd, first_move, depth, count)
@@ -205,6 +203,8 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int) (Move, int, int) {
 				}
 				alpha = score
 			}
+			best_move = first_move
+			best = score
 		}
 	}
 
@@ -221,8 +221,6 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int) (Move, int, int) {
 		score, count = ybw_make(brd, m, alpha, beta, depth-1, 1, &alpha, &beta)
 		sum += count
 		if score > best {
-			best_move = m
-			best = score
 			if score > alpha {
 				if score >= beta {
 					store_cutoff(brd, m, depth, count)
@@ -231,6 +229,8 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int) (Move, int, int) {
 				}
 				alpha = score
 			}
+			best_move = m
+			best = score
 		}
 	}
 
@@ -248,8 +248,6 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int) (Move, int, int) {
 			score, count = ybw_make(brd, m, alpha, beta, depth-1, 1, &alpha, &beta)
 			sum += count
 			if score > best {
-				best_move = m
-				best = score
 				if score > alpha {
 					if score >= beta {
 						store_cutoff(brd, m, depth, count)
@@ -258,6 +256,8 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int) (Move, int, int) {
 					}
 					alpha = score
 				}
+				best_move = m
+				best = score
 			}
 
 		}
@@ -287,8 +287,6 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int) (Move, int, int) {
 				case result := <-result_child: // one of the child subtrees has been completely searched.
 					sum += result.count
 					if result.score > best {
-						best_move = result.move
-						best = result.score
 						if result.score > alpha {
 							if score >= beta {
 								store_cutoff(brd, result.move, depth, result.count)
@@ -300,6 +298,8 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int) (Move, int, int) {
 							// 	update_child <- BoundUpdate{-alpha, true} // send the updated bound to child processes.
 							// }
 						}
+						best_move = result.move
+						best = result.score
 					}
 
 					child_counter--
@@ -384,8 +384,6 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, old_alpha, old
 			sum += count
 
 			if score > best {
-				best_move = first_move
-				best = score
 				if score > alpha {
 					if score >= beta {
 						store_cutoff(brd, first_move, depth, count)
@@ -394,6 +392,8 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, old_alpha, old
 					}
 					alpha = score
 				}
+				best_move = first_move
+				best = score
 			}
 		}
 	}
@@ -412,8 +412,6 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, old_alpha, old
 		score, count = ybw_make(brd, m, alpha, beta, depth-1, ply+1, &alpha, &beta)
 		sum += count
 		if score > best {
-			best_move = m
-			best = score
 			if score > alpha {
 				if score >= beta {
 					store_cutoff(brd, m, depth, count)
@@ -422,6 +420,8 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, old_alpha, old
 				}
 				alpha = score
 			}
+			best_move = m
+			best = score
 		}
 	}
 
@@ -440,8 +440,6 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, old_alpha, old
 			score, count = ybw_make(brd, m, alpha, beta, depth-1, ply+1, &alpha, &beta)
 			sum += count
 			if score > best {
-				best_move = m
-				best = score
 				if score > alpha {
 					if score >= beta {
 						store_cutoff(brd, m, depth, count)
@@ -450,6 +448,8 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, old_alpha, old
 					}
 					alpha = score
 				}
+				best_move = m
+				best = score
 			}
 
 		}
@@ -551,9 +551,7 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, old_alpha, old_beta *in
 		get_evasions(brd, best_moves, remaining_moves) // only legal moves generated here.
 		for _, item := range *best_moves {
 			m = item.move
-
 			legal_moves = true
-			// update_bounds(&alpha, &beta, old_alpha, old_beta)
 			score, count = q_make(brd, m, alpha, beta, depth-1, ply+1, &alpha, &beta)
 			sum += count
 			if score > best {
@@ -565,12 +563,10 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, old_alpha, old_beta *in
 					alpha = score
 				}
 			}
-
 		}
 		for _, item := range *remaining_moves {
 			m = item.move
 			legal_moves = true
-			// update_bounds(&alpha, &beta, old_alpha, old_beta)
 			score, count = q_make(brd, m, alpha, beta, depth-1, ply+1, &alpha, &beta)
 			sum += count
 			if score > best {
@@ -598,16 +594,19 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, old_alpha, old_beta *in
 			}
 			best = score
 		}
-
-		// to do:  add futility pruning
+		
 		best_moves := get_winning_captures(brd)
 		for _, item := range *best_moves { // search the best moves sequentially.
 			m = item.move
 			if !avoids_check(brd, m, in_check) {
-				continue
+				continue // prune illegal moves
+			} 
+			if best + m.CapturedPiece().Value() + m.PromotedTo().PromoteValue() + 300 < alpha {
+				// continue // prune futile moves with no chance of raising alpha.
 			}
-			// update_bounds(&alpha, &beta, old_alpha, old_beta)
+
 			score, count = q_make(brd, m, alpha, beta, depth-1, ply+1, &alpha, &beta)
+
 			sum += count
 			if score > best {
 				if score > alpha {
@@ -671,9 +670,9 @@ func store_cutoff(brd *Board, m Move, depth, count int) {
 
 func update_bounds(alpha, beta, old_alpha, old_beta *int) {
 	// if -*old_alpha < *beta {
-	// // 	*beta = -*old_alpha
+	// 	*beta = -*old_alpha
 	// }
 	// if -*old_beta > *alpha {
-	// // 	*alpha = -*old_beta
+	// 	*alpha = -*old_beta
 	// }
 }

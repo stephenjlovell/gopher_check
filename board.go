@@ -28,6 +28,7 @@ import (
 type Piece uint8
 
 func (pc Piece) Value() int { return piece_values[pc] }
+func (pc Piece) PromoteValue() int { return promote_values[pc] }
 
 // When spawning new goroutines for subtree search, a deep copy of the Board struct will have to be made
 // and passed to the new goroutine.  Keep this struct as small as possible.
@@ -142,7 +143,6 @@ var piece_graphics = [2][6]string{
 }
 
 var current_board *Board = EmptyBoard()
-var piece_values = [6]int{100, 320, 333, 510, 880, 5000} // default piece values
 
 // Parse a FEN string and return a pointer to a new Board object
 // func NewBoard(fen string) *Board {

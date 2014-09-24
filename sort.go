@@ -75,6 +75,10 @@ type SortItem struct {
 	order uint64
 }
 
+func (s SortItem) See() int {
+	return int(((s.order >> 42) & 2047) - 780)
+}
+
 type MoveList []*SortItem
 
 func (l *MoveList) Sort() {

@@ -100,6 +100,10 @@ func (m Move) IsCapture() bool {
 	return m.CapturedPiece() != EMPTY
 }
 
+func (m Move) IsPromotion() bool {
+	return m.PromotedTo() != EMPTY
+}
+
 var piece_chars = [6]string{"p", "n", "b", "r", "q", "k"}
 
 func (m Move) ToString() string {

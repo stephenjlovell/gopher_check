@@ -36,16 +36,17 @@ var test_positions = [...]string{
 }
 
 func TestSearch(t *testing.T) {
-
-	fmt.Println("------------------------------------------------------------------")
 	setup()
+	sum := 0
 	for _, pos := range test_positions {
 		ResetAll() // reset all shared data structures and prepare to start a new game.
 		current_board = ParseFENString(pos)
 		// current_board.Print()
-		move := Search(current_board, make([]Move, 0), MAX_DEPTH-6, MAX_TIME)
+		move, count := Search(current_board, make([]Move, 0), MAX_DEPTH-5, MAX_TIME)
 		fmt.Printf("bestmove %s\n\n", move.ToString())
+		sum += count
 	}
+	fmt.Printf("Total nodes searched: %.4f m\n", float64(sum)/1000000.0 )
 }
 
 // func TestBoardCopy(t *testing.T) {

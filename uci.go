@@ -124,7 +124,7 @@ func ParseUCIGo(uci_fields []string) {
 	}
 
 	go func() {
-		move := Search(current_board, restrict_search, int(depth), time)
+		move, _ := Search(current_board, restrict_search, int(depth), time)
 		fmt.Printf("bestmove %s\n", move.ToString())
 	}()
 }

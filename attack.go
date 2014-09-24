@@ -25,6 +25,27 @@ import (
 // "fmt"
 )
 
+// This does not work for discovered checks.
+func gives_check(brd *Board, m Move) bool {
+	e := brd.Enemy()
+	return true
+	switch m.Piece() {
+	case PAWN:
+		return pawn_attack_masks[brd.c][m.To()] & brd.pieces[e][KING] > 0
+	case KNIGHT:
+		return knight_masks[m.To()] & brd.pieces[e][KING] > 0
+	case BISHOP:
+		return bishop_attacks(brd.Occupied(), m.To()) & brd.pieces[e][KING] > 0
+	case ROOK:
+		return rook_attacks(brd.Occupied(), m.To()) & brd.pieces[e][KING] > 0
+	case QUEEN:
+		return queen_attacks(brd.Occupied(), m.To()) & brd.pieces[e][KING] > 0
+	default:
+		return false
+	}
+	// return false
+}
+
 func attack_map(brd *Board, sq int) BB {
 	var attacks, b_attackers, r_attackers BB
 	occ := brd.Occupied()
@@ -161,7 +182,6 @@ func get_see(brd *Board, from, to int, captured_piece Piece) int {
 			temp_map |= rook_attacks(temp_occ, to) & r_attackers
 		}
 	}
-	// last_t = t
 
 	for temp_map &= temp_occ; temp_map > 0; temp_map &= temp_occ {
 		for t = PAWN; t <= KING; t++ { // loop over piece ts in order of value.
@@ -188,10 +208,6 @@ func get_see(brd *Board, from, to int, captured_piece Piece) int {
 			break
 		}
 
-		// if last_t == KING {
-		// 	break
-		// }
-
 		temp_occ ^= (temp_pieces & -temp_pieces) // merge the first set bit of temp_pieces into temp_occ
 		if t != KNIGHT && t != KING {
 			if t == PAWN || t == BISHOP || t == QUEEN {
@@ -202,7 +218,6 @@ func get_see(brd *Board, from, to int, captured_piece Piece) int {
 			}
 		}
 		temp_color ^= 1
-		// last_t = t
 	}
 
 	for count-1 > 0 {
@@ -244,9 +259,3 @@ func pseudolegal_avoids_check(brd *Board, m Move) bool {
 	}
 }
 
-// if(piece_type(NUM2INT(piece)) == KING){ // determine if the to square is attacked by an enemy piece.
-//   return is_attacked_by(cBoard, NUM2INT(t), e, c) ? Qfalse : Qtrue;  // castle moves are pre-checked for legality
-// } else { // determine if the piece being moved is pinned on the king and can't move without putting king at risk.
-//   BB pinned = is_pinned(cBoard, NUM2INT(f), c, e);
-//   return pinned && (~pinned & sq_mask_on(NUM2INT(t))) ? Qfalse : Qtrue;
-// }

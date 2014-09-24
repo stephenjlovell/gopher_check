@@ -85,6 +85,9 @@ const (
 	OFF_RIGHT
 )
 
+var piece_values = [8]int{100, 320, 333, 510, 880, 5000, 0, 0} // default piece values
+var promote_values = [8]int{0, 220, 233, 410, 780, 0, 0, 0}
+
 var pawn_from_offsets = [2][4]int{{8, 16, 9, 7}, {-8, -16, -7, -9}}
 var knight_offsets = [8]int{-17, -15, -10, -6, 6, 10, 15, 17}
 var bishop_offsets = [4]int{7, 9, -7, -9}
