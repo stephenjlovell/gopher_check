@@ -43,8 +43,9 @@ func Milliseconds(d time.Duration) int64 {
 // Example: info score cp 13  depth 1 nodes 13 time 15 pv f1b5
 func PrintInfo(score, depth, node_count int, time_elapsed time.Duration) {
 	ms := Milliseconds(time_elapsed)
-	fmt.Printf("info score cp %d depth %d nodes %d nps %d time %d\n",
-		score, depth, node_count, int64(float64(node_count)/(float64(ms)/float64(1000.0))), ms)
+	nps := int64(float64(node_count)/(float64(ms)/float64(1000.0)))
+	fmt.Printf("info score cp %d depth %d nodes %d nps %d time %d\n", score, depth, node_count, nps, ms)
+	fmt.Printf("NPS: %.4f m\n", float64(nps)/1000000 )
 }
 
 func ReadUCICommand() {

@@ -68,7 +68,7 @@ import (
 const (
 	MAX_TIME  = 120 // default search time limit in seconds
 	MAX_DEPTH = 12
-	SPLIT_MIN = 13 // set > MAX_DEPTH to disable parallel search.
+	SPLIT_MIN = 4 // set > MAX_DEPTH to disable parallel search.
 	EXT_MAX   = 4
 	MAX_PLY   = MAX_DEPTH + EXT_MAX
 	IID_MIN   = 4
@@ -119,8 +119,8 @@ func Search(brd *Board, restrict_search []Move, depth, time_limit int) (Move, in
 	go search_timer(timer) // abort the current search after time_limit seconds.
 
 	move, sum := iterative_deepening(brd, depth, start)
-	// timer.Stop() // cancel the timer to prevent it from interfering with the next search if it's not
-	// 						  // garbage collected before then.
+	timer.Stop() // cancel the timer to prevent it from interfering with the next search if it's not
+							  // garbage collected before then.
 	return move, sum
 }
 
@@ -138,7 +138,7 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 			if depth > 1 {
 				avg_branch := math.Pow(float64(sum)/float64(first_count), float64(1)/float64(depth-1))
 				// fmt.Println("------------------------------------------------------------------")
-				fmt.Printf("Average Branching: %v\n", avg_branch)
+				fmt.Printf("Average Branching: %.4f\n", avg_branch)
 			}
 			return iid_move[c], sum
 		} else {
@@ -159,7 +159,7 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 	if depth > 1 {
 		avg_branch := math.Pow(float64(sum)/float64(first_count), float64(1)/float64(depth-1))
 		// fmt.Println("------------------------------------------------------------------")
-		fmt.Printf("Average Branching: %v\n", avg_branch)
+		fmt.Printf("Average Branching: %.4f\n", avg_branch)
 	}
 	return iid_move[c], sum
 }
@@ -288,7 +288,7 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int) (Move, int, int) {
 					sum += result.count
 					if result.score > best {
 						if result.score > alpha {
-							if score >= beta {
+							if result.score >= beta {
 								store_cutoff(brd, result.move, depth, result.count)
 								main_tt.store(brd, result.move, depth, LOWER_BOUND, beta)
 								return result.move, beta, sum
@@ -481,7 +481,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, old_alpha, old
 						best_move = result.move
 						best = score
 						if result.score > alpha {
-							if score >= beta {
+							if result.score >= beta {
 								store_cutoff(brd, result.move, depth, result.count)
 								main_tt.store(brd, result.move, depth, LOWER_BOUND, beta)
 								return beta, sum
@@ -584,7 +584,7 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, old_alpha, old_beta *in
 		}
 	} else {
 
-		score = brd.Evaluate() // stand pat
+		score = evaluate(brd, alpha, beta) // stand pat
 		if score > best {
 			if score > alpha {
 				if score >= beta {
@@ -601,12 +601,11 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, old_alpha, old_beta *in
 			if !avoids_check(brd, m, in_check) {
 				continue // prune illegal moves
 			} 
-			if best + m.CapturedPiece().Value() + m.PromotedTo().PromoteValue() + 300 < alpha {
-				// continue // prune futile moves with no chance of raising alpha.
+			if best + m.CapturedPiece().Value() + m.PromotedTo().PromoteValue() + piece_values[ROOK] < alpha {
+				continue // prune futile moves with no chance of raising alpha.
 			}
 
 			score, count = q_make(brd, m, alpha, beta, depth-1, ply+1, &alpha, &beta)
-
 			sum += count
 			if score > best {
 				if score > alpha {

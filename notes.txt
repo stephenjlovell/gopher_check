@@ -7,11 +7,7 @@ Debugging:
 
 To Do:
 
-Debug move generation.  Localized problem to pawn promotion captures.
-
-Validate and finalize move ordering.
-
-Create native go implementations for MSB, LSB, PopCount.
+Separate out hashable elements of pawn evaluation (elements that don't depend on pieces other than pawns).
 
 
 

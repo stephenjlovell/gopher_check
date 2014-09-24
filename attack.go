@@ -25,27 +25,6 @@ import (
 // "fmt"
 )
 
-// This does not work for discovered checks.
-func gives_check(brd *Board, m Move) bool {
-	e := brd.Enemy()
-	return true
-	switch m.Piece() {
-	case PAWN:
-		return pawn_attack_masks[brd.c][m.To()] & brd.pieces[e][KING] > 0
-	case KNIGHT:
-		return knight_masks[m.To()] & brd.pieces[e][KING] > 0
-	case BISHOP:
-		return bishop_attacks(brd.Occupied(), m.To()) & brd.pieces[e][KING] > 0
-	case ROOK:
-		return rook_attacks(brd.Occupied(), m.To()) & brd.pieces[e][KING] > 0
-	case QUEEN:
-		return queen_attacks(brd.Occupied(), m.To()) & brd.pieces[e][KING] > 0
-	default:
-		return false
-	}
-	// return false
-}
-
 func attack_map(brd *Board, sq int) BB {
 	var attacks, b_attackers, r_attackers BB
 	occ := brd.Occupied()

@@ -21,6 +21,10 @@
 
 package main
 
+import (
+	// "fmt"
+)
+
 var C_WQ uint8 = 8 // White castle queen side
 var C_WK uint8 = 4 // White castle king side
 var C_BQ uint8 = 2 // Black castle queen side
@@ -100,7 +104,7 @@ func make_move(brd *Board, move Move) {
 				}
 			}
 		}
-		relocate_piece(brd, KING, from, to, c)
+		relocate_king(brd, KING, from, to, c)
 	case ROOK:
 		if captured_piece != EMPTY {
 			if brd.castle > 0 {
@@ -179,7 +183,7 @@ func unmake_move(brd *Board, move Move, enp_target uint8) {
 		}
 
 	case KING:
-		relocate_piece(brd, piece, to, from, c)
+		relocate_king(brd, piece, to, from, c)
 		if captured_piece != EMPTY {
 			add_piece(brd, captured_piece, to, brd.Enemy())
 		} else {
@@ -246,6 +250,7 @@ func relocate_piece(brd *Board, piece Piece, from, to int, c uint8) {
 	brd.occupied[c] ^= from_to
 	brd.squares[from] = EMPTY
 	brd.squares[to] = piece
+	brd.material[c] += int32(main_pst[c][piece][to] - main_pst[c][piece][from])
 	// XOR out the key for piece at from, and XOR in the key for piece at to.
 	brd.hash_key ^= (zobrist(piece, from, c) ^ zobrist(piece, to, c))
 }
@@ -253,9 +258,8 @@ func relocate_piece(brd *Board, piece Piece, from, to int, c uint8) {
 // do not use for en-passant captures.
 func remove_piece(brd *Board, removed_piece Piece, sq int, e uint8) {
 	brd.pieces[e][removed_piece].Clear(sq)
-	// brd.squares[sq] = EMPTY
 	brd.occupied[e].Clear(sq)
-	brd.material[e] -= int32(removed_piece.Value())
+	brd.material[e] -= int32(removed_piece.Value() + main_pst[e][removed_piece][sq])
 	brd.hash_key ^= zobrist(removed_piece, sq, e) // XOR out the captured piece
 }
 
@@ -263,6 +267,23 @@ func add_piece(brd *Board, added_piece Piece, sq int, c uint8) {
 	brd.pieces[c][added_piece].Add(sq)
 	brd.squares[sq] = added_piece
 	brd.occupied[c].Add(sq)
-	brd.material[c] += int32(added_piece.Value())
+	brd.material[c] += int32(added_piece.Value() + main_pst[c][added_piece][sq])
 	brd.hash_key ^= zobrist(added_piece, sq, c) // XOR in key for added_piece
 }
+
+
+func relocate_king(brd *Board, piece Piece, from, to int, c uint8) {
+	from_to := (sq_mask_on[from] | sq_mask_on[to])
+	brd.pieces[c][piece] ^= from_to
+	brd.occupied[c] ^= from_to
+	brd.squares[from] = EMPTY
+	brd.squares[to] = piece
+	in_endgame := in_endgame(brd, c)
+	brd.material[c] += int32(king_pst[c][in_endgame][to] - king_pst[c][in_endgame][from])
+	// XOR out the key for piece at from, and XOR in the key for piece at to.
+	brd.hash_key ^= (zobrist(piece, from, c) ^ zobrist(piece, to, c))
+}
+
+
+
+
