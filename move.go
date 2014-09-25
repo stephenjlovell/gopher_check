@@ -39,17 +39,20 @@ type Move uint32
 // promoted to - next 3 bits
 
 func is_valid_move(brd *Board, m Move, d int) bool {
+	// return true
+
 	if m == 0 {
+		fmt.Printf("!")
 		return false
 	}
 	// determine if there really is a piece of this type on the from square.
 	piece := m.Piece()
 	from := m.From()
 	if brd.TypeAt(from) != piece {
-		brd.Print()
-		fmt.Printf("Warning: Invalid move  %s at depth %d  for key %#x\n", m.ToString(), d, brd.hash_key)
-		fmt.Printf("piece %d should be %d", piece, brd.TypeAt(from))
-		fmt.Printf(".")
+		// brd.Print()
+		// fmt.Printf("Warning: Invalid move  %s at depth %d  for key %#x\n", m.ToString(), d, brd.hash_key)
+		// fmt.Printf("piece %d should be %d", piece, brd.TypeAt(from))
+		fmt.Printf("!")
 		return false
 	}
 	captured_piece := m.CapturedPiece()
@@ -61,14 +64,14 @@ func is_valid_move(brd *Board, m Move, d int) bool {
 			// fmt.Printf("Warning: Invalid move  %s at depth %d  for key %#x\n", m.ToString(), d, brd.hash_key)
 			// fmt.Printf("captured_piece: %d\n", captured_piece)
 			// fmt.Printf("enp_target: %s\n", SquareString(int(brd.enp_target)))
-			// fmt.Printf(".")
+			fmt.Printf("!")
 			return false
 		}
 	}
 	promoted_to := m.PromotedTo()
 	if promoted_to != EMPTY {
 		if piece != PAWN || promoted_to == PAWN {
-			// fmt.Printf(".")
+			fmt.Printf("!")
 			// fmt.Printf("Warning: Invalid move  %s  at depth %d for key %#x\n", m.ToString(), d, brd.hash_key)
 			return false
 		}

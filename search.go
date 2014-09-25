@@ -68,7 +68,7 @@ import (
 const (
 	MAX_TIME  = 120 // default search time limit in seconds
 	MAX_DEPTH = 12
-	SPLIT_MIN = 4 // set > MAX_DEPTH to disable parallel search.
+	SPLIT_MIN = 13 // set > MAX_DEPTH to disable parallel search.
 	EXT_MAX   = 4
 	MAX_PLY   = MAX_DEPTH + EXT_MAX
 	IID_MIN   = 4
@@ -190,6 +190,16 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int) (Move, int, int) {
 	first_move, hash_result := main_tt.probe(brd, depth, depth-2, alpha, beta, &score)
 	if hash_result != NO_MATCH && is_valid_move(brd, first_move, depth) &&
 		avoids_check(brd, first_move, in_check) {
+
+		// adjust bounds?
+		switch hash_result {
+		case LOWER_BOUND:
+
+		case UPPER_BOUND:
+
+		case EXACT:
+
+		}
 
 		legal_moves = true
 
@@ -518,12 +528,14 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, old_alpha, old
 		return best, sum
 	} else { // draw or checkmate detected.
 		if in_check {
+			// fmt.Println("Checkmate detected.")
 			best = ply - INF
 		} else {
+			// fmt.Println("Draw detected.")
 			best = 0
 		}
-		// fmt.Println("Draw or checkmate detected.")
-		main_tt.store(brd, 0, MAX_PLY, EXACT, best)
+		main_tt.store(brd, 0, depth, EXACT, best)
+
 		return best, sum
 	}
 

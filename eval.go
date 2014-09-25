@@ -188,7 +188,6 @@ var king_pst = [2][2][64]int{{ // Black // False
 var knight_pawns = [16]int{-20, -16, -12, -8, -4, 0, 4, 8, 12}
 var rook_pawns = [16]int{16, 12, 8, 4, 2, 0, -2, -4, -8}
 
-
 // max mobility bonus/penalty should be 2.5% of piece value:
 // 8.0, 8.325000000000001, 12.75, 22.0
 // max knight mobility = 8, avg 2
@@ -199,7 +198,6 @@ var bishop_mobility = [16]int{-8, -4, -2, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
 var rook_mobility = [16]int{-3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8, 8}
 var queen_mobility = [32]int{-10, -6, -3, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
 	12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16}
-
 
 func setup_eval() {
 	setup_eval_constants()
@@ -291,7 +289,6 @@ func adjusted_placement(brd *Board, c, e uint8) int {
 
 	return placement + mobility
 }
-
 
 // PAWN EVALUATION
 //

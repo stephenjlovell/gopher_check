@@ -105,7 +105,7 @@ func (tt *TT) get_slot(hash_key uint64) *Slot {
 
 // https://cis.uab.edu/hyatt/hashing.html
 
-func (tt *TT) probe(brd *Board, depth, null_depth, alpha, beta int, value *int) (Move, int) {
+func (tt *TT) probe(brd *Board, depth, null_depth, alpha, beta int, score *int) (Move, int) {
 	// return Move(0), NO_MATCH
 
 	hash_key := brd.hash_key
@@ -116,20 +116,21 @@ func (tt *TT) probe(brd *Board, depth, null_depth, alpha, beta int, value *int) 
 			// fmt.Printf("Full Key match: %d", hash_key)
 			// to do: update age (search id) of entry.
 			entry_depth := slot[i].Depth()
-
 			if entry_depth >= depth {
 				entry_type := slot[i].Type()
 				entry_value := slot[i].Value()
-				*value = entry_value // set the initial value for the subtree search at this node.
+				*score = entry_value // set the current search score
+
 				switch entry_type {
-				case LOWER_BOUND:
-					if entry_value <= alpha {
+				case LOWER_BOUND: // failed high last time.
+					if entry_value >= beta {
 						// brd.Print()
 						// fmt.Printf("retrieved LOWER_BOUND: %s\n", slot[i].Move().ToString())
 						return slot[i].Move(), MATCH_FOUND
 					}
-				case UPPER_BOUND:
-					if entry_value >= beta {
+
+				case UPPER_BOUND: // failed low last time.
+					if entry_value <= alpha {
 						// brd.Print()
 						// fmt.Printf("retrieved UPPER_BOUND: %s\n", slot[i].Move().ToString())
 						return slot[i].Move(), MATCH_FOUND
@@ -141,8 +142,8 @@ func (tt *TT) probe(brd *Board, depth, null_depth, alpha, beta int, value *int) 
 					}
 					// brd.Print()
 					// fmt.Printf("retrieved EXACT: %s\n", slot[i].Move().ToString())
-
 				}
+
 			} else if entry_depth >= null_depth {
 				entry_type := slot[i].Type()
 				entry_value := slot[i].Value()
@@ -262,7 +263,7 @@ func zobrist(pc Piece, sq int, c uint8) uint64 {
 	return zobrist_table[c][pc][sq]
 }
 
-func enp_zobrist(sq int) uint64 {
+func enp_zobrist(sq uint8) uint64 {
 	return enp_table[sq]
 }
 

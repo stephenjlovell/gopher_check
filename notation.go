@@ -54,7 +54,11 @@ func ParseFENString(str string) *Board {
 	ParsePlacement(brd, fen_fields[0])
 	brd.c = ParseSide(fen_fields[1])
 	brd.castle = ParseCastleRights(brd, fen_fields[2])
+	brd.hash_key ^= castle_zobrist(brd.castle)
+
 	brd.enp_target = ParseEnpTarget(fen_fields[3])
+	brd.hash_key ^= enp_zobrist(brd.enp_target)
+
 	if len(fen_fields) > 4 {
 		brd.halfmove_clock = ParseHalfmoveClock(fen_fields[4])
 	}

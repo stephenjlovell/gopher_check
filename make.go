@@ -38,6 +38,7 @@ func make_move(brd *Board, move Move) {
 	captured_piece := move.CapturedPiece()
 
 	enp_target := brd.enp_target
+	brd.hash_key ^= enp_zobrist(enp_target) // XOR out old en passant target.
 	brd.enp_target = SQ_INVALID
 
 	switch piece {
@@ -48,6 +49,7 @@ func make_move(brd *Board, move Move) {
 		case EMPTY:
 			if abs(to-from) == 16 { // handle en passant advances
 				brd.enp_target = uint8(to)
+				brd.hash_key ^= enp_zobrist(uint8(to)) // XOR in new en passant target
 			}
 		case PAWN: // Destination square will be empty if en passant capture
 			if enp_target != SQ_INVALID && brd.TypeAt(to) == EMPTY {
@@ -282,4 +284,3 @@ func relocate_king(brd *Board, piece Piece, from, to int, c uint8) {
 	// XOR out the key for piece at from, and XOR in the key for piece at to.
 	brd.hash_key ^= (zobrist(piece, from, c) ^ zobrist(piece, to, c))
 }
-
