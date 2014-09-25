@@ -22,7 +22,7 @@
 package main
 
 import (
-	// "fmt"
+// "fmt"
 )
 
 var C_WQ uint8 = 8 // White castle queen side
@@ -271,7 +271,6 @@ func add_piece(brd *Board, added_piece Piece, sq int, c uint8) {
 	brd.hash_key ^= zobrist(added_piece, sq, c) // XOR in key for added_piece
 }
 
-
 func relocate_king(brd *Board, piece Piece, from, to int, c uint8) {
 	from_to := (sq_mask_on[from] | sq_mask_on[to])
 	brd.pieces[c][piece] ^= from_to
@@ -283,7 +282,3 @@ func relocate_king(brd *Board, piece Piece, from, to int, c uint8) {
 	// XOR out the key for piece at from, and XOR in the key for piece at to.
 	brd.hash_key ^= (zobrist(piece, from, c) ^ zobrist(piece, to, c))
 }
-
-
-
-

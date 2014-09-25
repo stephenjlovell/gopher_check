@@ -22,7 +22,7 @@
 package main
 
 import (
-// "fmt"
+	"fmt"
 )
 
 const (
@@ -40,27 +40,35 @@ type Move uint32
 
 func is_valid_move(brd *Board, m Move, d int) bool {
 	if m == 0 {
-		// fmt.Printf("Warning: Invalid move %s at depth %d for key %#x\n", m.ToString(), d, brd.hash_key)
 		return false
 	}
 	// determine if there really is a piece of this type on the from square.
 	piece := m.Piece()
 	from := m.From()
 	if brd.TypeAt(from) != piece {
-		// fmt.Printf("Warning: Invalid move  %s at depth %d  for key %#x\n", m.ToString(), d, brd.hash_key)
+		brd.Print()
+		fmt.Printf("Warning: Invalid move  %s at depth %d  for key %#x\n", m.ToString(), d, brd.hash_key)
+		fmt.Printf("piece %d should be %d", piece, brd.TypeAt(from))
+		fmt.Printf(".")
 		return false
 	}
 	captured_piece := m.CapturedPiece()
 	to := m.To()
 	if captured_piece != EMPTY {
-		if !(brd.TypeAt(to) == captured_piece || (piece == PAWN && brd.enp_target == uint8(to))) {
+		if !(brd.TypeAt(to) == captured_piece || (piece == PAWN && brd.enp_target != SQ_INVALID &&
+			pawn_side_masks[from]&sq_mask_on[brd.enp_target] > 0)) {
+			// brd.Print()
 			// fmt.Printf("Warning: Invalid move  %s at depth %d  for key %#x\n", m.ToString(), d, brd.hash_key)
+			// fmt.Printf("captured_piece: %d\n", captured_piece)
+			// fmt.Printf("enp_target: %s\n", SquareString(int(brd.enp_target)))
+			// fmt.Printf(".")
 			return false
 		}
 	}
 	promoted_to := m.PromotedTo()
 	if promoted_to != EMPTY {
 		if piece != PAWN || promoted_to == PAWN {
+			// fmt.Printf(".")
 			// fmt.Printf("Warning: Invalid move  %s  at depth %d for key %#x\n", m.ToString(), d, brd.hash_key)
 			return false
 		}
@@ -121,15 +129,6 @@ func (m Move) ToString() string {
 	}
 	return str
 }
-
-// func (m Move) IsLegal(brd *Board) bool {
-// 	if m.Piece() == KING {
-// 		return !is_attacked_by(brd, m.To(), brd.c, brd.Enemy()) {
-// 	} else {
-// 		pinned := is_pinned(brd, m.From(), brd.c, brd.Enemy())
-// 		return !(pinned > 0 && ((^pinned)&sq_mask_on[m.To()]) > 0)
-// 	}
-// }
 
 func NewMove(from, to int, piece, captured_piece, promoted_to Piece) Move {
 	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) | (Move(captured_piece) << 15) | (Move(promoted_to) << 18)

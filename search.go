@@ -120,7 +120,7 @@ func Search(brd *Board, restrict_search []Move, depth, time_limit int) (Move, in
 
 	move, sum := iterative_deepening(brd, depth, start)
 	timer.Stop() // cancel the timer to prevent it from interfering with the next search if it's not
-							  // garbage collected before then.
+	// garbage collected before then.
 	return move, sum
 }
 
@@ -214,7 +214,7 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int) (Move, int, int) {
 	var m Move
 	for _, item := range *best_moves { // search the best moves sequentially.
 		m = item.move
-		if !avoids_check(brd, m, in_check) {
+		if m == first_move || !avoids_check(brd, m, in_check) {
 			continue
 		}
 		legal_moves = true
@@ -241,7 +241,7 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int) (Move, int, int) {
 	if depth <= SPLIT_MIN { // Depth is too shallow for parallel search to be worthwhile.
 		for _, item := range *remaining_moves { // search remaining moves sequentially.
 			m = item.move
-			if !avoids_check(brd, m, in_check) {
+			if m == first_move || !avoids_check(brd, m, in_check) {
 				continue
 			}
 			legal_moves = true
@@ -268,7 +268,7 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int) (Move, int, int) {
 		var child_counter int
 		for _, item := range *remaining_moves {
 			m := item.move
-			if !avoids_check(brd, m, in_check) {
+			if m == first_move || !avoids_check(brd, m, in_check) {
 				continue
 			}
 			new_brd := brd.Copy() // create a locally scoped deep copy of the board.
@@ -404,7 +404,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, old_alpha, old
 	var m Move
 	for _, item := range *best_moves { // search the best moves sequentially.
 		m = item.move
-		if !avoids_check(brd, m, in_check) {
+		if m == first_move || !avoids_check(brd, m, in_check) {
 			continue
 		}
 		legal_moves = true
@@ -432,7 +432,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, old_alpha, old
 	if depth <= SPLIT_MIN { // Depth is too shallow for parallel search to be worthwhile.
 		for _, item := range *remaining_moves { // search remaining moves sequentially.
 			m = item.move
-			if !avoids_check(brd, m, in_check) {
+			if m == first_move || !avoids_check(brd, m, in_check) {
 				continue
 			}
 			legal_moves = true
@@ -459,7 +459,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, old_alpha, old
 		var child_counter int
 		for _, item := range *remaining_moves {
 			m := item.move
-			if !avoids_check(brd, m, in_check) {
+			if m == first_move || !avoids_check(brd, m, in_check) {
 				continue
 			}
 			new_brd := brd.Copy() // create a locally scoped deep copy of the board.
@@ -594,14 +594,14 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, old_alpha, old_beta *in
 			}
 			best = score
 		}
-		
+
 		best_moves := get_winning_captures(brd)
 		for _, item := range *best_moves { // search the best moves sequentially.
 			m = item.move
 			if !avoids_check(brd, m, in_check) {
 				continue // prune illegal moves
-			} 
-			if best + m.CapturedPiece().Value() + m.PromotedTo().PromoteValue() + piece_values[ROOK] < alpha {
+			}
+			if best+m.CapturedPiece().Value()+m.PromotedTo().PromoteValue()+piece_values[ROOK] < alpha {
 				continue // prune futile moves with no chance of raising alpha.
 			}
 
@@ -626,6 +626,10 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, old_alpha, old_beta *in
 func ybw_make(brd *Board, m Move, alpha, beta, depth, ply int, old_alpha, old_beta *int) (int, int) {
 	hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
 	castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
+
+	if !is_valid_move(brd, m, depth) {
+
+	}
 
 	make_move(brd, m) // to do: make move
 	score, sum := young_brothers_wait(brd, -beta, -alpha, depth, ply, old_alpha, old_beta)

@@ -46,7 +46,7 @@ func TestSearch(t *testing.T) {
 		fmt.Printf("bestmove %s\n\n", move.ToString())
 		sum += count
 	}
-	fmt.Printf("Total nodes searched: %.4f m\n", float64(sum)/1000000.0 )
+	fmt.Printf("Total nodes searched: %.4f m\n", float64(sum)/1000000.0)
 }
 
 // func TestBoardCopy(t *testing.T) {

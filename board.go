@@ -27,7 +27,7 @@ import (
 
 type Piece uint8
 
-func (pc Piece) Value() int { return piece_values[pc] }
+func (pc Piece) Value() int        { return piece_values[pc] }
 func (pc Piece) PromoteValue() int { return promote_values[pc] }
 
 // When spawning new goroutines for subtree search, a deep copy of the Board struct will have to be made

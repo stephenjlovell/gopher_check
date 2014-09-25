@@ -237,4 +237,3 @@ func pseudolegal_avoids_check(brd *Board, m Move) bool {
 		return !((pinned > 0) && ((^pinned)&sq_mask_on[m.To()]) > 0)
 	}
 }
-
