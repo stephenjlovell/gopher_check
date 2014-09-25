@@ -22,7 +22,7 @@
 package main
 
 import (
-	"fmt"
+// "fmt"
 )
 
 func get_all_moves(brd *Board, in_check bool) (*MoveList, *MoveList) {
@@ -765,10 +765,10 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList) {
 
 					if sq_mask_on[to]&enemy > 0 {
 
-						if brd.squares[from] == EMPTY {
-							// brd.Print()
-							fmt.Printf("Warning: Invalid move. from: %s\n", SquareString(from))
-						}
+						// if brd.squares[from] == EMPTY {
+						// 	// brd.Print()
+						// 	fmt.Printf("Warning: Invalid move. from: %s\n", SquareString(from))
+						// }
 						// Assert(brd.squares[to] != EMPTY && brd.squares[from] != EMPTY, "board state corrupted")
 
 						m = NewCapture(from, to, QUEEN, brd.squares[to])

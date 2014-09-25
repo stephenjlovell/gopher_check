@@ -95,7 +95,8 @@ var rook_offsets = [4]int{8, 1, -8, -1}
 var king_offsets = [8]int{-9, -7, 7, 9, -8, -1, 1, 8}
 var pawn_attack_offsets = [4]int{9, 7, -9, -7}
 var pawn_advance_offsets = [4]int{8, 16, -8, -16}
-var pawn_enpassant_offsets = [2]int{1, -1}
+
+// var pawn_enp_offsets = [2]int{1, -1}
 
 var directions [64][64]int
 
@@ -142,16 +143,16 @@ func chebyshev_distance(from, to int) int {
 
 func setup() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	rand.Seed(9) // keep the same seed each time for debugging purposes.
+	rand.Seed(4129246945) // keep the same seed each time for debugging purposes.
 
 	setup_bitwise_ops()
-
-	setup_main_tt()
-	setup_zobrist()
-
 	setup_masks()
+
 	setup_bonus_table()
 	setup_eval()
+	setup_zobrist()
+	setup_main_tt()
+
 	fmt.Println("\n------------------------------------------------------------------")
 	fmt.Println("\u265B GopherCheck \u265B\nCopyright \u00A9 2014 Stephen J. Lovell")
 	fmt.Println("------------------------------------------------------------------\n")

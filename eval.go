@@ -185,26 +185,25 @@ var king_pst = [2][2][64]int{{ // Black // False
 		-30, -20, -10, 0, 0, -10, -20, -30}}}
 
 // adjust value of knights and rooks based on number of pawns in play.
-var knight_pawns = [16]int{ -20, -16, -12, -8, -4,  0,  4,  8, 12}
-var rook_pawns = [16]int{  16,  12,   8,  4,  2,  0, -2, -4, -8}
+var knight_pawns = [16]int{-20, -16, -12, -8, -4, 0, 4, 8, 12}
+var rook_pawns = [16]int{16, 12, 8, 4, 2, 0, -2, -4, -8}
+
 
 // max mobility bonus/penalty should be 2.5% of piece value:
 // 8.0, 8.325000000000001, 12.75, 22.0
 // max knight mobility = 8, avg 2
 // max bishop/rook mobility = 14, avg 3
 // max queen mobility = 28, avg 4
+var knight_mobility = [16]int{-6, -3, 0, 1, 2, 3, 4, 5, 8, 0, 0, 0, 0, 0, 0}
+var bishop_mobility = [16]int{-8, -4, -2, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}
+var rook_mobility = [16]int{-3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8, 8}
+var queen_mobility = [32]int{-10, -6, -3, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+	12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16}
 
-var knight_mobility = [16]int{ -6, -3,  0,  1, 2, 3, 4, 5, 8, 0, 0, 0,  0,  0,  0 }
-var bishop_mobility = [16]int{ -8, -4, -2,  0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 }
-var rook_mobility = [16]int {  -3, -2, -1,  0, 1, 2, 3, 4, 5, 6, 7, 8,  8,  8,  8,  8 }
-var queen_mobility = [32]int{ -10, -6, -3, -1, 0, 1, 2, 3, 4, 5, 6, 7,  8,  9, 10, 11, 
-															 12, 13, 14, 15,16,16,16,16,16,16,16,16, 16, 16, 16, 16, }
 
 func setup_eval() {
 	setup_eval_constants()
 }
-
-
 
 func setup_eval_constants() {
 	non_king_value = piece_values[PAWN]*8 + piece_values[KNIGHT]*2 + piece_values[BISHOP]*2 +
@@ -221,13 +220,11 @@ func evaluate(brd *Board, alpha, beta int) int {
 	// lazy evaluation: if material balance is already outside the search window by an amount that outweighs
 	// the largest possible placement evaluation, return the material as an approximate evaluation.
 	// This prevents the engine from wasting a lot of time evaluating unrealistic positions.
-	if material + piece_values[ROOK] < alpha || material - piece_values[ROOK] > beta {
+	if material+piece_values[ROOK] < alpha || material-piece_values[ROOK] > beta {
 		return material
 	}
-	return  material + adjusted_placement(brd, c, e) - adjusted_placement(brd, e, c)
+	return material + adjusted_placement(brd, c, e) - adjusted_placement(brd, e, c)
 }
-
-
 
 // current ranges (approximate):
 // PST bonus: {-152, 82}
@@ -237,18 +234,16 @@ func evaluate(brd *Board, alpha, beta int) int {
 
 func adjusted_placement(brd *Board, c, e uint8) int {
 
-
 	friendly := brd.Placement(c)
 	available := ^friendly
 	occ := brd.Occupied()
 
 	var unguarded BB // a bitmap of squares undefended by enemy pawns
-	if c > 0 { // white to move
+	if c > 0 {       // white to move
 		unguarded = ^(((brd.pieces[e][PAWN] & (^column_masks[0])) >> 9) | ((brd.pieces[e][PAWN] & (^column_masks[7])) >> 7))
 	} else { // black to move
 		unguarded = ^(((brd.pieces[e][PAWN] & (^column_masks[0])) << 7) | ((brd.pieces[e][PAWN] & (^column_masks[7])) << 9))
 	}
-	
 	var sq, mobility, placement int
 	var b BB
 	enemy_king_sq := furthest_forward(e, brd.pieces[e][KING])
@@ -259,7 +254,8 @@ func adjusted_placement(brd *Board, c, e uint8) int {
 		fmt.Printf("Invalid King Square: %d\n", enemy_king_sq)
 	}
 
-	// to do: probe main 
+	// to do: probe main
+
 	// for b = brd.pieces[c][PAWN]; b > 0; b.Clear(sq) {
 	// 	sq = furthest_forward(c, b)
 	// 	placement += main_pst[c][PAWN][sq]
@@ -269,29 +265,29 @@ func adjusted_placement(brd *Board, c, e uint8) int {
 	for b = brd.pieces[c][KNIGHT]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
 		placement += tropism_bonus[sq][enemy_king_sq][KNIGHT] + knight_pawns[pawn_count]
-		mobility += knight_mobility[pop_count(knight_masks[sq] & available & unguarded)]
+		mobility += knight_mobility[pop_count(knight_masks[sq]&available&unguarded)]
 	}
 	for b = brd.pieces[c][BISHOP]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
 		placement += tropism_bonus[sq][enemy_king_sq][BISHOP]
-		mobility += bishop_mobility[pop_count(bishop_attacks(occ, sq) & available & unguarded)]
+		mobility += bishop_mobility[pop_count(bishop_attacks(occ, sq)&available&unguarded)]
 	}
 	for b = brd.pieces[c][ROOK]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
 		placement += tropism_bonus[sq][enemy_king_sq][ROOK] + rook_pawns[pawn_count]
-		mobility += rook_mobility[pop_count(rook_attacks(occ, sq) & available & unguarded)]
+		mobility += rook_mobility[pop_count(rook_attacks(occ, sq)&available&unguarded)]
 	}
 	for b = brd.pieces[c][QUEEN]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
 		placement += tropism_bonus[sq][enemy_king_sq][QUEEN]
-		mobility += queen_mobility[pop_count(queen_attacks(occ, sq) & available & unguarded)]
+		mobility += queen_mobility[pop_count(queen_attacks(occ, sq)&available&unguarded)]
 	}
 	for b = brd.pieces[c][KING]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
 		placement += king_pst[c][in_endgame(brd, c)][sq]
 	}
 	// Base material is incrementally updated as moves are made/unmade.
-	placement += pawn_structure(brd, c, e)
+	// placement += pawn_structure(brd, c, e)
 
 	return placement + mobility
 }

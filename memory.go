@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	SLOT_COUNT = 131072         // number of main TT slots. 4 buckets per slot.
-	TT_MASK    = SLOT_COUNT - 1 // a set bitmask of length 17
+	SLOT_COUNT = 1048576        // number of main TT slots. 4 buckets per slot.
+	TT_MASK    = SLOT_COUNT - 1 // a set bitmask used to index into TT.
 )
 
 const (
@@ -54,7 +54,7 @@ func setup_main_tt() {
 
 type TT [SLOT_COUNT]*Slot
 
-type Slot [4]Bucket
+type Slot [4]Bucket // 512 bits
 
 // data stores the following: (54 bits total)
 // depth remaining - 5 bits
@@ -106,6 +106,7 @@ func (tt *TT) get_slot(hash_key uint64) *Slot {
 // https://cis.uab.edu/hyatt/hashing.html
 
 func (tt *TT) probe(brd *Board, depth, null_depth, alpha, beta int, value *int) (Move, int) {
+	// return Move(0), NO_MATCH
 
 	hash_key := brd.hash_key
 	slot := tt.get_slot(hash_key)
@@ -165,8 +166,6 @@ func (tt *TT) probe(brd *Board, depth, null_depth, alpha, beta int, value *int) 
 
 // use lockless storing to avoid concurrent write issues without incurring locking overhead.
 func (tt *TT) store(brd *Board, move Move, depth, entry_type, value int) {
-
-	// return
 
 	hash_key := brd.hash_key
 	slot := tt.get_slot(hash_key)
@@ -231,8 +230,15 @@ var enp_table [65]uint64 // integer keys representing the en-passant target squa
 var castle_table [16]uint64
 var side_key = random_key() // Integer key representing a change in side-to-move.
 
+const (
+	MAX_RAND = (1 << 32) - 1
+)
+
 func random_key() uint64 { // create a pseudorandom 64-bit unsigned int key
-	return uint64(rand.Uint32()) | (uint64(rand.Uint32()) << 32)
+	r := (uint64(rand.Int63n(MAX_RAND)) << 32) | uint64(rand.Int63n(MAX_RAND))
+	// fmt.Printf("%#x\n", r)
+	// BB(r).Print()
+	return r
 }
 
 func setup_zobrist() {
