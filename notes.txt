@@ -7,13 +7,28 @@ Debugging:
 
 To Do:
 
+Add ability to accurately evaluate promotions via see()
+
+Implement Internal Iterative Deepening.
+
+Implement Late-Move Reductions.
+
 Separate out hashable elements of pawn evaluation (elements that don't depend on pieces other than pawns).
+
+Implement Pawn Hashtable.  Update Make/Unmake.
+
+Implement Draw By Threefold Repetition using linked lists
+
+Implement hashtable-based Principal Variation Search
 
 
 
 Ideas:
 
-Disable boundary checking on compile ?  Could improve execution speed significantly given the amount of array access.
+Disable boundary checking on compile?  Could improve execution speed significantly given the amount of 
+array access.  Only do this once engine is finalized and thoroughly debugged.
+
+
 
 
 

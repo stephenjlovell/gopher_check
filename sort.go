@@ -33,40 +33,58 @@ import (
 // if king saftey were handled properly by SEE, range would be {-780, 880} (min 11 bits)
 
 // In MSB order:
-// promotion captures : (11 bits) always set 1st bit
-// winning captures : (11 bits)
+// promotion captures : (10 bits) always set 1st bit
+// promotions : (1 bit)
+// winning captures : (10 bits)
 // killer 1 / killer 2 :  (2 bits)
 // castles : (1 bit)
-// losing captures : (11 bits)
-// history heuristic : (28 bits)  shift history score right by 2 bits
-// 268435455
+// losing captures : (8 bits)
+// history heuristic : (18 bits)
+// hopeless captures : (10 bits)
+
+// split up losing captures
 
 const (
-	SORT_CASTLE    = (1 << 39)
-	SORT_K2        = (1 << 40)
-	SORT_K1        = (1 << 41)
-	SORT_PROMOTION = (1 << 53)
+	SORT_CASTLE    = (1 << 36)
+	SORT_K2        = (1 << 37)
+	SORT_K1        = (1 << 38)
+	SORT_PROMOTION = (1 << 49)
 )
 
 func mvv_lva(victim, attacker Piece) int { // returns value between 0 and 64
 	return int((victim << 3) | attacker)
 }
 
+//refactor to take up less space
+
 func SortPromotionCapture(see int) uint64 {
-	return ((uint64(see) + 780) | 1) << 53
+	return (uint64(see) | 1) << 50
 }
 
 func SortWinningCapture(see int) uint64 {
-	return ((uint64(see) + 780) | 1) << 42
+	return (uint64(see) | 1) << 39
 }
 
+// var piece_values = [8]int{100, 320, 333, 510, 880, 5000, 0, 0} // default piece values
+// 													// 220  13, 177,  370
+// 																 // 190
+
 func SortLosingCapture(see int) uint64 {
-	return ((uint64(see) + 780) | 1) << 28
+	if see > -200 { // {-200, 0}
+		return uint64(see+200) << 28 // 8 bits, losing capture
+	} else { // {-780, -200}
+		return uint64(see + 780) // 10 bits, hopeless capture
+	}
 }
 
 func SortHistory(h int) uint64 {
-	return (uint64(h) >> 2) & 268435455 // 28 bit-wide set bitmask
+	if h > 0 {
+		return (((uint64(h) >> 5) & mask_of_length[18]) | 3) << 10
+	}
+	return uint64(1 << 10)
 }
+
+// 134217727
 
 // "Promising" moves (winning captures, promotions, and killers) are searched sequentially.
 
@@ -93,6 +111,17 @@ func (l MoveList) Swap(i, j int) {
 	l[i], l[j] = l[j], l[i]
 }
 
-func (l *MoveList) Push(sort_item interface{}) {
-	*l = append(*l, sort_item.(*SortItem))
+func (l *MoveList) Push(item *SortItem) {
+	*l = append(*l, item)
+}
+
+func (l *MoveList) Pop() *SortItem {
+	old := *l
+	n := len(old)
+	if n == 0 {
+		return nil
+	}
+	item := old[n-1]
+	*l = old[0 : n-1]
+	return item
 }

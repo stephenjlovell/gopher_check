@@ -59,7 +59,7 @@ func setup_square_masks() {
 	for i := 0; i < 64; i++ {
 		sq_mask_on[i] = BB(1 << uint(i))
 		sq_mask_off[i] = (^sq_mask_on[i])
-		mask_of_length[i] = sq_mask_on[i] - 1
+		mask_of_length[i] = uint64(sq_mask_on[i] - 1)
 	}
 }
 

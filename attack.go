@@ -237,3 +237,23 @@ func pseudolegal_avoids_check(brd *Board, m Move) bool {
 		return !((pinned > 0) && ((^pinned)&sq_mask_on[m.To()]) > 0)
 	}
 }
+
+func is_checkmate(brd *Board, in_check bool) bool {
+	if !in_check {
+		return false
+	}
+	c := brd.c
+	if brd.pieces[c][KING] > 0 {
+		var to int
+		e := brd.Enemy()
+		from := furthest_forward(c, brd.pieces[c][KING])
+		target := ^brd.occupied[c]
+		for t := king_masks[from] & target; t > 0; t.Clear(to) { // generate to squares
+			to = furthest_forward(c, t)
+			if !is_attacked_by(brd, to, e, c) {
+				return false
+			}
+		}
+	}
+	return true
+}

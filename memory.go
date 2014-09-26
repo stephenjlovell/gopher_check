@@ -35,7 +35,7 @@ const (
 	NO_MATCH = iota
 	ORDERING_ONLY
 	AVOID_NULL
-	MATCH_FOUND
+	CUTOFF_FOUND
 )
 
 const (
@@ -105,8 +105,7 @@ func (tt *TT) get_slot(hash_key uint64) *Slot {
 
 // https://cis.uab.edu/hyatt/hashing.html
 
-func (tt *TT) probe(brd *Board, depth, null_depth, alpha, beta int, score *int) (Move, int) {
-	// return Move(0), NO_MATCH
+func (tt *TT) probe(brd *Board, depth, null_depth int, alpha, beta, score *int) (Move, int) {
 
 	hash_key := brd.hash_key
 	slot := tt.get_slot(hash_key)
@@ -122,23 +121,33 @@ func (tt *TT) probe(brd *Board, depth, null_depth, alpha, beta int, score *int) 
 				*score = entry_value // set the current search score
 
 				switch entry_type {
-				case LOWER_BOUND: // failed high last time.
-					if entry_value >= beta {
+				case LOWER_BOUND: // failed high last time (at CUT node)
+					if entry_value >= *beta {
 						// brd.Print()
 						// fmt.Printf("retrieved LOWER_BOUND: %s\n", slot[i].Move().ToString())
-						return slot[i].Move(), MATCH_FOUND
+						return slot[i].Move(), CUTOFF_FOUND
+					} else {
+						// *beta = entry_value
 					}
-
-				case UPPER_BOUND: // failed low last time.
-					if entry_value <= alpha {
+				case UPPER_BOUND: // failed low last time. (at ALL node)
+					if entry_value <= *alpha {
 						// brd.Print()
 						// fmt.Printf("retrieved UPPER_BOUND: %s\n", slot[i].Move().ToString())
-						return slot[i].Move(), MATCH_FOUND
+						return slot[i].Move(), CUTOFF_FOUND
+					} else {
+						// *alpha = entry_value
 					}
-				case EXACT:
-					if alpha < entry_value && entry_value < beta {
-						// to do: if exact entry is valid for current bounds, save the PV.
-						return slot[i].Move(), MATCH_FOUND
+				case EXACT: // score was inside bounds.  (at PV node)
+
+					// to do: if exact entry is valid for current bounds, save the PV.
+
+					if entry_value > *alpha {
+						if entry_value < *beta {
+							return slot[i].Move(), CUTOFF_FOUND
+						} else {
+							// *beta = entry_value
+						}
+						// *alpha = entry_value
 					}
 					// brd.Print()
 					// fmt.Printf("retrieved EXACT: %s\n", slot[i].Move().ToString())
@@ -149,7 +158,7 @@ func (tt *TT) probe(brd *Board, depth, null_depth, alpha, beta int, score *int) 
 				entry_value := slot[i].Value()
 				// if the entry is too shallow for an immediate cutoff but at least as deep as a potential
 				// null-move search, check if a null move search would have any chance of causing a beta cutoff.
-				if entry_type == UPPER_BOUND && entry_value < beta {
+				if entry_type == UPPER_BOUND && entry_value < *beta {
 					// brd.Print()
 					// fmt.Printf("retrieved AVOID_NULL: %s\n", slot[i].Move().ToString())
 					return slot[i].Move(), AVOID_NULL
@@ -158,7 +167,6 @@ func (tt *TT) probe(brd *Board, depth, null_depth, alpha, beta int, score *int) 
 			// brd.Print()
 			// fmt.Printf("retrieved ORDERING_ONLY: %s\n", slot[i].Move().ToString())
 			return slot[i].Move(), ORDERING_ONLY
-			// break
 		}
 	}
 	// fmt.Printf("No TT match for key %#x\n", hash_key)

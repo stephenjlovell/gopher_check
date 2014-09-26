@@ -63,7 +63,7 @@ const ( // direction codes (0...8)
 	DIR_INVALID
 )
 
-var mask_of_length [64]BB
+var mask_of_length [64]uint64
 
 var row_masks [8]BB
 var column_masks [8]BB
@@ -86,6 +86,9 @@ const (
 )
 
 var piece_values = [8]int{100, 320, 333, 510, 880, 5000, 0, 0} // default piece values
+// 220  13, 177,  370
+// 190
+
 var promote_values = [8]int{0, 220, 233, 410, 780, 0, 0, 0}
 
 var pawn_from_offsets = [2][4]int{{8, 16, 9, 7}, {-8, -16, -7, -9}}
