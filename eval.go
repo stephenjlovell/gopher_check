@@ -1,5 +1,7 @@
 //-----------------------------------------------------------------------------------
-// Copyright (c) 2014 Stephen J. Lovell
+// ♛ GopherCheck ♛
+// Copyright © 2014 Stephen J. Lovell
+//-----------------------------------------------------------------------------------
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files (the "Software"), to deal in
@@ -25,7 +27,7 @@ import (
 	"fmt"
 )
 
-var non_king_value, endgame_value, mate_value int
+var non_king_value, endgame_value int
 
 var passed_pawn_bonus = [2][8]int{
 	{0, 49, 28, 16, 9, 5, 3, 0},
@@ -207,7 +209,6 @@ func setup_eval_constants() {
 	non_king_value = piece_values[PAWN]*8 + piece_values[KNIGHT]*2 + piece_values[BISHOP]*2 +
 		piece_values[ROOK]*2 + piece_values[QUEEN]
 	endgame_value = piece_values[KING] - (non_king_value / 4)
-	mate_value = non_king_value + piece_values[KING]
 }
 
 var highest_placement, lowest_placement int
@@ -252,12 +253,6 @@ func adjusted_placement(brd *Board, c, e uint8) int {
 		fmt.Printf("Invalid King Square: %d\n", enemy_king_sq)
 	}
 
-	// to do: probe main
-
-	// for b = brd.pieces[c][PAWN]; b > 0; b.Clear(sq) {
-	// 	sq = furthest_forward(c, b)
-	// 	placement += main_pst[c][PAWN][sq]
-	// }
 	pawn_count := pop_count(brd.pieces[c][PAWN])
 
 	for b = brd.pieces[c][KNIGHT]; b > 0; b.Clear(sq) {
@@ -284,7 +279,6 @@ func adjusted_placement(brd *Board, c, e uint8) int {
 		sq = furthest_forward(c, b)
 		placement += king_pst[c][in_endgame(brd, c)][sq]
 	}
-	// Base material is incrementally updated as moves are made/unmade.
 	// placement += pawn_structure(brd, c, e)
 
 	return placement + mobility

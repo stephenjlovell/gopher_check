@@ -1,3 +1,16 @@
+Performance:
+
+
+9/26/14 PerftParallel()
+  12.7224 m NPS
+  119601101 nodes at depth 6. 
+  33731 total nodes in check
+  2886936 total capture nodes
+  9299 total goroutines spawned
+
+
+
+
 
 
 
@@ -9,7 +22,6 @@ To Do:
 
 Add ability to accurately evaluate promotions via see()
 
-Implement Internal Iterative Deepening.
 
 Implement Late-Move Reductions.
 
@@ -21,6 +33,7 @@ Implement Draw By Threefold Repetition using linked lists
 
 Implement hashtable-based Principal Variation Search
 
+Implement Internal Iterative Deepening.
 
 
 Ideas:

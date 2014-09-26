@@ -1,5 +1,10 @@
 //-----------------------------------------------------------------------------------
-// Copyright (c) 2014 Stephen J. Lovell
+// ♛ GopherCheck ♛
+// Copyright © 2014 Stephen J. Lovell
+//-----------------------------------------------------------------------------------
+// ♛ GopherCheck ♛
+// Copyright © 2014 Stephen J. Lovell
+//-----------------------------------------------------------------------------------
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files (the "Software"), to deal in
@@ -83,9 +88,8 @@ var legal_max_tree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 31959
 // 	depth := 6
 
 // 	start := time.Now()
-// 	cancel_child := make(chan bool, 1)
-// 	update_child := make(chan BoundUpdate, 3)
-// 	sum := PerftParallel(brd, depth, cancel_child, update_child)
+
+// 	sum := PerftParallel(brd, depth)
 // 	elapsed := time.Since(start)
 // 	nps := int64(float64(sum) / elapsed.Seconds())
 
@@ -231,7 +235,7 @@ func Perft_make_unmake(brd *Board, m Move, depth int) int {
 func PerftParallel(brd *Board, depth int) int {
 	sum := 0
 
-	if depth <= SPLIT_MIN { // sequential search
+	if depth <= 3 { // sequential search
 		if depth == 0 {
 			return 1
 		}

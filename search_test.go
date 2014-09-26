@@ -1,5 +1,7 @@
 //-----------------------------------------------------------------------------------
-// Copyright (c) 2014 Stephen J. Lovell
+// ♛ GopherCheck ♛
+// Copyright © 2014 Stephen J. Lovell
+//-----------------------------------------------------------------------------------
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files (the "Software"), to deal in
@@ -46,7 +48,7 @@ func TestSearch(t *testing.T) {
 		ResetAll() // reset all shared data structures and prepare to start a new game.
 		current_board = ParseFENString(pos)
 		// current_board.Print()
-		move, count := Search(current_board, make([]Move, 0), MAX_DEPTH, MAX_TIME)
+		move, count := Search(current_board, make([]Move, 0), MAX_DEPTH-3, MAX_TIME)
 		fmt.Printf("bestmove %s\n\n", move.ToString())
 		sum += count
 	}
