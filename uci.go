@@ -53,7 +53,7 @@ func PrintInfo(score, depth, node_count int, time_elapsed time.Duration) {
 func ReadUCICommand() {
 	var input string
 	reader := bufio.NewReader(os.Stdin)
-	UCIStart()
+	UCIIdentify()
 	for {
 		input, _ = reader.ReadString('\n')
 		uci_fields := strings.Fields(input)
@@ -62,7 +62,8 @@ func ReadUCICommand() {
 		case "":
 			continue
 		case "uci":
-			UCIStart()
+			uci_mode = true
+			UCIIdentify()
 		case "isready":
 			// to do: check if any tasks are still running.
 			fmt.Printf("readyok\n")
@@ -79,7 +80,7 @@ func ReadUCICommand() {
 		case "ponderhit":
 
 		case "go":
-			ParseUCIGo(uci_fields[1:])
+			go ParseUCIGo(uci_fields[1:])
 
 		case "print":
 			current_board.Print()
@@ -98,14 +99,14 @@ func ReadUCICommand() {
 	}
 }
 
-func UCIStart() {
+func UCIIdentify() {
 	fmt.Println("id name GopherCheck")
 	fmt.Println("id author Steve Lovell")
 	fmt.Println("uciok")
 }
 
 func ParseUCIGo(uci_fields []string) {
-	depth, time := int64(MAX_DEPTH), MAX_TIME
+	depth, time := int64(MAX_DEPTH), int64(MAX_TIME * 1000)
 	var restrict_search []Move
 
 	for len(uci_fields) > 0 {
@@ -121,15 +122,17 @@ func ParseUCIGo(uci_fields []string) {
 				restrict_search = append(restrict_search, ParseMove(current_board, uci_fields[0]))
 				uci_fields = uci_fields[:1]
 			}
+		case "movetime":
+			time, _ = strconv.ParseInt(uci_fields[1], 10, 24)
+			uci_fields = uci_fields[2:]
+		case "infinite":
+			depth = 32
 		default:
 			uci_fields = uci_fields[:1]
 		}
 	}
-
-	go func() {
-		move, _ := Search(current_board, restrict_search, int(depth), time)
-		fmt.Printf("bestmove %s\n", move.ToString())
-	}()
+	move, _ := Search(current_board, restrict_search, int(depth), int(time))
+	fmt.Printf("bestmove %s\n", move.ToString())
 }
 
 // position [fen  | startpos ]  moves  ....

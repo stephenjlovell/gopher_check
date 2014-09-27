@@ -74,9 +74,8 @@ const (
 	EXT_MAX   = 4
 	MAX_PLY   = MAX_DEPTH + EXT_MAX
 	IID_MIN   = 4
+	COMMS_MIN = 4 // minimum depth at which to send info to GUI.
 )
-
-type PV []Move
 
 type SearchResult struct {
 	move  Move
@@ -93,9 +92,11 @@ var search_id int
 var iid_move [2]Move
 var iid_score [2]int
 var cancel_search bool
+var uci_mode bool = false
 
 func AbortSearch() {
 	cancel_search = true
+	fmt.Println("Search aborted by GUI")
 }
 
 func search_timer(timer *time.Timer) {
@@ -110,7 +111,7 @@ func Search(brd *Board, restrict_search []Move, depth, time_limit int) (Move, in
 	cancel_search = false
 	iid_move[brd.c] = 0
 	start := time.Now()
-	timer := time.NewTimer(time.Duration(time_limit) * time.Second)
+	timer := time.NewTimer(time.Duration(time_limit) * time.Millisecond)
 
 	if search_id >= 512 { // only 9 bits are available to store the id in each TT entry.
 		search_id = 1
@@ -130,7 +131,7 @@ func Search(brd *Board, restrict_search []Move, depth, time_limit int) (Move, in
 func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 	var move Move
 	var guess, count, first_count, sum int
-	// var previous_count int
+	var previous_count int
 	c := brd.c
 
 	for d := 1; d <= depth; d++ {
@@ -140,28 +141,30 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 		if cancel_search {
 			if depth > 1 {
 				avg_branch := math.Pow(float64(sum)/float64(first_count), float64(1)/float64(depth-1))
-				// fmt.Println("------------------------------------------------------------------")
-				fmt.Printf("Average Branching: %.4f\n", avg_branch)
+				if !uci_mode {
+					fmt.Printf("Average Branching: %.4f\n", avg_branch)
+				}
 			}
 			return iid_move[c], sum
 		} else {
-			// if d > 5 { // don't print info for first few plys to reduce communication traffic.
-			// PrintInfo(guess, d, sum, time.Since(start))
-			// 	fmt.Printf("  -Branching factor: %v\n", float64(count)/float64(previous_count))
-			// }
+			if  d > COMMS_MIN { // don't print info for first few plys to reduce communication traffic.
+			if uci_mode {
+				PrintInfo(guess, d, sum, time.Since(start))				
+			} else {
+				fmt.Printf("  -Branching factor: %v\n", float64(count)/float64(previous_count))
+			}
+			}
 			if d == 1 {
 				first_count = count
 			}
 			iid_move[c], iid_score[c] = move, guess
-			// previous_count = count
+			previous_count = count
 		}
 	}
-
-	PrintInfo(guess, depth, sum, time.Since(start))
-
-	if depth > 1 {
+	if uci_mode {
+		PrintInfo(guess, depth, sum, time.Since(start))
+	}	else if depth > 1 {
 		avg_branch := math.Pow(float64(sum)/float64(first_count), float64(1)/float64(depth-1))
-		// fmt.Println("------------------------------------------------------------------")
 		fmt.Printf("Average Branching: %.4f\n", avg_branch)
 	}
 	return iid_move[c], sum
@@ -187,7 +190,9 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int) (Move, int, int) {
 		avoids_check(brd, first_move, in_check) {
 
 		legal_searched += 1
-
+		if uci_mode && depth > COMMS_MIN {
+		fmt.Printf("info currmove %s currmovenumber %d\n", first_move.ToString(), legal_searched)
+		}
 		score, count = ybw_make(brd, first_move, alpha, beta, depth-1, 1, true)
 		sum += count
 		if score > best {
@@ -214,6 +219,9 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int) (Move, int, int) {
 			continue
 		}
 		legal_searched += 1
+		if uci_mode && depth > COMMS_MIN {
+		fmt.Printf("info currmove %s currmovenumber %d\n", first_move.ToString(), legal_searched)
+		}
 		score, count = ybw_make(brd, m, alpha, beta, depth-1, 1, true)
 		sum += count
 		if score > best {
@@ -241,6 +249,9 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int) (Move, int, int) {
 				continue
 			}
 			legal_searched += 1
+		if uci_mode && depth > 5 {
+		fmt.Printf("info currmove %s currmovenumber %d\n", m.ToString(), legal_searched)
+		}
 			score, count = ybw_make(brd, m, alpha, beta, depth-1, 1, true)
 			sum += count
 			if score > best {
@@ -260,15 +271,16 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int) (Move, int, int) {
 		// Make sure at least 3 nodes have been searched serially before spawning.
 		// fmt.Printf("\nGetting moves")
 		for ; legal_searched < 3; legal_searched++ {
-			// fmt.Printf("+")
 			item := remaining_moves.Pop()
 			for item != nil && !avoids_check(brd, item.move, in_check) {
-				// fmt.Printf("-")
 				item = remaining_moves.Pop() // get the highest-sorted legal move from the remaining_moves list
 			}
 			if item == nil {
 				break
 			}
+		if uci_mode {
+		fmt.Printf("info currmove %s currmovenumber %d\n", item.move.ToString(), legal_searched)
+		}
 			score, count = ybw_make(brd, item.move, alpha, beta, depth-1, 1, true)
 			sum += count
 			if score > best {
@@ -315,9 +327,6 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int) (Move, int, int) {
 								return result.move, result.score, sum
 							}
 							alpha = result.score
-							// for _, update_child := range listeners {
-							// 	update_child <- BoundUpdate{-alpha, true} // send the updated bound to child processes.
-							// }
 						}
 						best_move = result.move
 						best = result.score
@@ -386,7 +395,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool)
 
 	if hash_result == CUTOFF_FOUND {
 		return score, sum
-	} else if hash_result != AVOID_NULL { // Null-Move Pruning
+	} else if hash_result != AVOID_NULL {  // Null-Move Pruning
 		if !in_check && can_null && depth > 2 && in_endgame(brd, brd.c) == 0 &&
 			!pawns_only(brd, brd.c) && evaluate(brd, alpha, beta) >= beta {
 			score, count = null_make(brd, beta, null_depth-1, ply+1)
@@ -557,14 +566,10 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool)
 								return result.score, sum
 							}
 							alpha = result.score
-							// for _, update_child := range listeners {
-							// 	update_child <- BoundUpdate{-alpha, true} // send the updated bound to child processes.
-							// }
 						}
 						best_move = result.move
 						best = score
 					}
-
 					child_counter--
 					if child_counter == 0 {
 						break remaining_pieces // exit the for loop
@@ -738,5 +743,3 @@ func store_cutoff(brd *Board, m Move, depth, count int) {
 	// store killer move in killer list for this Goroutine.
 
 }
-
-// what makes this so slow?  Is it just the context switching between threads?

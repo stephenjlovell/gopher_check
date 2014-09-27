@@ -279,7 +279,7 @@ func adjusted_placement(brd *Board, c, e uint8) int {
 		sq = furthest_forward(c, b)
 		placement += king_pst[c][in_endgame(brd, c)][sq]
 	}
-	// placement += pawn_structure(brd, c, e)
+	placement += pawn_structure(brd, c, e)
 
 	return placement + mobility
 }
