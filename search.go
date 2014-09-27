@@ -68,19 +68,21 @@ import (
 )
 
 const (
-	MAX_TIME  = 120 // default search time limit in seconds
+	MAX_TIME  = 120000 // default search time limit in seconds (2m)
 	MAX_DEPTH = 12
 	SPLIT_MIN = 13 // set > MAX_DEPTH to disable parallel search.
+	F_PRUNE_MIN = 3 // should always be less than SPLIT_MIN
 	EXT_MAX   = 4
 	MAX_PLY   = MAX_DEPTH + EXT_MAX
 	IID_MIN   = 4
-	COMMS_MIN = 4 // minimum depth at which to send info to GUI.
+	COMMS_MIN = 5 // minimum depth at which to send info to GUI.
 )
 
 type SearchResult struct {
 	move  Move
 	score int
 	count int
+	pv    *PV
 }
 
 type BoundUpdate struct {
@@ -93,6 +95,8 @@ var iid_move [2]Move
 var iid_score [2]int
 var cancel_search bool
 var uci_mode bool = false
+
+var uci_ponder bool = false
 
 func AbortSearch() {
 	cancel_search = true
@@ -132,77 +136,81 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 	var move Move
 	var guess, count, first_count, sum int
 	var previous_count int
+	var old_pv, current_pv *PV
 	c := brd.c
 
-	for d := 1; d <= depth; d++ {
-		move, guess, count = ybw_root(brd, -INF, INF, iid_score[c], d)
-		sum += count
+	// first iteration is always full-depth.
+	move, guess, count, old_pv = ybw_root(brd, -INF, INF, iid_score[c], 1, nil)
+
+	sum, first_count, previous_count = count, count, count
+	iid_move[c], iid_score[c] = move, guess
+
+	for d := 2; d <= depth; d++ {
+		// to do: add aspiration windows
+
+		move, guess, count, current_pv = ybw_root(brd, -INF, INF, iid_score[c], d, old_pv)
 
 		if cancel_search {
-			if depth > 1 {
-				avg_branch := math.Pow(float64(sum)/float64(first_count), float64(1)/float64(depth-1))
-				if !uci_mode {
-					fmt.Printf("Average Branching: %.4f\n", avg_branch)
-				}
+			avg_branch := math.Pow(float64(sum)/float64(first_count), float64(1)/float64(depth-1))
+			if !uci_mode {
+				fmt.Printf("Average Branching: %.4f\n", avg_branch)
 			}
 			return iid_move[c], sum
 		} else {
-			if  d > COMMS_MIN { // don't print info for first few plys to reduce communication traffic.
-			if uci_mode {
-				PrintInfo(guess, d, sum, time.Since(start))				
-			} else {
-				fmt.Printf("  -Branching factor: %v\n", float64(count)/float64(previous_count))
-			}
-			}
-			if d == 1 {
-				first_count = count
+			sum += count
+			if d > COMMS_MIN { // don't print info for first few plys to reduce communication traffic.
+				if uci_mode {
+					PrintInfo(guess, d, sum, time.Since(start), current_pv)
+				} else {
+					fmt.Printf("Depth: %d Branching: %.4f\n", d, float64(count)/float64(previous_count))
+				}
 			}
 			iid_move[c], iid_score[c] = move, guess
-			previous_count = count
+			previous_count, old_pv = count, current_pv
 		}
 	}
-	if uci_mode {
-		PrintInfo(guess, depth, sum, time.Since(start))
-	}	else if depth > 1 {
-		avg_branch := math.Pow(float64(sum)/float64(first_count), float64(1)/float64(depth-1))
-		fmt.Printf("Average Branching: %.4f\n", avg_branch)
-	}
+	PrintInfo(guess, depth, sum, time.Since(start), current_pv)
+	avg_branch := math.Pow(float64(sum)/float64(first_count), float64(1)/float64(depth-1))
+	brd.Print()
+	fmt.Printf("Average Branching: %.4f\n", avg_branch)
+
 	return iid_move[c], sum
 }
 
-func ybw_root(brd *Board, alpha, beta, guess, depth int) (Move, int, int) {
+func ybw_root(brd *Board, alpha, beta, guess, depth int, old_pv *PV) (Move, int, int, *PV) {
 	if cancel_search {
-		return 0, 0, 1
+		return 0, 0, 1, nil
+	}
+	sum, count, legal_searched := 1, 0, 0
+	in_check, extension := is_in_check(brd), 0
+	if in_check {
+		extension = 1
 	}
 
-	sum, count, legal_searched := 1, 0, 0
-
-	in_check := is_in_check(brd)
-	// if in_check {
-	// 	fmt.Println("In check at root.")
-	// }
 	score, best, old_alpha := -INF, -INF, alpha
+	pv := &PV{}
+	var next_pv *PV
+	var best_move, first_move Move
 
-	var best_move Move
-	// search hash move
-	first_move, hash_result := main_tt.probe(brd, depth, depth-2, &alpha, &beta, &score)
-	if hash_result != NO_MATCH && is_valid_move(brd, first_move, depth) &&
-		avoids_check(brd, first_move, in_check) {
-
+	// root is always on the main PV line.  No need to search hash table.
+	if old_pv != nil {
+		first_move = old_pv.m
 		legal_searched += 1
-		if uci_mode && depth > COMMS_MIN {
-		fmt.Printf("info currmove %s currmovenumber %d\n", first_move.ToString(), legal_searched)
+		if uci_mode && uci_ponder && depth > COMMS_MIN {
+			fmt.Printf("info currmove %s currmovenumber %d\n", first_move.ToString(), legal_searched)
 		}
-		score, count = ybw_make(brd, first_move, alpha, beta, depth-1, 1, true)
+		score, count, next_pv = ybw_make(brd, first_move, alpha, beta, depth-1+extension, 1, true, nil)
 		sum += count
 		if score > best {
 			if score > alpha {
 				if score >= beta {
 					store_cutoff(brd, first_move, depth, count)
 					main_tt.store(brd, first_move, depth, LOWER_BOUND, score)
-					return first_move, score, sum
+					return first_move, score, sum, nil
 				}
 				alpha = score
+				pv.m = first_move
+				pv.next = next_pv
 			}
 			best_move = first_move
 			best = score
@@ -219,19 +227,21 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int) (Move, int, int) {
 			continue
 		}
 		legal_searched += 1
-		if uci_mode && depth > COMMS_MIN {
-		fmt.Printf("info currmove %s currmovenumber %d\n", first_move.ToString(), legal_searched)
+		if uci_mode && uci_ponder && depth > COMMS_MIN {
+			fmt.Printf("info currmove %s currmovenumber %d\n", m.ToString(), legal_searched)
 		}
-		score, count = ybw_make(brd, m, alpha, beta, depth-1, 1, true)
+		score, count, next_pv = ybw_make(brd, m, alpha, beta, depth-1+extension, 1, true, nil)
 		sum += count
 		if score > best {
 			if score > alpha {
 				if score >= beta {
 					store_cutoff(brd, m, depth, count)
 					main_tt.store(brd, m, depth, LOWER_BOUND, score)
-					return m, score, sum
+					return m, score, sum, nil
 				}
 				alpha = score
+				pv.m = m
+				pv.next = next_pv
 			}
 			best_move = m
 			best = score
@@ -242,140 +252,72 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int) (Move, int, int) {
 	// if a cutoff occurs, this will reduce move generation effort substantially.
 	get_remaining_moves(brd, in_check, remaining_moves)
 
-	if depth <= SPLIT_MIN { // Depth is too shallow for parallel search to be worthwhile.
-		for _, item := range *remaining_moves { // search remaining moves sequentially.
-			m = item.move
-			if m == first_move || !avoids_check(brd, m, in_check) {
-				continue
-			}
-			legal_searched += 1
+	for _, item := range *remaining_moves { // search remaining moves sequentially.
+		m = item.move
+		if m == first_move || !avoids_check(brd, m, in_check) {
+			continue
+		}
+		legal_searched += 1
 		if uci_mode && depth > 5 {
-		fmt.Printf("info currmove %s currmovenumber %d\n", m.ToString(), legal_searched)
+			fmt.Printf("info currmove %s currmovenumber %d\n", m.ToString(), legal_searched)
 		}
-			score, count = ybw_make(brd, m, alpha, beta, depth-1, 1, true)
-			sum += count
-			if score > best {
-				if score > alpha {
-					if score >= beta {
-						store_cutoff(brd, m, depth, count)
-						main_tt.store(brd, m, depth, LOWER_BOUND, score)
-						return m, score, sum
-					}
-					alpha = score
+		score, count, next_pv = ybw_make(brd, m, alpha, beta, depth-1+extension, 1, true, nil)
+		sum += count
+		if score > best {
+			if score > alpha {
+				if score >= beta {
+					store_cutoff(brd, m, depth, count)
+					main_tt.store(brd, m, depth, LOWER_BOUND, score)
+					return m, score, sum, nil
 				}
-				best_move = m
-				best = score
+				alpha = score
+				pv.m = m
+				pv.next = next_pv
 			}
-		}
-	} else { // now that decent bounds have been established, parallel search is possible.
-		// Make sure at least 3 nodes have been searched serially before spawning.
-		// fmt.Printf("\nGetting moves")
-		for ; legal_searched < 3; legal_searched++ {
-			item := remaining_moves.Pop()
-			for item != nil && !avoids_check(brd, item.move, in_check) {
-				item = remaining_moves.Pop() // get the highest-sorted legal move from the remaining_moves list
-			}
-			if item == nil {
-				break
-			}
-		if uci_mode {
-		fmt.Printf("info currmove %s currmovenumber %d\n", item.move.ToString(), legal_searched)
-		}
-			score, count = ybw_make(brd, item.move, alpha, beta, depth-1, 1, true)
-			sum += count
-			if score > best {
-				if score > alpha {
-					if score >= beta {
-						store_cutoff(brd, item.move, depth, count)
-						main_tt.store(brd, item.move, depth, LOWER_BOUND, score)
-						return item.move, score, sum
-					}
-					alpha = score
-				}
-				best_move = item.move
-				best = score
-			}
-		}
-
-		result_child := make(chan SearchResult, 40)
-		var child_counter int
-		for _, item := range *remaining_moves {
-			m := item.move
-			if m == first_move || !avoids_check(brd, m, in_check) {
-				continue
-			}
-			new_brd := brd.Copy() // create a locally scoped deep copy of the board.
-			legal_searched += 1
-			child_counter++
-			go func() {
-				score, count := ybw_make(new_brd, m, alpha, beta, depth-1, 1, true)
-				result_child <- SearchResult{m, score, count}
-			}()
-		}
-
-		if child_counter > 0 {
-		remaining_pieces:
-			for {
-				select { // wait for a message to come in on one of the channels.
-				case result := <-result_child: // one of the child subtrees has been completely searched.
-					sum += result.count
-					if result.score > best {
-						if result.score > alpha {
-							if result.score >= beta {
-								store_cutoff(brd, result.move, depth, result.count)
-								main_tt.store(brd, result.move, depth, LOWER_BOUND, result.score)
-								return result.move, result.score, sum
-							}
-							alpha = result.score
-						}
-						best_move = result.move
-						best = result.score
-					}
-
-					child_counter--
-					if child_counter == 0 {
-						break remaining_pieces // exit the for loop
-					}
-				}
-			}
+			best_move = m
+			best = score
 		}
 	}
 
 	if legal_searched > 0 {
 		if alpha > old_alpha {
 			main_tt.store(brd, best_move, depth, EXACT, best)
+			return best_move, best, sum, pv
 		} else {
 			main_tt.store(brd, best_move, depth, UPPER_BOUND, best)
+			return best_move, best, sum, nil
 		}
-		return best_move, best, sum
 	} else {
 		if in_check {
-			main_tt.store(brd, 0, MAX_PLY, EXACT, -INF)
-			return 0, -INF, sum // checkmate.
+			main_tt.store(brd, 0, MAX_PLY, EXACT, -INF) // should these be EXACT nodes?
+			return 0, -INF, sum, nil                    // checkmate.
 		} else {
 			main_tt.store(brd, 0, MAX_PLY, EXACT, 0)
-			return 0, 0, sum // draw.
+			return 0, 0, sum, nil // draw.
 		}
 	}
-
 }
 
-func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool) (int, int) {
+func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool, old_pv *PV) (int, int, *PV) {
 	if cancel_search {
-		return 0, 0
+		return 0, 0, nil
 	}
 
 	if depth <= 0 {
-		return quiescence(brd, alpha, beta, depth, ply) // q-search is always sequential.
+		return quiescence(brd, alpha, beta, depth, ply, nil) // q-search is always sequential.
 	}
 
-	in_check := is_in_check(brd)
+	in_check, extension := is_in_check(brd), 0
+	if in_check {
+		extension = 1
+	}
+
 	if brd.halfmove_clock >= 100 {
 		if is_checkmate(brd, in_check) {
-			return ply - INF, 1
+			return ply - INF, 1, nil
 		} else {
 			fmt.Printf("Draw by Halfmove Rule at ply %d\n", ply)
-			return 0, 1
+			return 0, 1, nil
 		}
 	}
 
@@ -389,40 +331,53 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool)
 	} else {
 		null_depth = depth - 2
 	}
+	pv := &PV{}
+	var next_pv *PV
+	var best_move, first_move Move
 
-	var best_move Move
-	first_move, hash_result := main_tt.probe(brd, depth, null_depth, &alpha, &beta, &score)
-
-	if hash_result == CUTOFF_FOUND {
-		return score, sum
-	} else if hash_result != AVOID_NULL {  // Null-Move Pruning
-		if !in_check && can_null && depth > 2 && in_endgame(brd, brd.c) == 0 &&
-			!pawns_only(brd, brd.c) && evaluate(brd, alpha, beta) >= beta {
-			score, count = null_make(brd, beta, null_depth-1, ply+1)
-			sum += count
-			if score >= beta {
-				main_tt.store(brd, 0, depth, LOWER_BOUND, score)
-				return score, sum
+	if old_pv != nil { // if on main PV line from previous iteration, no need to probe hash table.
+		first_move = old_pv.m
+	} else { // Never try null move pruning while on main PV line.
+		var hash_result int
+		first_move, hash_result = main_tt.probe(brd, depth, null_depth, &alpha, &beta, &score)
+		if hash_result == CUTOFF_FOUND {
+			return score, sum, nil
+		} else if hash_result != AVOID_NULL { // Null-Move Pruning
+			if !in_check && can_null && depth > 2 && in_endgame(brd, brd.c) == 0 &&
+				!pawns_only(brd, brd.c) && evaluate(brd, alpha, beta) >= beta {
+				score, count = null_make(brd, beta, null_depth-1, ply+1)
+				sum += count
+				if score >= beta {
+					main_tt.store(brd, 0, depth, LOWER_BOUND, score)
+					return score, sum, nil
+				}
 			}
+		}
+		if hash_result == NO_MATCH { // No hash move available. Use IID to get a decent first move to try.
+			// implementation will depend on PVS implementation.
 		}
 	}
 
-	if hash_result == NO_MATCH { // No hash move available. Use IID to get a decent first move to try.
-		// implementation will depend on PVS implementation.
-	}
-
-	if is_valid_move(brd, first_move, depth) && avoids_check(brd, first_move, in_check) {
+	// If a PV move, hash move or IID move is available, try it first.
+	if old_pv != nil || (is_valid_move(brd, first_move, depth)&&avoids_check(brd, first_move, in_check)) {
+		var temp_pv *PV
+		if old_pv != nil {
+			temp_pv = old_pv.next
+		}
 		legal_searched += 1
-		score, count = ybw_make(brd, first_move, alpha, beta, depth-1, ply+1, can_null)
+		score, count, next_pv = ybw_make(brd, first_move, alpha, beta, depth-1+extension, ply+1, can_null, temp_pv)
 		sum += count
 		if score > best {
 			if score > alpha {
 				if score >= beta {
+					// what happens if a move is refuted here while on the main PV?
 					store_cutoff(brd, first_move, depth, count)
 					main_tt.store(brd, first_move, depth, LOWER_BOUND, score)
-					return score, sum
+					return score, sum, nil
 				}
 				alpha = score
+				pv.m = first_move
+				pv.next = next_pv
 			}
 			best_move = first_move
 			best = score
@@ -439,16 +394,18 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool)
 			continue
 		}
 		legal_searched += 1
-		score, count = ybw_make(brd, m, alpha, beta, depth-1, ply+1, can_null)
+		score, count, next_pv = ybw_make(brd, m, alpha, beta, depth-1+extension, ply+1, can_null, nil)
 		sum += count
 		if score > best {
 			if score > alpha {
 				if score >= beta {
 					store_cutoff(brd, m, depth, count)
 					main_tt.store(brd, m, depth, LOWER_BOUND, score)
-					return score, sum
+					return score, sum, nil
 				}
 				alpha = score
+				pv.m = m
+				pv.next = next_pv
 			}
 			best_move = m
 			best = score
@@ -459,14 +416,12 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool)
 	// if a cutoff occurs, this will reduce move generation effort substantially.
 	get_remaining_moves(brd, in_check, remaining_moves)
 
-	// # Extended futility pruning:
-	f_prune := false
-	if depth <= 4 {
-		f_prune = !in_check && alpha > 100-INF && evaluate(brd, alpha, beta)+piece_values[BISHOP] < alpha
-	}
-
 	if depth <= SPLIT_MIN { // Depth is too shallow for parallel search to be worthwhile.
-
+		// Extended futility pruning:
+		f_prune := false
+		if depth <= F_PRUNE_MIN {
+			f_prune = !in_check && old_pv == nil && alpha > 100-INF && evaluate(brd, alpha, beta)+piece_values[BISHOP] < alpha
+		}
 		hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
 		castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
 
@@ -483,25 +438,24 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool)
 				brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
 				continue
 			}
-			score, count := young_brothers_wait(brd, -beta, -alpha, depth-1, ply+1, can_null)
+			score, count, next_pv := young_brothers_wait(brd, -beta, -alpha, depth-1+extension, ply+1, can_null, nil)
 			legal_searched += 1
 			score = -score
 			unmake_move(brd, m, enp_target) // to do: unmake move
 			brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
 			brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
 
-			// legal_searched += 1
-			// score, count = ybw_make(brd, m, alpha, beta, depth-1, ply+1, can_null)
-
 			sum += count
 			if score > best {
 				if score > alpha {
 					if score >= beta {
-						store_cutoff(brd, m, depth, count)
+						store_cutoff(brd, m, depth, count) // what happens on refutation of main pv?
 						main_tt.store(brd, m, depth, LOWER_BOUND, score)
-						return score, sum
+						return score, sum, nil
 					}
 					alpha = score
+					pv.m = m
+					pv.next = next_pv
 				}
 				best_move = m
 				best = score
@@ -509,27 +463,26 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool)
 		}
 	} else { // now that decent bounds have been established, parallel search is possible.
 		// Make sure at least 3 nodes have been searched serially before spawning.
-		// fmt.Printf("\nGetting moves")
 		for ; legal_searched < 3; legal_searched++ {
-			// fmt.Printf("+")
-			item := remaining_moves.Pop()
+			item := remaining_moves.Dequeue()
 			for item != nil && !avoids_check(brd, item.move, in_check) {
-				// fmt.Printf("-")
-				item = remaining_moves.Pop() // get the highest-sorted legal move from the remaining_moves list
+				item = remaining_moves.Dequeue() // get the highest-sorted legal move from remaining_moves
 			}
 			if item == nil {
 				break
 			}
-			score, count = ybw_make(brd, item.move, alpha, beta, depth-1, 1, true)
+			score, count, next_pv = ybw_make(brd, item.move, alpha, beta, depth-1+extension, 1, true, nil)
 			sum += count
 			if score > best {
 				if score > alpha {
 					if score >= beta {
 						store_cutoff(brd, item.move, depth, count)
 						main_tt.store(brd, item.move, depth, LOWER_BOUND, score)
-						return score, sum
+						return score, sum, nil
 					}
 					alpha = score
+					pv.m = m
+					pv.next = next_pv
 				}
 				best_move = item.move
 				best = score
@@ -547,8 +500,8 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool)
 			legal_searched += 1
 			child_counter++
 			go func() {
-				score, count := ybw_make(new_brd, m, alpha, beta, depth-1, ply+1, can_null)
-				result_child <- SearchResult{m, score, count}
+				score, count, next_pv := ybw_make(new_brd, m, alpha, beta, depth-1+extension, ply+1, can_null, nil)
+				result_child <- SearchResult{m, score, count, next_pv}
 			}()
 		}
 
@@ -563,9 +516,11 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool)
 							if result.score >= beta {
 								store_cutoff(brd, result.move, depth, result.count)
 								main_tt.store(brd, result.move, depth, LOWER_BOUND, score)
-								return result.score, sum
+								return result.score, sum, nil
 							}
 							alpha = result.score
+							pv.m = result.move
+							pv.next = result.pv
 						}
 						best_move = result.move
 						best = score
@@ -582,17 +537,18 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool)
 	if legal_searched > 0 {
 		if alpha > old_alpha {
 			main_tt.store(brd, best_move, depth, EXACT, best)
+			return best, sum, pv
 		} else {
 			main_tt.store(brd, best_move, depth, UPPER_BOUND, best)
+			return best, sum, nil
 		}
-		return best, sum
 	} else { // draw or checkmate detected.
 		if in_check {
 			main_tt.store(brd, 0, depth, EXACT, ply-INF)
-			return ply - INF, sum
+			return ply - INF, sum, nil
 		} else {
 			main_tt.store(brd, 0, depth, EXACT, 0)
-			return 0, sum
+			return 0, sum, nil
 		}
 	}
 }
@@ -600,23 +556,41 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool)
 // Q-Search will always be done sequentially.
 // Q-search subtrees are taller and narrower than in the main search making benefit of parallelism
 // smaller and raising communication and synchronization overhead.
-func quiescence(brd *Board, alpha, beta, depth, ply int) (int, int) {
-
-	sum, count := 1, 0
-
+func quiescence(brd *Board, alpha, beta, depth, ply int, old_pv *PV) (int, int, *PV) {
 	in_check := is_in_check(brd)
-	score, best := -INF, -INF
-
 	if brd.halfmove_clock >= 100 {
 		if is_checkmate(brd, in_check) {
-			return ply - INF, 1
+			return ply - INF, 1, nil
 		} else {
 			fmt.Printf("Draw by Halfmove Rule at ply %d\n", ply)
-			return 0, 1
+			return 0, 1, nil
 		}
 	}
 
+	score, best := -INF, -INF
+	sum, count := 1, 0
+	pv := &PV{}
+	var next_pv *PV
+	var first_move Move
 	legal_moves := false
+
+	if old_pv != nil {	// Search the main pv line first, if any.
+		legal_moves = true
+		score, count, next_pv = q_make(brd, first_move, alpha, beta, depth-1, ply+1, old_pv.next)
+		sum += count
+		if score > best {
+			if score > alpha {
+				if score >= beta { // what happens if a move is refuted here while on the main PV?
+					return score, sum, nil
+				}
+				alpha = score
+				pv.m = first_move
+				pv.next = next_pv
+			}
+			best = score
+		}
+	}
+
 	var m Move
 	if in_check {
 		best_moves, remaining_moves := &MoveList{}, &MoveList{}
@@ -624,35 +598,39 @@ func quiescence(brd *Board, alpha, beta, depth, ply int) (int, int) {
 		for _, item := range *best_moves {
 			m = item.move
 			legal_moves = true
-			score, count = q_make(brd, m, alpha, beta, depth-1, ply+1)
+			score, count, next_pv = q_make(brd, m, alpha, beta, depth-1, ply+1, nil)
 			sum += count
 			if score > best {
-				best = score
 				if score > alpha {
 					if score >= beta {
-						return score, sum
+						return score, sum, nil
 					}
 					alpha = score
+					pv.m = m
+					pv.next = next_pv
 				}
+				best = score
 			}
 		}
 		for _, item := range *remaining_moves {
 			m = item.move
 			legal_moves = true
-			score, count = q_make(brd, m, alpha, beta, depth-1, ply+1)
+			score, count, next_pv = q_make(brd, m, alpha, beta, depth-1, ply+1, nil)
 			sum += count
 			if score > best {
-				best = score
 				if score > alpha {
 					if score >= beta {
-						return score, sum
+						return score, sum, nil
 					}
 					alpha = score
+					pv.m = m
+					pv.next = next_pv
 				}
+				best = score
 			}
 		}
 		if !legal_moves {
-			return ply - INF, 1 // detect checkmate.
+			return ply-INF, 1, nil // detect checkmate.
 		}
 	} else {
 
@@ -660,7 +638,7 @@ func quiescence(brd *Board, alpha, beta, depth, ply int) (int, int) {
 		if score > best {
 			if score > alpha {
 				if score >= beta {
-					return score, sum
+					return score, sum, nil
 				}
 				alpha = score
 			}
@@ -673,51 +651,56 @@ func quiescence(brd *Board, alpha, beta, depth, ply int) (int, int) {
 			if !avoids_check(brd, m, in_check) {
 				continue // prune illegal moves
 			}
-			if alpha > 100-INF && best+m.CapturedPiece().Value()+m.PromotedTo().PromoteValue()+piece_values[ROOK] < alpha {
+			if old_pv == nil && alpha > 100-INF && best+m.CapturedPiece().Value()+m.PromotedTo().PromoteValue()+piece_values[ROOK] < alpha {
 				continue // prune futile moves with no chance of raising alpha.
 			}
-
-			score, count = q_make(brd, m, alpha, beta, depth-1, ply+1)
+			score, count, next_pv = q_make(brd, m, alpha, beta, depth-1, ply+1, nil)
 			sum += count
 			if score > best {
 				if score > alpha {
 					if score >= beta {
-						return score, sum
+						return score, sum, nil
 					}
 					alpha = score
+					pv.m = first_move
+					pv.next = next_pv
 				}
 				best = score
 			}
 		}
 	}
 
-	return best, sum
+	if pv.m > 0 {
+		return best, sum, pv
+	} else {
+		return best, sum, nil
+	}
 }
 
-func ybw_make(brd *Board, m Move, alpha, beta, depth, ply int, can_null bool) (int, int) {
+func ybw_make(brd *Board, m Move, alpha, beta, depth, ply int, can_null bool, old_pv *PV) (int, int, *PV) {
 	hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
 	castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
 
 	make_move(brd, m) // to do: make move
-	score, sum := young_brothers_wait(brd, -beta, -alpha, depth, ply, can_null)
+	score, sum, pv := young_brothers_wait(brd, -beta, -alpha, depth, ply, can_null, old_pv)
 	unmake_move(brd, m, enp_target) // to do: unmake move
 
 	brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
 	brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
-	return -score, sum
+	return -score, sum, pv
 }
 
-func q_make(brd *Board, m Move, alpha, beta, depth, ply int) (int, int) {
+func q_make(brd *Board, m Move, alpha, beta, depth, ply int, old_pv *PV) (int, int, *PV) {
 	hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
 	castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
 
 	make_move(brd, m) // to do: make move
-	score, sum := quiescence(brd, -beta, -alpha, depth, ply)
+	score, sum, pv := quiescence(brd, -beta, -alpha, depth, ply, old_pv)
 	unmake_move(brd, m, enp_target) // to do: unmake move
 
 	brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
 	brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
-	return -score, sum
+	return -score, sum, pv
 }
 
 func null_make(brd *Board, beta, depth, ply int) (int, int) {
@@ -727,7 +710,7 @@ func null_make(brd *Board, beta, depth, ply int) (int, int) {
 	brd.hash_key ^= enp_zobrist(enp_target)
 	brd.enp_target = SQ_INVALID
 
-	score, sum := young_brothers_wait(brd, -beta, -beta+1, depth, ply, false)
+	score, sum, _ := young_brothers_wait(brd, -beta, -beta+1, depth, ply, false, nil)
 
 	brd.c ^= 1
 	brd.hash_key = hash_key

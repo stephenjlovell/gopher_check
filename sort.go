@@ -117,13 +117,12 @@ func (l *MoveList) Push(item *SortItem) {
 	*l = append(*l, item)
 }
 
-func (l *MoveList) Pop() *SortItem {
+func (l *MoveList) Dequeue() *SortItem {
 	old := *l
-	n := len(old)
-	if n == 0 {
+	if len(old) == 0 {
 		return nil
 	}
-	item := old[n-1]
-	*l = old[0 : n-1]
+	item := old[0]
+	*l = old[1:]
 	return item
 }

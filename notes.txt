@@ -22,6 +22,7 @@ To Do:
 
 Add ability to accurately evaluate promotions via see()
 
+Implement Pondering.
 
 Implement Late-Move Reductions.
 

@@ -115,7 +115,10 @@ func (tt *TT) probe(brd *Board, depth, null_depth int, alpha, beta, score *int) 
 	for i := 0; i < 4; i++ {
 		if hash_key == slot[i].HashKey() { // look for an entry uncorrupted by lockless access.
 			// fmt.Printf("Full Key match: %d", hash_key)
+
 			// to do: update age (search id) of entry.
+			slot[i].data = (slot[i].data & mask_of_length[45]) | (uint64(search_id) << 45)
+
 			entry_depth := slot[i].Depth()
 			if entry_depth >= depth {
 				entry_type := slot[i].Type()
@@ -125,16 +128,12 @@ func (tt *TT) probe(brd *Board, depth, null_depth int, alpha, beta, score *int) 
 				switch entry_type {
 				case LOWER_BOUND: // failed high last time (at CUT node)
 					if entry_value >= *beta {
-						// brd.Print()
-						// fmt.Printf("retrieved LOWER_BOUND: %s\n", slot[i].Move().ToString())
 						return slot[i].Move(), CUTOFF_FOUND
 					} else {
 						// *beta = entry_value
 					}
 				case UPPER_BOUND: // failed low last time. (at ALL node)
 					if entry_value <= *alpha {
-						// brd.Print()
-						// fmt.Printf("retrieved UPPER_BOUND: %s\n", slot[i].Move().ToString())
 						return slot[i].Move(), CUTOFF_FOUND
 					} else {
 						// *alpha = entry_value
@@ -151,8 +150,6 @@ func (tt *TT) probe(brd *Board, depth, null_depth int, alpha, beta, score *int) 
 						}
 						// *alpha = entry_value
 					}
-					// brd.Print()
-					// fmt.Printf("retrieved EXACT: %s\n", slot[i].Move().ToString())
 				}
 
 			} else if entry_depth >= null_depth {
@@ -161,17 +158,12 @@ func (tt *TT) probe(brd *Board, depth, null_depth int, alpha, beta, score *int) 
 				// if the entry is too shallow for an immediate cutoff but at least as deep as a potential
 				// null-move search, check if a null move search would have any chance of causing a beta cutoff.
 				if entry_type == UPPER_BOUND && entry_value < *beta {
-					// brd.Print()
-					// fmt.Printf("retrieved AVOID_NULL: %s\n", slot[i].Move().ToString())
 					return slot[i].Move(), AVOID_NULL
 				}
 			}
-			// brd.Print()
-			// fmt.Printf("retrieved ORDERING_ONLY: %s\n", slot[i].Move().ToString())
 			return slot[i].Move(), ORDERING_ONLY
 		}
 	}
-	// fmt.Printf("No TT match for key %#x\n", hash_key)
 	return Move(0), NO_MATCH
 }
 
@@ -185,10 +177,6 @@ func (tt *TT) store(brd *Board, move Move, depth, entry_type, value int) {
 
 	for i := 0; i < 4; i++ {
 		if hash_key == slot[i].HashKey() { // exact match found.  Always replace.
-			// if move == 0 {
-			// 	// brd.Print()
-			// 	fmt.Printf("replacing matching entry: %s value: %d\n", move.ToString(), value)
-			// }
 			slot[i] = NewBucket(hash_key, move, depth, entry_type, value)
 			return
 		}
@@ -203,14 +191,6 @@ func (tt *TT) store(brd *Board, move Move, depth, entry_type, value int) {
 		}
 	}
 	if replace_index != 4 {
-		// if move == 0 {
-		// 	// brd.Print()
-		// 	if slot[replace_index].Id() > 0 {
-		// 		fmt.Printf("replacing old entry %s with id %d value: %d\n", move.ToString(), slot[replace_index].Id(), value)
-		// 	} else {
-		// 		fmt.Printf("adding new entry %s with id %d value: %d\n", move.ToString(), search_id, value)
-		// 	}
-		// }
 		slot[replace_index] = NewBucket(hash_key, move, depth, entry_type, value)
 		return
 	}
@@ -221,10 +201,6 @@ func (tt *TT) store(brd *Board, move Move, depth, entry_type, value int) {
 			replace_index, replace_depth = i, slot[i].Depth()
 		}
 	}
-	// if move == 0 {
-	// 	// brd.Print()
-	// 	fmt.Printf("replacing shallowest entry: %s value: %d\n", move.ToString(), value)
-	// }
 	slot[replace_index] = NewBucket(hash_key, move, depth, entry_type, value)
 }
 
@@ -246,10 +222,7 @@ const (
 )
 
 func random_key() uint64 { // create a pseudorandom 64-bit unsigned int key
-	r := (uint64(rand.Int63n(MAX_RAND)) << 32) | uint64(rand.Int63n(MAX_RAND))
-	// fmt.Printf("%#x\n", r)
-	// BB(r).Print()
-	return r
+	return (uint64(rand.Int63n(MAX_RAND)) << 32) | uint64(rand.Int63n(MAX_RAND))
 }
 
 func setup_zobrist() {

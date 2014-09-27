@@ -21,6 +21,10 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //-----------------------------------------------------------------------------------
 
+// This module implements communication over standard I/O using the Universal Chess
+// Interface (UCI) protocol.  This allows the engine to communicate with any other
+// chess software that also implements UCI.
+
 // UCI Protocol specification:  http://wbec-ridderkerk.nl/html/UCIProtocol.html
 
 package main
@@ -31,6 +35,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -43,15 +48,20 @@ func Milliseconds(d time.Duration) int64 {
 // Printed to standard output at end of each iterative deepening pass. Score given in centipawns.
 // Time given in milliseconds. PV given as list of moves.
 // Example: info score cp 13  depth 1 nodes 13 time 15 pv f1b5
-func PrintInfo(score, depth, node_count int, time_elapsed time.Duration) {
+func PrintInfo(score, depth, node_count int, time_elapsed time.Duration, pv *PV) {
 	ms := Milliseconds(time_elapsed)
 	nps := int64(float64(node_count) / (float64(ms) / float64(1000.0)))
-	fmt.Printf("info score cp %d depth %d nodes %d nps %d time %d\n", score, depth, node_count, nps, ms)
+	fmt.Printf("info score cp %d depth %d nodes %d nps %d time %d", score, depth, node_count, nps, ms)
+	if pv != nil {
+		fmt.Printf(" pv %s\n", pv.ToString())
+	}
 	fmt.Printf("NPS: %.4f m\n", float64(nps)/1000000)
 }
 
 func ReadUCICommand() {
 	var input string
+	var wg sync.WaitGroup
+
 	reader := bufio.NewReader(os.Stdin)
 	UCIIdentify()
 	for {
@@ -65,13 +75,12 @@ func ReadUCICommand() {
 			uci_mode = true
 			UCIIdentify()
 		case "isready":
-			// to do: check if any tasks are still running.
+			wg.Wait()
 			fmt.Printf("readyok\n")
-
 		case "position":
+			wg.Wait()
 			current_board = ParseUCIPosition(uci_fields[1:])
 			fmt.Printf("readyok\n")
-
 		case "ucinewgame":
 			ResetAll() // reset all shared data structures and prepare to start a new game.
 			current_board = ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
@@ -80,7 +89,8 @@ func ReadUCICommand() {
 		case "ponderhit":
 
 		case "go":
-			go ParseUCIGo(uci_fields[1:])
+			wg.Add(1)
+			go ParseUCIGo(uci_fields[1:], &wg) // parse any parameters given by GUI and begin searching.
 
 		case "print":
 			current_board.Print()
@@ -105,8 +115,8 @@ func UCIIdentify() {
 	fmt.Println("uciok")
 }
 
-func ParseUCIGo(uci_fields []string) {
-	depth, time := int64(MAX_DEPTH), int64(MAX_TIME * 1000)
+func ParseUCIGo(uci_fields []string, wg *sync.WaitGroup) {
+	depth, time := int64(MAX_DEPTH), int64(MAX_TIME)
 	var restrict_search []Move
 
 	for len(uci_fields) > 0 {
@@ -133,6 +143,7 @@ func ParseUCIGo(uci_fields []string) {
 	}
 	move, _ := Search(current_board, restrict_search, int(depth), int(time))
 	fmt.Printf("bestmove %s\n", move.ToString())
+	wg.Done()
 }
 
 // position [fen  | startpos ]  moves  ....
