@@ -74,7 +74,7 @@ const (
 	F_PRUNE_MIN = 3 // should always be less than SPLIT_MIN
 	EXT_MAX   = 4
 	MAX_PLY   = MAX_DEPTH + EXT_MAX
-	IID_MIN   = 4
+	IID_MIN   = 6
 	COMMS_MIN = 5 // minimum depth at which to send info to GUI.
 )
 
@@ -91,11 +91,8 @@ type BoundUpdate struct {
 }
 
 var search_id int
-var iid_move [2]Move
-var iid_score [2]int
 var cancel_search bool
 var uci_mode bool = false
-
 var uci_ponder bool = false
 
 func AbortSearch() {
@@ -113,7 +110,7 @@ func search_timer(timer *time.Timer) {
 
 func Search(brd *Board, restrict_search []Move, depth, time_limit int) (Move, int) {
 	cancel_search = false
-	iid_move[brd.c] = 0
+	id_move[brd.c] = 0
 	start := time.Now()
 	timer := time.NewTimer(time.Duration(time_limit) * time.Millisecond)
 
@@ -132,6 +129,10 @@ func Search(brd *Board, restrict_search []Move, depth, time_limit int) (Move, in
 	return move, sum
 }
 
+var id_move [2]Move
+var id_score [2]int
+var id_alpha, id_beta int
+
 func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 	var move Move
 	var guess, count, first_count, sum int
@@ -140,22 +141,23 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 	c := brd.c
 
 	// first iteration is always full-depth.
-	move, guess, count, old_pv = ybw_root(brd, -INF, INF, iid_score[c], 1, nil)
+	id_alpha, id_beta = -INF, INF
+	move, guess, count, old_pv = ybw_root(brd, id_alpha, id_beta, id_score[c], 1, nil)
 
 	sum, first_count, previous_count = count, count, count
-	iid_move[c], iid_score[c] = move, guess
+	id_move[c], id_score[c] = move, guess
 
 	for d := 2; d <= depth; d++ {
 		// to do: add aspiration windows
 
-		move, guess, count, current_pv = ybw_root(brd, -INF, INF, iid_score[c], d, old_pv)
+		move, guess, count, current_pv = ybw_root(brd, id_alpha, id_beta, id_score[c], d, old_pv)
 
 		if cancel_search {
 			avg_branch := math.Pow(float64(sum)/float64(first_count), float64(1)/float64(depth-1))
 			if !uci_mode {
 				fmt.Printf("Average Branching: %.4f\n", avg_branch)
 			}
-			return iid_move[c], sum
+			return id_move[c], sum
 		} else {
 			sum += count
 			if d > COMMS_MIN { // don't print info for first few plys to reduce communication traffic.
@@ -165,16 +167,15 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 					fmt.Printf("Depth: %d Branching: %.4f\n", d, float64(count)/float64(previous_count))
 				}
 			}
-			iid_move[c], iid_score[c] = move, guess
+			id_move[c], id_score[c] = move, guess
 			previous_count, old_pv = count, current_pv
 		}
 	}
 	PrintInfo(guess, depth, sum, time.Since(start), current_pv)
 	avg_branch := math.Pow(float64(sum)/float64(first_count), float64(1)/float64(depth-1))
-	brd.Print()
 	fmt.Printf("Average Branching: %.4f\n", avg_branch)
 
-	return iid_move[c], sum
+	return id_move[c], sum
 }
 
 func ybw_root(brd *Board, alpha, beta, guess, depth int, old_pv *PV) (Move, int, int, *PV) {
@@ -298,6 +299,7 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int, old_pv *PV) (Move, int,
 	}
 }
 
+
 func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool, old_pv *PV) (int, int, *PV) {
 	if cancel_search {
 		return 0, 0, nil
@@ -316,7 +318,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool,
 		if is_checkmate(brd, in_check) {
 			return ply - INF, 1, nil
 		} else {
-			fmt.Printf("Draw by Halfmove Rule at ply %d\n", ply)
+			// fmt.Printf("Draw by Halfmove Rule at ply %d\n", ply)
 			return 0, 1, nil
 		}
 	}
@@ -335,9 +337,8 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool,
 	var next_pv *PV
 	var best_move, first_move Move
 
-	if old_pv != nil { // if on main PV line from previous iteration, no need to probe hash table.
-		first_move = old_pv.m
-	} else { // Never try null move pruning while on main PV line.
+	if old_pv == nil { // if on main PV line from previous iteration, no need to probe hash table.
+		// Never try null move pruning while on main PV line.
 		var hash_result int
 		first_move, hash_result = main_tt.probe(brd, depth, null_depth, &alpha, &beta, &score)
 		if hash_result == CUTOFF_FOUND {
@@ -353,8 +354,22 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool,
 				}
 			}
 		}
-		if hash_result == NO_MATCH { // No hash move available. Use IID to get a decent first move to try.
-			// implementation will depend on PVS implementation.
+		if hash_result == NO_MATCH && can_null && depth >= IID_MIN { // No hash move available. Use IID to get a decent first move to try.
+			var local_id_alpha, local_id_beta int
+			if (ply&1) == 0 { // test if odd-ply
+				local_id_alpha, local_id_beta = -id_beta, -id_alpha
+			} else {
+				local_id_alpha, local_id_beta = id_alpha, id_beta
+			}
+			if alpha == local_id_alpha && beta == local_id_beta {  // Only use IID at expected PV nodes.
+				// This assumes use of PVSearch where non-PV nodes are searched with null windows. (as in PVS)
+				var local_pv *PV
+				score, count, local_pv = young_brothers_wait(brd, alpha, beta, depth-2+extension, ply, true, nil)
+				sum += count
+				if local_pv != nil {
+					first_move = local_pv.m						
+				}
+			}
 		}
 	}
 
@@ -362,6 +377,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool,
 	if old_pv != nil || (is_valid_move(brd, first_move, depth)&&avoids_check(brd, first_move, in_check)) {
 		var temp_pv *PV
 		if old_pv != nil {
+			first_move = old_pv.m
 			temp_pv = old_pv.next
 		}
 		legal_searched += 1
@@ -562,7 +578,7 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, old_pv *PV) (int, int, 
 		if is_checkmate(brd, in_check) {
 			return ply - INF, 1, nil
 		} else {
-			fmt.Printf("Draw by Halfmove Rule at ply %d\n", ply)
+			// fmt.Printf("Draw by Halfmove Rule at ply %d\n", ply)
 			return 0, 1, nil
 		}
 	}

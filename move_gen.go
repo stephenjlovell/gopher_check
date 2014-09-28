@@ -27,9 +27,20 @@ import (
 // "fmt"
 )
 
+func get_single_move_list(brd *Board, in_check bool) *MoveList {
+	var all_moves MoveList
+	if in_check {
+		get_evasions(brd, &all_moves, &all_moves)
+	} else {
+		get_captures(brd, &all_moves, &all_moves)
+		get_non_captures(brd, &all_moves)
+	}
+	all_moves.Sort()
+	return &all_moves
+}
+
 func get_all_moves(brd *Board, in_check bool) (*MoveList, *MoveList) {
 	var best_moves, remaining_moves MoveList
-	// best_moves, remaining_moves := make(MoveList, 0, 75), make(MoveList, 0, 75)
 	if in_check {
 		get_evasions(brd, &best_moves, &remaining_moves)
 	} else {
