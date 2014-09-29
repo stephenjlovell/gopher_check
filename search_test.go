@@ -48,7 +48,7 @@ func TestSearch(t *testing.T) {
 		ResetAll() // reset all shared data structures and prepare to start a new game.
 		current_board = ParseFENString(pos)
 		// current_board.Print()
-		move, count := Search(current_board, make([]Move, 0), MAX_DEPTH-2, MAX_TIME)
+		move, count := Search(current_board, make([]Move, 0), MAX_DEPTH-4, MAX_TIME)
 		fmt.Printf("bestmove %s\n\n", move.ToString())
 		sum += count
 	}

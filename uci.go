@@ -187,5 +187,5 @@ func StartPos() *Board {
 
 func ResetAll() {
 	main_htable.Clear()
-
+	main_ktable.Clear()
 }

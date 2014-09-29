@@ -67,7 +67,7 @@ func (brd *Board) Enemy() uint8 {
 	return brd.c ^ 1
 }
 
-func (brd *Board) Occupied() BB { return brd.occupied[0] | brd.occupied[1] }
+func (brd *Board) AllOccupied() BB { return brd.occupied[0] | brd.occupied[1] }
 
 func (brd *Board) Placement(c uint8) BB { return brd.occupied[c] }
 

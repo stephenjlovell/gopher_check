@@ -40,44 +40,114 @@ type Move uint32
 // Captured piece - next 3 bits
 // promoted to - next 3 bits
 
-func is_valid_move(brd *Board, m Move, d int) bool {
-	// return true
-
+func (m Move) IsValid(brd *Board) bool {
 	if m == 0 {
-		// fmt.Printf("!")
 		return false
 	}
-	// determine if there really is a piece of this type on the from square.
+
+	c, e := brd.c, brd.Enemy()
 	piece := m.Piece()
-	from := m.From()
-	if brd.TypeAt(from) != piece {
-		// brd.Print()
-		// fmt.Printf("Warning: Invalid move  %s at depth %d  for key %#x\n", m.ToString(), d, brd.hash_key)
-		// fmt.Printf("piece %d should be %d", piece, brd.TypeAt(from))
-		// fmt.Printf("!")
+	captured_piece := m.CapturedPiece()
+
+	if brd.pieces[c][piece]&sq_mask_on[m.From()] == 0 { // Check that there's really a piece of this type on the from square.
 		return false
 	}
-	captured_piece := m.CapturedPiece()
-	to := m.To()
-	if captured_piece != EMPTY {
-		if !(brd.TypeAt(to) == captured_piece || (piece == PAWN && brd.enp_target != SQ_INVALID &&
-			pawn_side_masks[from]&sq_mask_on[brd.enp_target] > 0)) {
-			// brd.Print()
-			// fmt.Printf("Warning: Invalid move  %s at depth %d  for key %#x\n", m.ToString(), d, brd.hash_key)
-			// fmt.Printf("captured_piece: %d\n", captured_piece)
-			// fmt.Printf("enp_target: %s\n", SquareString(int(brd.enp_target)))
-			// fmt.Printf("!")
+
+	if sq_mask_on[m.To()]&brd.occupied[c] > 0 {
+		return false
+	}
+
+	switch piece {
+	case PAWN:
+		diff := m.To() - m.From()
+		if captured_piece != EMPTY {
+			if !(brd.pieces[e][captured_piece]&sq_mask_on[m.To()] > 0 ||
+				(brd.enp_target != SQ_INVALID && pawn_side_masks[m.From()]&sq_mask_on[brd.enp_target] > 0)) {
+				return false
+			}
+			if brd.c == WHITE {
+				if !(diff == 7 || diff == 9) {
+					return false
+				}
+			} else {
+				if !(diff == -7 || diff == -9) {
+					return false
+				}
+			}
+		} else {
+			if brd.c == WHITE {
+				if diff == 8 {
+					if brd.TypeAt(m.To()) != EMPTY {
+						return false
+					}
+				} else if diff == 16 {
+					if brd.TypeAt(m.To()) != EMPTY || brd.TypeAt(m.From()+8) != EMPTY {
+						return false
+					}
+				} else {
+					return false
+				}
+			} else {
+				if diff == -8 {
+					if brd.TypeAt(m.To()) != EMPTY {
+						return false
+					}
+				} else if diff == -16 {
+					if brd.TypeAt(m.To()) != EMPTY || brd.TypeAt(m.From()-8) != EMPTY {
+						return false
+					}
+				} else {
+					return false
+				}
+			}
+		}
+
+	case KING:
+		if captured_piece != EMPTY && brd.pieces[e][captured_piece]&sq_mask_on[m.To()] == 0 {
+			return false
+		}
+		if abs(m.To()-m.From()) == 2 { // validate castle moves
+			if brd.c == WHITE {
+				switch m.To() {
+				case C1:
+					if !((brd.castle&C_WQ > uint8(0)) && castle_queenside_intervening[WHITE]&brd.AllOccupied() == 0 &&
+						!is_attacked_by(brd, B1, e, c) && !is_attacked_by(brd, C1, e, c) && !is_attacked_by(brd, D1, e, c)) {
+						return false
+					}
+				case G1:
+					if !((brd.castle&C_WK > uint8(0)) && castle_kingside_intervening[WHITE]&brd.AllOccupied() == 0 &&
+						!is_attacked_by(brd, F1, e, c) && !is_attacked_by(brd, G1, e, c)) {
+						return false
+					}
+				}
+			} else {
+				switch m.To() {
+				case C8:
+					if !((brd.castle&C_BQ > uint8(0)) && castle_queenside_intervening[BLACK]&brd.AllOccupied() == 0 &&
+						!is_attacked_by(brd, B8, e, c) && !is_attacked_by(brd, C8, e, c) && !is_attacked_by(brd, D8, e, c)) {
+						return false
+					}
+				case G8:
+					if !((brd.castle&C_BK > uint8(0)) && castle_kingside_intervening[BLACK]&brd.AllOccupied() == 0 &&
+						!is_attacked_by(brd, F8, e, c) && !is_attacked_by(brd, G8, e, c)) {
+						return false
+					}
+				}
+			}
+		}
+	case KNIGHT:
+		if captured_piece != EMPTY && brd.pieces[e][captured_piece]&sq_mask_on[m.To()] == 0 {
+			return false
+		}
+	default:
+		if captured_piece != EMPTY && brd.pieces[e][captured_piece]&sq_mask_on[m.To()] == 0 {
+			return false
+		}
+		if intervening[m.From()][m.To()]&brd.AllOccupied() > 0 { // check intervening squares are empty for sliding attacks.
 			return false
 		}
 	}
-	promoted_to := m.PromotedTo()
-	if promoted_to != EMPTY {
-		if piece != PAWN || promoted_to == PAWN {
-			// fmt.Printf("!")
-			// fmt.Printf("Warning: Invalid move  %s  at depth %d for key %#x\n", m.ToString(), d, brd.hash_key)
-			return false
-		}
-	}
+
 	return true
 }
 
