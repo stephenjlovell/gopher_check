@@ -235,7 +235,7 @@ func adjusted_placement(brd *Board, c, e uint8) int {
 
 	friendly := brd.Placement(c)
 	available := ^friendly
-	occ := brd.Occupied()
+	occ := brd.AllOccupied()
 
 	var unguarded BB // a bitmap of squares undefended by enemy pawns
 	if c > 0 {       // white to move

@@ -231,6 +231,7 @@ func setup_pawn_structure_masks() {
 	}
 }
 
+// Could simply use intervening[][] to replace these.
 func setup_castle_masks() {
 	castle_queenside_intervening[WHITE] |= (sq_mask_on[B1] | sq_mask_on[C1] | sq_mask_on[D1])
 	castle_kingside_intervening[WHITE] |= (sq_mask_on[F1] | sq_mask_on[G1])

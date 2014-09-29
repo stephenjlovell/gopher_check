@@ -29,7 +29,7 @@ import (
 
 func attack_map(brd *Board, sq int) BB {
 	var attacks, b_attackers, r_attackers BB
-	occ := brd.Occupied()
+	occ := brd.AllOccupied()
 	attacks |= (pawn_attack_masks[BLACK][sq] & brd.pieces[WHITE][PAWN]) | // Pawns
 		(pawn_attack_masks[WHITE][sq] & brd.pieces[BLACK][PAWN])
 	attacks |= (knight_masks[sq] & (brd.pieces[WHITE][KNIGHT] | brd.pieces[BLACK][KNIGHT])) // Knights
@@ -45,7 +45,7 @@ func attack_map(brd *Board, sq int) BB {
 
 func color_attack_map(brd *Board, sq int, c, e uint8) BB {
 	var attacks, b_attackers, r_attackers BB
-	occ := brd.Occupied()
+	occ := brd.AllOccupied()
 	attacks |= pawn_attack_masks[e][sq] & brd.pieces[c][PAWN]  // Pawns
 	attacks |= knight_masks[sq] & brd.pieces[c][KNIGHT]        // Knights
 	b_attackers = brd.pieces[c][BISHOP] | brd.pieces[c][QUEEN] // Bishops and Queens
@@ -57,7 +57,7 @@ func color_attack_map(brd *Board, sq int, c, e uint8) BB {
 }
 
 func is_attacked_by(brd *Board, sq int, attacker, defender uint8) bool {
-	occ := brd.Occupied()
+	occ := brd.AllOccupied()
 	if pawn_attack_masks[defender][sq]&brd.pieces[attacker][PAWN] > 0 { // Pawns
 		return true
 	}
@@ -83,7 +83,7 @@ func is_attacked_by(brd *Board, sq int, attacker, defender uint8) bool {
 // 2. Scan toward the king to see if there are any other pieces blocking this route to the king.
 // 3. Scan in the opposite direction to see detect any potential threats along this ray.
 func is_pinned(brd *Board, sq int, c, e uint8) BB {
-	occ := brd.Occupied()
+	occ := brd.AllOccupied()
 	var threat, guarded_king BB
 	dir := directions[sq][furthest_forward(c, brd.pieces[c][KING])] // get direction toward king
 	switch dir {
@@ -129,7 +129,7 @@ func get_see(brd *Board, from, to int, captured_piece Piece) int {
 		brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]
 
 	temp_map := attack_map(brd, to)
-	temp_occ := brd.Occupied()
+	temp_occ := brd.AllOccupied()
 	var temp_pieces BB
 
 	var piece_list [20]int

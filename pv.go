@@ -66,8 +66,6 @@ func (pv *PV) ToString() string {
 // On start of new iteration, a pointer to the previous PV is passed to the root.
 // When searching a move from previous pv, pass pv.next to child. If not on previous pv, pass nil.
 
-
-
 // Node criteria as defined by Onno Garms:
 // http://www.talkchess.com/forum/viewtopic.php?t=38408&postdays=0&postorder=asc&topic_view=flat&start=10
 
@@ -83,15 +81,3 @@ func (pv *PV) ToString() string {
 // The first child of a CUT node is an ALL node.
 // Further children of a CUT node are CUT nodes.
 // Children of ALL nodes are CUT nodes.
-
-
-
-
-
-
-
-
-
-
-
-

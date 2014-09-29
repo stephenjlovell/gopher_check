@@ -27,17 +27,17 @@ import (
 // "fmt"
 )
 
-func get_single_move_list(brd *Board, in_check bool) *MoveList {
-	var all_moves MoveList
-	if in_check {
-		get_evasions(brd, &all_moves, &all_moves)
-	} else {
-		get_captures(brd, &all_moves, &all_moves)
-		get_non_captures(brd, &all_moves)
-	}
-	all_moves.Sort()
-	return &all_moves
-}
+// func get_single_move_list(brd *Board, in_check bool) *MoveList {
+// 	var all_moves MoveList
+// 	if in_check {
+// 		get_evasions(brd, &all_moves, &all_moves)
+// 	} else {
+// 		get_captures(brd, &all_moves, &all_moves)
+// 		get_non_captures(brd, &all_moves)
+// 	}
+// 	all_moves.Sort()
+// 	return &all_moves
+// }
 
 func get_all_moves(brd *Board, in_check bool) (*MoveList, *MoveList) {
 	var best_moves, remaining_moves MoveList
@@ -76,7 +76,7 @@ func get_non_captures(brd *Board, remaining_moves *MoveList) {
 	var from, to int
 	var single_advances, double_advances BB
 	c := brd.c
-	occ := brd.Occupied()
+	occ := brd.AllOccupied()
 	empty := ^occ
 	var m Move
 
@@ -186,7 +186,7 @@ func get_non_captures(brd *Board, remaining_moves *MoveList) {
 func get_captures(brd *Board, best_moves, remaining_moves *MoveList) {
 	var from, to int
 	c, e := brd.c, brd.Enemy()
-	occ := brd.Occupied()
+	occ := brd.AllOccupied()
 	enemy := brd.Placement(e)
 	var see int
 	var m Move
@@ -224,8 +224,8 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList) {
 		see = get_see(brd, from, to, brd.squares[to])
 		m = NewMove(from, to, PAWN, brd.squares[to], QUEEN)
 		best_moves.Push(&SortItem{m, SortPromotionCapture(see)})
-		m = NewMove(from, to, PAWN, brd.squares[to], KNIGHT)
-		best_moves.Push(&SortItem{m, SortPromotionCapture(see)})
+		// m = NewMove(from, to, PAWN, brd.squares[to], KNIGHT)
+		// best_moves.Push(&SortItem{m, SortPromotionCapture(see)})
 	}
 
 	for ; promotion_captures_right > 0; promotion_captures_right.Clear(to) {
@@ -234,8 +234,8 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList) {
 		see = get_see(brd, from, to, brd.squares[to])
 		m = NewMove(from, to, PAWN, brd.squares[to], QUEEN)
 		best_moves.Push(&SortItem{m, SortPromotionCapture(see)})
-		m = NewMove(from, to, PAWN, brd.squares[to], KNIGHT)
-		best_moves.Push(&SortItem{m, SortPromotionCapture(see)})
+		// m = NewMove(from, to, PAWN, brd.squares[to], KNIGHT)
+		// best_moves.Push(&SortItem{m, SortPromotionCapture(see)})
 	}
 
 	// promotion advances
@@ -244,8 +244,8 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList) {
 		from = to + pawn_from_offsets[c][OFF_SINGLE]
 		m = NewPromotion(from, to, PAWN, QUEEN)
 		best_moves.Push(&SortItem{m, SORT_PROMOTION})
-		m = NewPromotion(from, to, PAWN, KNIGHT)
-		best_moves.Push(&SortItem{m, SORT_PROMOTION})
+		// m = NewPromotion(from, to, PAWN, KNIGHT)
+		// best_moves.Push(&SortItem{m, SORT_PROMOTION})
 	}
 
 	// regular pawn attacks
@@ -366,7 +366,7 @@ func get_winning_captures(brd *Board) *MoveList {
 	best_moves := &MoveList{}
 	var from, to int
 	c, e := brd.c, brd.Enemy()
-	occ := brd.Occupied()
+	occ := brd.AllOccupied()
 	enemy := brd.Placement(e)
 	var see int
 	var m Move
@@ -540,7 +540,7 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList) {
 	var from, to, threat_sq_1, threat_sq_2 int
 
 	threat_dir_1, threat_dir_2 := DIR_INVALID, DIR_INVALID
-	occ := brd.Occupied()
+	occ := brd.AllOccupied()
 	empty := ^occ
 	enemy := brd.Placement(e)
 
@@ -614,8 +614,8 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList) {
 				see = get_see(brd, from, to, brd.squares[to])
 				m = NewMove(from, to, PAWN, brd.squares[to], QUEEN)
 				best_moves.Push(&SortItem{m, SortPromotionCapture(see)})
-				m = NewMove(from, to, PAWN, brd.squares[to], KNIGHT)
-				best_moves.Push(&SortItem{m, SortPromotionCapture(see)})
+				// m = NewMove(from, to, PAWN, brd.squares[to], KNIGHT)
+				// best_moves.Push(&SortItem{m, SortPromotionCapture(see)})
 			}
 		}
 		for ; promotion_captures_right > 0; promotion_captures_right.Clear(to) {
@@ -625,8 +625,8 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList) {
 				see = get_see(brd, from, to, brd.squares[to])
 				m = NewMove(from, to, PAWN, brd.squares[to], QUEEN)
 				best_moves.Push(&SortItem{m, SortPromotionCapture(see)})
-				m = NewMove(from, to, PAWN, brd.squares[to], KNIGHT)
-				best_moves.Push(&SortItem{m, SortPromotionCapture(see)})
+				// m = NewMove(from, to, PAWN, brd.squares[to], KNIGHT)
+				// best_moves.Push(&SortItem{m, SortPromotionCapture(see)})
 			}
 		}
 		// promotion advances
@@ -636,8 +636,8 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList) {
 			if is_pinned(brd, from, c, e) == 0 {
 				m = NewPromotion(from, to, PAWN, QUEEN)
 				best_moves.Push(&SortItem{m, SORT_PROMOTION})
-				m = NewPromotion(from, to, PAWN, KNIGHT)
-				best_moves.Push(&SortItem{m, SORT_PROMOTION})
+				// m = NewPromotion(from, to, PAWN, KNIGHT)
+				// best_moves.Push(&SortItem{m, SORT_PROMOTION})
 			}
 		}
 		// regular pawn attacks
@@ -775,15 +775,7 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList) {
 			if is_pinned(brd, from, c, e) == 0 {
 				for t := (queen_attacks(occ, from) & defense_map); t > 0; t.Clear(to) { // generate to squares
 					to = furthest_forward(c, t)
-
 					if sq_mask_on[to]&enemy > 0 {
-
-						// if brd.squares[from] == EMPTY {
-						// 	// brd.Print()
-						// 	fmt.Printf("Warning: Invalid move. from: %s\n", SquareString(from))
-						// }
-						// Assert(brd.squares[to] != EMPTY && brd.squares[from] != EMPTY, "board state corrupted")
-
 						m = NewCapture(from, to, QUEEN, brd.squares[to])
 						see = get_see(brd, from, to, brd.squares[to])
 						if see >= 0 {

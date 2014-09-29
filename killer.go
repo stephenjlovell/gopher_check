@@ -23,12 +23,34 @@
 
 package main
 
-type KTable [MAX_PLY][2]Move
+import (
+  "fmt"
+)
 
-func (k KTable) Store() {
+var main_ktable KTable
 
+type KTable [64][2]Move
+
+func (k *KTable) Store(m Move, ply int) {
+	if m != k[ply][0] {
+		k[ply][1] = k[ply][0]
+		k[ply][0] = m
+	}
 }
 
-func (k KTable) Probe() {
-
+func (k *KTable) Clear() {
+	for ply := 0; ply < 64; ply++ {
+		for m := 0; m < 2; m++ {
+			k[ply][m] = 0
+		}
+	}
 }
+
+func (k *KTable) Print() {
+  for ply := 0; ply < 64; ply++ {
+    fmt.Printf("Ply %d, K1: %s, K2: %s\n", ply, k[ply][0].ToString(), k[ply][1].ToString())
+  }
+}
+
+
+

@@ -20,6 +20,8 @@ Debugging:
 
 To Do:
 
+Use check extensions only after the first check.
+
 Add ability to accurately evaluate promotions via see()
 
 Implement Pondering.
@@ -32,9 +34,8 @@ Implement Pawn Hashtable.  Update Make/Unmake.
 
 Implement Draw By Threefold Repetition using linked lists
 
-Implement hashtable-based Principal Variation Search
+Implement Principal Variation Search
 
-Implement Internal Iterative Deepening.
 
 
 Ideas:
