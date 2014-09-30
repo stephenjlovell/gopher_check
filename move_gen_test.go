@@ -151,6 +151,7 @@ func Assert(statement bool, failure_message string) {
 var check_count int
 var capture_count int
 var parallel_count int
+var mock_killers KEntry
 
 func PerftLegal(brd *Board, depth int) int {
 	if depth == 0 {
@@ -161,7 +162,7 @@ func PerftLegal(brd *Board, depth int) int {
 	if in_check {
 		check_count += 1
 	}
-	best_moves, remaining_moves := get_all_moves(brd, in_check)
+	best_moves, remaining_moves := get_all_moves(brd, in_check, &mock_killers)
 	for _, item := range *best_moves {
 		// if in_check || avoids_check(brd, item.move) {
 		sum += PerftLegal_make_unmake(brd, item.move, depth-1)
@@ -204,7 +205,7 @@ func Perft(brd *Board, depth int) int {
 	if in_check {
 		check_count += 1
 	}
-	best_moves, remaining_moves := get_all_moves(brd, in_check)
+	best_moves, remaining_moves := get_all_moves(brd, in_check, &mock_killers)
 	for _, item := range *best_moves {
 		sum += Perft_make_unmake(brd, item.move, depth-1)
 	}
@@ -241,7 +242,7 @@ func PerftParallel(brd *Board, depth int) int {
 			check_count += 1
 		}
 
-		best_moves, remaining_moves := get_all_moves(brd, in_check)
+		best_moves, remaining_moves := get_all_moves(brd, in_check, &mock_killers)
 		for _, item := range *best_moves {
 			sum += PerftParallel_make_unmake(brd, item.move, depth-1)
 		}
@@ -255,12 +256,12 @@ func PerftParallel(brd *Board, depth int) int {
 			check_count += 1
 		}
 
-		best_moves, remaining_moves := get_best_moves(brd, in_check)
+		best_moves, remaining_moves := get_best_moves(brd, in_check, &mock_killers)
 		for _, item := range *best_moves {
 			sum += PerftParallel_make_unmake(brd, item.move, depth-1)
 		}
 
-		get_remaining_moves(brd, in_check, remaining_moves) // search remaining nodes in parallel
+		get_remaining_moves(brd, in_check, remaining_moves, &mock_killers) // search remaining nodes in parallel
 		result_child := make(chan int, 30)
 		child_counter := 0
 		for _, item := range *remaining_moves {

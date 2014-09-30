@@ -32,15 +32,17 @@ type HTable [2][6][64]uint64
 var main_htable HTable
 
 func (h *HTable) Store(m Move, c uint8, count int) {
-	h[c][m.Piece()][m.To()] += uint64(count)
+	h[c][m.Piece()][m.To()] += uint64((count >> 2) | 1)
 }
 
 func (h *HTable) Probe(pc Piece, c uint8, to int) uint64 {
-	return (h[c][pc][to] >> 2) & 268435455
+	if h[c][pc][to] > 0 {
+		return (((h[c][pc][to] >> 3) & mask_of_length[21]) | 1)
+	}
+	return uint64(0)
 }
 
 func (h *HTable) Clear() {
-
 	for i := 0; i < 2; i++ {
 		for j := 0; j < 6; j++ {
 			for k := 0; k < 64; k++ {
@@ -48,5 +50,4 @@ func (h *HTable) Clear() {
 			}
 		}
 	}
-
 }

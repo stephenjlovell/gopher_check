@@ -44,49 +44,47 @@ import (
 // history heuristic : (18 bits)
 // hopeless captures : (10 bits)
 
-// split up losing captures
+// Promotions and captures SEE >= 0  11 bits
+// Killers  1 bit
+// castles  1 bit
+// Promotions and captures SEE < 0  10 bits
+// history heuristic : (21 bits)
+
+func SortPromotion(brd *Board, m Move) uint64 {
+	// Promotion Captures:
+	// if undefended, gain is promote_values[promoted_piece] + piece_values[captured_piece]
+	// is defended, gain is SEE score.
+	// Non-capture promotions:
+	// if square undefended, gain is promote_values[promoted_piece].
+	// If defended, gain is SEE score where captured_piece == EMPTY
+	var val int
+	if is_attacked_by(brd, m.To(), brd.Enemy(), brd.c) {
+		val = get_see(brd, m.From(), m.To(), m.CapturedPiece())
+	} else {
+		val = promote_values[m.PromotedTo()] + m.CapturedPiece().Value()
+	}
+	if val >= 0 {
+		return SortWinningCapture(val)
+	} else {
+		return SortLosingCapture(val)
+	}
+}
 
 const (
-	SORT_CASTLE    = (1 << 36)
-	SORT_K2        = (1 << 37)
-	SORT_K1        = (1 << 38)
-	SORT_PROMOTION = (1 << 49)
+	SORT_CASTLE = (1 << 31)
+	SORT_KILLER = (1 << 32)
+	WINNING     = (1 << 33)
 )
 
-func mvv_lva(victim, attacker Piece) int { // returns value between 0 and 64
-	return int((victim << 3) | attacker)
+// {-780, 1660}, 12 bits  promotions and captures
+
+func SortWinningCapture(see int) uint64 { // 11 bits
+	return uint64(see|1) << 33
 }
 
-//refactor to take up less space
-
-func SortPromotionCapture(see int) uint64 {
-	return (uint64(see) | 1) << 50
+func SortLosingCapture(see int) uint64 { // 10 bits
+	return uint64((see+780)|1) << 21
 }
-
-func SortWinningCapture(see int) uint64 {
-	return (uint64(see) | 1) << 39
-}
-
-// var piece_values = [8]int{100, 320, 333, 510, 880, 5000, 0, 0} // default piece values
-// 													// 220  13, 177,  370
-// 																 // 190
-
-func SortLosingCapture(see int) uint64 {
-	if see > -200 { // {-200, 0}
-		return uint64(see+200) << 28 // 8 bits, losing capture
-	} else { // {-780, -200}
-		return uint64(see + 780) // 10 bits, hopeless capture
-	}
-}
-
-func SortHistory(h int) uint64 {
-	if h > 0 {
-		return (((uint64(h) >> 5) & mask_of_length[18]) | 3) << 10
-	}
-	return uint64(1 << 10)
-}
-
-// 134217727
 
 // "Promising" moves (winning captures, promotions, and killers) are searched sequentially.
 
@@ -95,8 +93,12 @@ type SortItem struct {
 	order uint64
 }
 
-func (s SortItem) See() int {
-	return int(((s.order >> 42) & 2047) - 780)
+// func (s SortItem) See() int {
+// 	return int(((s.order >> 42) & mask_of_length[11]) - 780)
+// }
+
+func mvv_lva(victim, attacker Piece) int { // returns value between 0 and 64
+	return int((victim << 3) | attacker)
 }
 
 type MoveList []*SortItem

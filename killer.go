@@ -24,33 +24,33 @@
 package main
 
 import (
-  "fmt"
+	"fmt"
 )
 
 var main_ktable KTable
 
-type KTable [64][2]Move
+type KTable [128]KEntry
+
+type KEntry struct {
+	first  Move
+	second Move
+}
 
 func (k *KTable) Store(m Move, ply int) {
-	if m != k[ply][0] {
-		k[ply][1] = k[ply][0]
-		k[ply][0] = m
+	if m != k[ply].first {
+		k[ply].second = k[ply].first
+		k[ply].first = m
 	}
 }
 
 func (k *KTable) Clear() {
-	for ply := 0; ply < 64; ply++ {
-		for m := 0; m < 2; m++ {
-			k[ply][m] = 0
-		}
+	for _, entry := range k {
+		entry.first, entry.second = 0, 0
 	}
 }
 
 func (k *KTable) Print() {
-  for ply := 0; ply < 64; ply++ {
-    fmt.Printf("Ply %d, K1: %s, K2: %s\n", ply, k[ply][0].ToString(), k[ply][1].ToString())
-  }
+	for ply := 0; ply < 64; ply++ {
+		fmt.Printf("Ply %d, K1: %s, K2: %s\n", ply, k[ply].first.ToString(), k[ply].second.ToString())
+	}
 }
-
-
-

@@ -140,10 +140,8 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 	var old_pv, current_pv *PV
 	c := brd.c
 
-	// first iteration is always full-depth.
-	id_alpha, id_beta = -INF, INF
+	id_alpha, id_beta = -INF, INF // first iteration is always full-width.
 	move, guess, count, old_pv = ybw_root(brd, id_alpha, id_beta, id_score[c], 1, nil)
-
 	sum, first_count, previous_count = count, count, count
 	id_move[c], id_score[c] = move, guess
 
@@ -221,7 +219,7 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int, old_pv *PV) (Move, int,
 
 	// Generate tactical (non-quiet) moves.  Good moves will be searched sequentially to establish good bounds
 	// before remaining nodes are searched in parallel.
-	best_moves, remaining_moves := get_best_moves(brd, in_check)
+	best_moves, remaining_moves := get_best_moves(brd, in_check, &main_ktable[0])
 	var m Move
 	for _, item := range *best_moves { // search the best moves sequentially.
 		m = item.move
@@ -252,7 +250,7 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int, old_pv *PV) (Move, int,
 
 	// Delay the generation of remaining moves until all promotions and winning captures have been searched.
 	// if a cutoff occurs, this will reduce move generation effort substantially.
-	get_remaining_moves(brd, in_check, remaining_moves)
+	get_remaining_moves(brd, in_check, remaining_moves, &main_ktable[0])
 
 	for _, item := range *remaining_moves { // search remaining moves sequentially.
 		m = item.move
@@ -400,7 +398,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool,
 
 	// Generate tactical (non-quiet) moves.  Good moves will be searched sequentially to establish good bounds
 	// before remaining nodes are searched in parallel.
-	best_moves, remaining_moves := get_best_moves(brd, in_check)
+	best_moves, remaining_moves := get_best_moves(brd, in_check, &main_ktable[ply])
 	var m Move
 	for _, item := range *best_moves { // search the best moves sequentially.
 		m = item.move
@@ -426,53 +424,9 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool,
 		}
 	}
 
-	// Search killer moves
-	for k := 0; k < 2; k++ {
-		killer_move := main_ktable[ply][k]
-		if killer_move != first_move && killer_move.IsValid(brd) {
-
-			hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
-			castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
-			make_move(brd, killer_move)
-
-			if enemy_in_check(brd) { // do a full test for king saftey since this move was generated at a different node.
-					
-				// brd.Print()
-				// fmt.Printf("color: %d m: %s\n", brd.c, killer_move.ToString() )
-				unmake_move(brd, killer_move, enp_target)
-				brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
-				brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
-				continue
-			}
-			score, count, next_pv := young_brothers_wait(brd, -beta, -alpha, depth-1+extension, ply+1, can_null, nil)
-			score = -score
-
-			unmake_move(brd, killer_move, enp_target)
-			brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
-			brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
-
-			legal_searched += 1
-			sum += count
-			if score > best {
-				if score > alpha {
-					if score >= beta {
-						store_cutoff(brd, killer_move, depth, ply, count)
-						main_tt.store(brd, killer_move, depth, LOWER_BOUND, score)
-						return score, sum, nil
-					}
-					alpha = score
-					pv.m = killer_move
-					pv.next = next_pv
-				}
-				best_move = killer_move
-				best = score
-			}
-		}
-	}
-
 	// Delay the generation of remaining moves until all promotions, winning captures, and killer moves have been searched.
 	// if a cutoff occurs, this will reduce move generation effort substantially.
-	get_remaining_moves(brd, in_check, remaining_moves)
+	get_remaining_moves(brd, in_check, remaining_moves, &main_ktable[ply])
 
 	if depth <= SPLIT_MIN { // Depth is too shallow for parallel search to be worthwhile.
 
@@ -485,7 +439,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool,
 
 		for _, item := range *remaining_moves { // search remaining moves sequentially.
 			m = item.move
-			if m == first_move || /*m == main_ktable[ply][0] || m == main_ktable[ply][1] ||*/ !avoids_check(brd, m, in_check) {
+			if m == first_move || !avoids_check(brd, m, in_check) {
 				continue
 			}
 
@@ -624,6 +578,10 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, old_pv *PV) (int, int, 
 		}
 	}
 
+	if ply > 128 {
+		fmt.Printf("%d ", ply)
+	}
+
 	score, best := -INF, -INF
 	sum, count := 1, 0
 	pv := &PV{}
@@ -651,7 +609,7 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, old_pv *PV) (int, int, 
 	var m Move
 	if in_check {
 		best_moves, remaining_moves := &MoveList{}, &MoveList{}
-		get_evasions(brd, best_moves, remaining_moves) // only legal moves generated here.
+		get_evasions(brd, best_moves, remaining_moves, &main_ktable[ply]) // only legal moves generated here.
 		for _, item := range *best_moves {
 			m = item.move
 			legal_moves = true
@@ -779,7 +737,7 @@ func store_cutoff(brd *Board, m Move, depth, ply, count int) {
 	if !m.IsCapture() {
 		main_htable.Store(m, brd.c, count)
 		if !m.IsPromotion() { // By the time killer moves are tried, any promotions will already have been searched.
-			main_ktable.Store(m, ply) // store killer move in killer list for this Goroutine.
+			// main_ktable.Store(m, ply) // store killer move in killer list for this Goroutine.
 		}
 	}
 }

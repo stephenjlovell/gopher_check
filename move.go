@@ -44,111 +44,98 @@ func (m Move) IsValid(brd *Board) bool {
 	if m == 0 {
 		return false
 	}
-
-	c, e := brd.c, brd.Enemy()
-	piece := m.Piece()
-	captured_piece := m.CapturedPiece()
-
-	if brd.pieces[c][piece]&sq_mask_on[m.From()] == 0 { // Check that there's really a piece of this type on the from square.
-		return false
-	}
-
-	if sq_mask_on[m.To()]&brd.occupied[c] > 0 {
-		return false
-	}
-
-	switch piece {
-	case PAWN:
-		diff := m.To() - m.From()
-		if captured_piece != EMPTY {
-			if !(brd.pieces[e][captured_piece]&sq_mask_on[m.To()] > 0 ||
-				(brd.enp_target != SQ_INVALID && pawn_side_masks[m.From()]&sq_mask_on[brd.enp_target] > 0)) {
-				return false
-			}
-			if brd.c == WHITE {
-				if !(diff == 7 || diff == 9) {
-					return false
-				}
-			} else {
-				if !(diff == -7 || diff == -9) {
-					return false
-				}
-			}
-		} else {
-			if brd.c == WHITE {
-				if diff == 8 {
-					if brd.TypeAt(m.To()) != EMPTY {
-						return false
-					}
-				} else if diff == 16 {
-					if brd.TypeAt(m.To()) != EMPTY || brd.TypeAt(m.From()+8) != EMPTY {
-						return false
-					}
-				} else {
-					return false
-				}
-			} else {
-				if diff == -8 {
-					if brd.TypeAt(m.To()) != EMPTY {
-						return false
-					}
-				} else if diff == -16 {
-					if brd.TypeAt(m.To()) != EMPTY || brd.TypeAt(m.From()-8) != EMPTY {
-						return false
-					}
-				} else {
-					return false
-				}
-			}
-		}
-
-	case KING:
-		if captured_piece != EMPTY && brd.pieces[e][captured_piece]&sq_mask_on[m.To()] == 0 {
-			return false
-		}
-		if abs(m.To()-m.From()) == 2 { // validate castle moves
-			if brd.c == WHITE {
-				switch m.To() {
-				case C1:
-					if !((brd.castle&C_WQ > uint8(0)) && castle_queenside_intervening[WHITE]&brd.AllOccupied() == 0 &&
-						!is_attacked_by(brd, B1, e, c) && !is_attacked_by(brd, C1, e, c) && !is_attacked_by(brd, D1, e, c)) {
-						return false
-					}
-				case G1:
-					if !((brd.castle&C_WK > uint8(0)) && castle_kingside_intervening[WHITE]&brd.AllOccupied() == 0 &&
-						!is_attacked_by(brd, F1, e, c) && !is_attacked_by(brd, G1, e, c)) {
-						return false
-					}
-				}
-			} else {
-				switch m.To() {
-				case C8:
-					if !((brd.castle&C_BQ > uint8(0)) && castle_queenside_intervening[BLACK]&brd.AllOccupied() == 0 &&
-						!is_attacked_by(brd, B8, e, c) && !is_attacked_by(brd, C8, e, c) && !is_attacked_by(brd, D8, e, c)) {
-						return false
-					}
-				case G8:
-					if !((brd.castle&C_BK > uint8(0)) && castle_kingside_intervening[BLACK]&brd.AllOccupied() == 0 &&
-						!is_attacked_by(brd, F8, e, c) && !is_attacked_by(brd, G8, e, c)) {
-						return false
-					}
-				}
-			}
-		}
-	case KNIGHT:
-		if captured_piece != EMPTY && brd.pieces[e][captured_piece]&sq_mask_on[m.To()] == 0 {
-			return false
-		}
-	default:
-		if captured_piece != EMPTY && brd.pieces[e][captured_piece]&sq_mask_on[m.To()] == 0 {
-			return false
-		}
-		if intervening[m.From()][m.To()]&brd.AllOccupied() > 0 { // check intervening squares are empty for sliding attacks.
-			return false
-		}
-	}
-
 	return true
+
+	// c, e := brd.c, brd.Enemy()
+	// piece := m.Piece()
+	// from, to := m.From(), m.To()
+	// captured_piece := m.CapturedPiece()
+
+	// if brd.pieces[c][piece]&sq_mask_on[from] == 0 { // Check that there's really a piece of this type on the from square.
+	// 	return false
+	// }
+
+	// if sq_mask_on[to]&brd.occupied[c] > 0 {
+	// 	return false
+	// }
+
+	// switch piece {
+	// case PAWN:
+	// 	var diff int
+	// 	if c == WHITE {
+	// 		diff = to - from
+	// 	} else {
+	// 		diff = from - to
+	// 	}
+	// 	if diff < 0 {
+	// 		return false
+	// 	}
+	// 	if diff == 8 {
+	// 		if brd.TypeAt(to) == EMPTY {
+	// 			return true
+	// 		} else {
+	// 			return false
+	// 		}
+	// 	} else if diff == 16 {
+	// 		if brd.TypeAt(to) == EMPTY && brd.TypeAt(get_offset(c, from, 8)) == EMPTY {
+	// 			return true
+	// 		} else {
+	// 			return false
+	// 		}
+	// 	} else if captured_piece == EMPTY {
+	// 		return false
+	// 	}
+	// 	if brd.enp_target != SQ_INVALID && captured_piece == PAWN &&
+	// 		brd.TypeAt(to) == EMPTY && get_offset(c, to, -8) == int(brd.enp_target) {
+	// 		return true
+	// 	}
+	// case KING:
+	// 	if abs(to-from) == 2 { // validate castle moves
+	// 		if c == WHITE && (brd.castle & 12) > 0 {
+	// 			switch to {
+	// 			case C1:
+	// 				if !((brd.castle&C_WQ > uint8(0)) && castle_queenside_intervening[WHITE]&brd.AllOccupied() == 0 &&
+	// 					!is_attacked_by(brd, B1, e, c) && !is_attacked_by(brd, C1, e, c) && !is_attacked_by(brd, D1, e, c)) {
+	// 					return false
+	// 				}
+	// 			case G1:
+	// 				if !((brd.castle&C_WK > uint8(0)) && castle_kingside_intervening[WHITE]&brd.AllOccupied() == 0 &&
+	// 					!is_attacked_by(brd, F1, e, c) && !is_attacked_by(brd, G1, e, c)) {
+	// 					return false
+	// 				}
+	// 			}
+	// 		} else if c == BLACK && (brd.castle & 3) > 0 {
+	// 			switch to {
+	// 			case C8:
+	// 				if !((brd.castle&C_BQ > uint8(0)) && castle_queenside_intervening[BLACK]&brd.AllOccupied() == 0 &&
+	// 					!is_attacked_by(brd, B8, e, c) && !is_attacked_by(brd, C8, e, c) && !is_attacked_by(brd, D8, e, c)) {
+	// 					return false
+	// 				}
+	// 			case G8:
+	// 				if !((brd.castle&C_BK > uint8(0)) && castle_kingside_intervening[BLACK]&brd.AllOccupied() == 0 &&
+	// 					!is_attacked_by(brd, F8, e, c) && !is_attacked_by(brd, G8, e, c)) {
+	// 					return false
+	// 				}
+	// 			}
+	// 		} else {
+	// 			return false
+	// 		}
+	// 	}
+	// case KNIGHT:
+
+	// default:
+	// 	if intervening[from][to]&brd.AllOccupied() > 0 { // check intervening squares are empty for sliding attacks.
+	// 		return false
+	// 	}
+	// }
+
+	// if captured_piece != EMPTY && brd.pieces[e][captured_piece]&sq_mask_on[to] == 0 {
+	// 	return false
+	// }
+	// // if captured_piece == KING {  // if illegal move was actually generated by search to get to this position,
+	// // 	return false							 // this could prevent their detection by king capture...
+	// // }
+	// return true
 }
 
 func (m Move) From() int {

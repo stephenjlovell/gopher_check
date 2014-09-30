@@ -16,25 +16,29 @@ Performance:
 
 Debugging:
 
+Killer Move Heuristic
 
 
 To Do:
 
 Use check extensions only after the first check.
 
-Add ability to accurately evaluate promotions via see()
+Add separate QSearch and Hashtable -based sorting at root nodes.
+
+Implement Principal Variation Search
+
+Add ability to accurately evaluate promotions via see().
 
 Implement Pondering.
 
 Implement Late-Move Reductions.
 
-Separate out hashable elements of pawn evaluation (elements that don't depend on pieces other than pawns).
-
+Improve Pawn Evaluation - Rebalance bonuses, improve handling of pawn promotion.
+Separate out hashable elements of pawn evaluation (elements that depend only on other pawns).
 Implement Pawn Hashtable.  Update Make/Unmake.
 
 Implement Draw By Threefold Repetition using linked lists
 
-Implement Principal Variation Search
 
 
 
