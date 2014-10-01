@@ -49,7 +49,7 @@ func TestSearch(t *testing.T) {
 		current_board = ParseFENString(pos)
 		// current_board.Print()
 		fmt.Printf("Searching position %d\n", i+1)
-		move, count := Search(current_board, make([]Move, 0), MAX_DEPTH-1, MAX_TIME)
+		move, count := Search(current_board, make([]Move, 0), MAX_DEPTH-3, MAX_TIME)
 		fmt.Printf("bestmove %s\n\n", move.ToString())
 		sum += count
 	}

@@ -28,35 +28,44 @@ import (
 	"sort"
 )
 
-// Ordering: PV/hash (handled by search), promotions, winning captures, killers,
-// 					 losing captures, quiet moves (history heuristic order)
+// bit pos. (LSB order)
+// 50
+// 39  Promotions and captures SEE >= 0  (11 bits)
+// 38  Killers  (1 bit)
+// 37  Castles  (1 bit)
+// 27  Promotions and captures SEE < 0  (10 bits)
+// 21  MVV/LVA  (6 bits)  - Used to choose between captures of equal material gain/loss
+// 0   History heuristic : (21 bits)
 
-// what is the range of return values for SEE function?  {-4900, 5000} (min 13 bits)
-// if king saftey were handled properly by SEE, range would be {-780, 880} (min 11 bits)
 
-// In MSB order:
-// promotion captures : (10 bits) always set 1st bit
-// promotions : (1 bit)
-// winning captures : (10 bits)
-// killer 1 / killer 2 :  (2 bits)
-// castles : (1 bit)
-// losing captures : (8 bits)
-// history heuristic : (18 bits)
-// hopeless captures : (10 bits)
 
-// Promotions and captures SEE >= 0  11 bits
-// Killers  1 bit
-// castles  1 bit
-// Promotions and captures SEE < 0  10 bits
-// history heuristic : (21 bits)
+const (
+	SORT_CASTLE = (1 << 37)
+	SORT_KILLER = (1 << 38)
+	WINNING     = (1 << 39)
+)
 
+// {-780, 1660}, 12 bits  promotions and captures
+
+func SortWinningCapture(see int, victim, attacker Piece) uint64 { // 11 bits
+	return (uint64(see|1) << 39) | (mvv_lva(victim, attacker))
+}
+
+func SortLosingCapture(see int, victim, attacker Piece) uint64 { // 10 bits
+	return (uint64((see+780)|1) << 27) | (mvv_lva(victim, attacker))
+}
+
+func mvv_lva(victim, attacker Piece) uint64 { // returns value between 0 and 64
+	return uint64(((victim+1) << 3) - attacker) << 21
+}
+	
+// Promotion Captures:
+// if undefended, gain is promote_values[promoted_piece] + piece_values[captured_piece]
+// is defended, gain is SEE score.
+// Non-capture promotions:
+// if square undefended, gain is promote_values[promoted_piece].
+// If defended, gain is SEE score where captured_piece == EMPTY
 func SortPromotion(brd *Board, m Move) uint64 {
-	// Promotion Captures:
-	// if undefended, gain is promote_values[promoted_piece] + piece_values[captured_piece]
-	// is defended, gain is SEE score.
-	// Non-capture promotions:
-	// if square undefended, gain is promote_values[promoted_piece].
-	// If defended, gain is SEE score where captured_piece == EMPTY
 	var val int
 	if is_attacked_by(brd, m.To(), brd.Enemy(), brd.c) {
 		val = get_see(brd, m.From(), m.To(), m.CapturedPiece())
@@ -64,26 +73,10 @@ func SortPromotion(brd *Board, m Move) uint64 {
 		val = promote_values[m.PromotedTo()] + m.CapturedPiece().Value()
 	}
 	if val >= 0 {
-		return SortWinningCapture(val)
-	} else {
-		return SortLosingCapture(val)
+		return SortWinningCapture(val, QUEEN, PAWN) // in event of material tie with regular capture,
+	} else {																			// try the promotion first.
+		return SortLosingCapture(val, QUEEN, PAWN)
 	}
-}
-
-const (
-	SORT_CASTLE = (1 << 31)
-	SORT_KILLER = (1 << 32)
-	WINNING     = (1 << 33)
-)
-
-// {-780, 1660}, 12 bits  promotions and captures
-
-func SortWinningCapture(see int) uint64 { // 11 bits
-	return uint64(see|1) << 33
-}
-
-func SortLosingCapture(see int) uint64 { // 10 bits
-	return uint64((see+780)|1) << 21
 }
 
 // "Promising" moves (winning captures, promotions, and killers) are searched sequentially.
@@ -91,14 +84,6 @@ func SortLosingCapture(see int) uint64 { // 10 bits
 type SortItem struct {
 	move  Move
 	order uint64
-}
-
-// func (s SortItem) See() int {
-// 	return int(((s.order >> 42) & mask_of_length[11]) - 780)
-// }
-
-func mvv_lva(victim, attacker Piece) int { // returns value between 0 and 64
-	return int((victim << 3) | attacker)
 }
 
 type MoveList []*SortItem

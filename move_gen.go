@@ -24,7 +24,7 @@
 package main
 
 import (
-// "fmt"
+	// "fmt"
 )
 
 func get_all_moves(brd *Board, in_check bool, killers *KEntry) (*MoveList, *MoveList) {
@@ -297,9 +297,9 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList) {
 		m = NewCapture(from, to, PAWN, brd.squares[to])
 		see = get_see(brd, from, to, brd.squares[to])
 		if see >= 0 {
-			best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+			best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], PAWN)})
 		} else {
-			remaining_moves.Push(&SortItem{m, SortLosingCapture(see)})
+			remaining_moves.Push(&SortItem{m, SortLosingCapture(see, brd.squares[to], PAWN)})
 		}
 	}
 	for ; right_attacks > 0; right_attacks.Clear(to) {
@@ -308,9 +308,9 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList) {
 		m = NewCapture(from, to, PAWN, brd.squares[to])
 		see = get_see(brd, from, to, brd.squares[to])
 		if see >= 0 {
-			best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+			best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], PAWN)})
 		} else {
-			remaining_moves.Push(&SortItem{m, SortLosingCapture(see)})
+			remaining_moves.Push(&SortItem{m, SortLosingCapture(see, brd.squares[to], PAWN)})
 		}
 	}
 	// en-passant captures
@@ -326,9 +326,9 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList) {
 			m = NewCapture(from, to, PAWN, PAWN)
 			see = get_see(brd, from, to, PAWN) //  this will not accurately value en passant capture...
 			if see >= 0 {
-				best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+				best_moves.Push(&SortItem{m, SortWinningCapture(see, PAWN, PAWN)})
 			} else {
-				remaining_moves.Push(&SortItem{m, SortLosingCapture(see)})
+				remaining_moves.Push(&SortItem{m, SortLosingCapture(see, PAWN, PAWN)})
 			}
 		}
 	}
@@ -340,9 +340,9 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList) {
 			m = NewCapture(from, to, KNIGHT, brd.squares[to])
 			see = get_see(brd, from, to, brd.squares[to])
 			if see >= 0 {
-				best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+				best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], KNIGHT)})
 			} else {
-				remaining_moves.Push(&SortItem{m, SortLosingCapture(see)})
+				remaining_moves.Push(&SortItem{m, SortLosingCapture(see, brd.squares[to], KNIGHT)})
 			}
 		}
 	}
@@ -354,9 +354,9 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList) {
 			m = NewCapture(from, to, BISHOP, brd.squares[to])
 			see = get_see(brd, from, to, brd.squares[to])
 			if see >= 0 {
-				best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+				best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], BISHOP)})
 			} else {
-				remaining_moves.Push(&SortItem{m, SortLosingCapture(see)})
+				remaining_moves.Push(&SortItem{m, SortLosingCapture(see, brd.squares[to], BISHOP)})
 			}
 		}
 	}
@@ -368,9 +368,9 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList) {
 			m = NewCapture(from, to, ROOK, brd.squares[to])
 			see = get_see(brd, from, to, brd.squares[to])
 			if see >= 0 {
-				best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+				best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], ROOK)})
 			} else {
-				remaining_moves.Push(&SortItem{m, SortLosingCapture(see)})
+				remaining_moves.Push(&SortItem{m, SortLosingCapture(see, brd.squares[to], ROOK)})
 			}
 		}
 	}
@@ -382,9 +382,9 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList) {
 			m = NewCapture(from, to, QUEEN, brd.squares[to])
 			see = get_see(brd, from, to, brd.squares[to])
 			if see >= 0 {
-				best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+				best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], QUEEN)})
 			} else {
-				remaining_moves.Push(&SortItem{m, SortLosingCapture(see)})
+				remaining_moves.Push(&SortItem{m, SortLosingCapture(see, brd.squares[to], QUEEN)})
 			}
 		}
 	}
@@ -396,9 +396,9 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList) {
 			m = NewCapture(from, to, KING, brd.squares[to])
 			see = get_see(brd, from, to, brd.squares[to])
 			if see >= 0 {
-				best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+				best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], KING)})
 			} else {
-				remaining_moves.Push(&SortItem{m, SortLosingCapture(see)})
+				remaining_moves.Push(&SortItem{m, SortLosingCapture(see, brd.squares[to], KING)})
 			}
 		}
 	}
@@ -446,9 +446,12 @@ func get_winning_captures(brd *Board) *MoveList {
 		from = to + pawn_from_offsets[c][OFF_LEFT]
 		m = NewMove(from, to, PAWN, brd.squares[to], QUEEN)
 		sort = SortPromotion(brd, m)
-		if sort >= WINNING {
+		// if sort >= WINNING {
 			best_moves.Push(&SortItem{m, sort})
-		}
+		// } else {
+		// 	brd.Print()
+		// 	fmt.Println(m.ToString())
+		// }
 	}
 
 	for ; promotion_captures_right > 0; promotion_captures_right.Clear(to) {
@@ -456,9 +459,12 @@ func get_winning_captures(brd *Board) *MoveList {
 		from = to + pawn_from_offsets[c][OFF_RIGHT]
 		m = NewMove(from, to, PAWN, brd.squares[to], QUEEN)
 		sort = SortPromotion(brd, m)
-		if sort >= WINNING {
+		// if sort >= WINNING {
 			best_moves.Push(&SortItem{m, sort})
-		}
+		// } else {
+		// 	brd.Print()
+		// 	fmt.Println(m.ToString())
+		// }
 	}
 
 	// promotion advances
@@ -467,9 +473,12 @@ func get_winning_captures(brd *Board) *MoveList {
 		from = to + pawn_from_offsets[c][OFF_SINGLE]
 		m = NewPromotion(from, to, PAWN, QUEEN)
 		sort = SortPromotion(brd, m)
-		if sort >= WINNING {
+		// if sort >= WINNING {
 			best_moves.Push(&SortItem{m, sort})
-		}
+		// } else {
+		// 	brd.Print()
+		// 	fmt.Println(m.ToString())
+		// }
 	}
 
 	// regular pawn attacks
@@ -479,7 +488,7 @@ func get_winning_captures(brd *Board) *MoveList {
 		m = NewCapture(from, to, PAWN, brd.squares[to])
 		see = get_see(brd, from, to, brd.squares[to])
 		if see >= 0 {
-			best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+			best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], PAWN)})
 		}
 	}
 	for ; right_attacks > 0; right_attacks.Clear(to) {
@@ -488,7 +497,7 @@ func get_winning_captures(brd *Board) *MoveList {
 		m = NewCapture(from, to, PAWN, brd.squares[to])
 		see = get_see(brd, from, to, brd.squares[to])
 		if see >= 0 {
-			best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+			best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], PAWN)})
 		}
 	}
 	// en-passant captures
@@ -504,7 +513,7 @@ func get_winning_captures(brd *Board) *MoveList {
 			m = NewCapture(from, to, PAWN, PAWN)
 			see = get_see(brd, from, to, PAWN) //  this will not accurately value en passant capture...
 			if see >= 0 {
-				best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+				best_moves.Push(&SortItem{m, SortWinningCapture(see, PAWN, PAWN)})
 			}
 		}
 	}
@@ -516,7 +525,7 @@ func get_winning_captures(brd *Board) *MoveList {
 			m = NewCapture(from, to, KNIGHT, brd.squares[to])
 			see = get_see(brd, from, to, brd.squares[to])
 			if see >= 0 {
-				best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+				best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], KNIGHT)})
 			}
 		}
 	}
@@ -528,7 +537,7 @@ func get_winning_captures(brd *Board) *MoveList {
 			m = NewCapture(from, to, BISHOP, brd.squares[to])
 			see = get_see(brd, from, to, brd.squares[to])
 			if see >= 0 {
-				best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+				best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], BISHOP)})
 			}
 		}
 	}
@@ -540,7 +549,7 @@ func get_winning_captures(brd *Board) *MoveList {
 			m = NewCapture(from, to, ROOK, brd.squares[to])
 			see = get_see(brd, from, to, brd.squares[to])
 			if see >= 0 {
-				best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+				best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], ROOK)})
 			}
 		}
 	}
@@ -552,7 +561,7 @@ func get_winning_captures(brd *Board) *MoveList {
 			m = NewCapture(from, to, QUEEN, brd.squares[to])
 			see = get_see(brd, from, to, brd.squares[to])
 			if see >= 0 {
-				best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+				best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], QUEEN)})
 			}
 		}
 	}
@@ -564,7 +573,7 @@ func get_winning_captures(brd *Board) *MoveList {
 			m = NewCapture(from, to, KING, brd.squares[to])
 			see = get_see(brd, from, to, brd.squares[to])
 			if see >= 0 {
-				best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+				best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], KING)})
 			}
 		}
 	}
@@ -699,9 +708,9 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 				m = NewCapture(from, to, PAWN, brd.squares[to])
 				see = get_see(brd, from, to, brd.squares[to])
 				if see >= 0 {
-					best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+					best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], PAWN)})
 				} else {
-					remaining_moves.Push(&SortItem{m, SortLosingCapture(see)})
+					remaining_moves.Push(&SortItem{m, SortLosingCapture(see, brd.squares[to], PAWN)})
 				}
 			}
 		}
@@ -712,9 +721,9 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 				m = NewCapture(from, to, PAWN, brd.squares[to])
 				see = get_see(brd, from, to, brd.squares[to])
 				if see >= 0 {
-					best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+					best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], PAWN)})
 				} else {
-					remaining_moves.Push(&SortItem{m, SortLosingCapture(see)})
+					remaining_moves.Push(&SortItem{m, SortLosingCapture(see, brd.squares[to], PAWN)})
 				}
 			}
 		}
@@ -732,9 +741,9 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 					m = NewCapture(from, to, PAWN, PAWN)
 					see = get_see(brd, from, to, PAWN)
 					if see >= 0 {
-						best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+						best_moves.Push(&SortItem{m, SortWinningCapture(see, PAWN, PAWN)})
 					} else {
-						remaining_moves.Push(&SortItem{m, SortLosingCapture(see)})
+						remaining_moves.Push(&SortItem{m, SortLosingCapture(see, PAWN, PAWN)})
 					}
 				}
 			}
@@ -775,9 +784,9 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 						m = NewCapture(from, to, KNIGHT, brd.squares[to])
 						see = get_see(brd, from, to, brd.squares[to])
 						if see >= 0 {
-							best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+							best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], KNIGHT)})
 						} else {
-							remaining_moves.Push(&SortItem{m, SortLosingCapture(see)})
+							remaining_moves.Push(&SortItem{m, SortLosingCapture(see, brd.squares[to], KNIGHT)})
 						}
 					} else {
 						m = NewRegularMove(from, to, KNIGHT)
@@ -800,9 +809,9 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 						m = NewCapture(from, to, BISHOP, brd.squares[to])
 						see = get_see(brd, from, to, brd.squares[to])
 						if see >= 0 {
-							best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+							best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], BISHOP)})
 						} else {
-							remaining_moves.Push(&SortItem{m, SortLosingCapture(see)})
+							remaining_moves.Push(&SortItem{m, SortLosingCapture(see, brd.squares[to], BISHOP)})
 						}
 					} else {
 						m = NewRegularMove(from, to, BISHOP)
@@ -825,9 +834,9 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 						m = NewCapture(from, to, ROOK, brd.squares[to])
 						see = get_see(brd, from, to, brd.squares[to])
 						if see >= 0 {
-							best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+							best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], ROOK)})
 						} else {
-							remaining_moves.Push(&SortItem{m, SortLosingCapture(see)})
+							remaining_moves.Push(&SortItem{m, SortLosingCapture(see, brd.squares[to], ROOK)})
 						}
 					} else {
 						m = NewRegularMove(from, to, ROOK)
@@ -850,9 +859,9 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 						m = NewCapture(from, to, QUEEN, brd.squares[to])
 						see = get_see(brd, from, to, brd.squares[to])
 						if see >= 0 {
-							best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+							best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], QUEEN)})
 						} else {
-							remaining_moves.Push(&SortItem{m, SortLosingCapture(see)})
+							remaining_moves.Push(&SortItem{m, SortLosingCapture(see, brd.squares[to], QUEEN)})
 						}
 					} else {
 						m = NewRegularMove(from, to, QUEEN)
@@ -875,9 +884,9 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 			m = NewCapture(king_sq, to, KING, brd.squares[to])
 			see = get_see(brd, king_sq, to, brd.squares[to])
 			if see >= 0 {
-				best_moves.Push(&SortItem{m, SortWinningCapture(see)})
+				best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], KING)})
 			} else {
-				remaining_moves.Push(&SortItem{m, SortLosingCapture(see)})
+				remaining_moves.Push(&SortItem{m, SortLosingCapture(see, brd.squares[to], KING)})
 			}
 		}
 	}

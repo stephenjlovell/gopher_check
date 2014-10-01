@@ -208,7 +208,7 @@ func setup_eval() {
 func setup_eval_constants() {
 	non_king_value = piece_values[PAWN]*8 + piece_values[KNIGHT]*2 + piece_values[BISHOP]*2 +
 		piece_values[ROOK]*2 + piece_values[QUEEN]
-	endgame_value = piece_values[KING] - (non_king_value / 4)
+	endgame_value = piece_values[KING] + (non_king_value / 4)
 }
 
 var highest_placement, lowest_placement int
@@ -279,7 +279,7 @@ func adjusted_placement(brd *Board, c, e uint8) int {
 		sq = furthest_forward(c, b)
 		placement += king_pst[c][in_endgame(brd, c)][sq]
 	}
-	placement += pawn_structure(brd, c, e)
+	// placement += pawn_structure(brd, c, e)
 
 	return placement + mobility
 }

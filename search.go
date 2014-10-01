@@ -258,7 +258,7 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int, old_pv *PV) (Move, int,
 			continue
 		}
 		legal_searched += 1
-		if uci_mode && depth > 5 {
+		if uci_mode && uci_ponder && depth > 5 {
 			fmt.Printf("info currmove %s currmovenumber %d\n", m.ToString(), legal_searched)
 		}
 		score, count, next_pv = ybw_make(brd, m, alpha, beta, depth-1+extension, 1, true, nil)
@@ -737,7 +737,7 @@ func store_cutoff(brd *Board, m Move, depth, ply, count int) {
 	if !m.IsCapture() {
 		main_htable.Store(m, brd.c, count)
 		if !m.IsPromotion() { // By the time killer moves are tried, any promotions will already have been searched.
-			// main_ktable.Store(m, ply) // store killer move in killer list for this Goroutine.
+			main_ktable.Store(m, ply) // store killer move in killer list for this Goroutine.
 		}
 	}
 }

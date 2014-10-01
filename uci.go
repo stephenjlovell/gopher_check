@@ -126,6 +126,7 @@ func ParseUCIGo(uci_fields []string, wg *sync.WaitGroup) {
 			uci_fields = uci_fields[2:]
 		case "ponder":
 			depth = 32
+			uci_ponder = true
 		case "searchmoves":
 			uci_fields = uci_fields[:1]
 			for len(uci_fields) > 0 && IsMove(uci_fields[0]) {
