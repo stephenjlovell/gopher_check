@@ -26,14 +26,175 @@
 package main
 
 import (
-	// "fmt"
+	"bufio"
+	"fmt"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
-func ParseEPD(str string) {
+type EPD struct {
+	brd         *Board
+	best_moves  []string
+	avoid_moves []string
+	id          string
+}
 
+func (epd *EPD) Print() {
+	fmt.Println(epd.id)
+	// epd.brd.PrintDetails()
+	// fmt.Println("Best moves:")
+	// fmt.Println(epd.best_moves)
+	// fmt.Println("Avoid moves:")
+	// fmt.Println(epd.avoid_moves)
+}
+
+func load_epd_file(dir string) []*EPD {
+	epd_file, err := os.Open(dir)
+	if err != nil {
+		panic(err)
+	}
+	var test_positions []*EPD
+	scanner := bufio.NewScanner(epd_file)
+	for scanner.Scan() {
+		epd := ParseEPDString(scanner.Text())
+		test_positions = append(test_positions, epd)
+	}
+	return test_positions
+}
+
+// 2k4B/bpp1qp2/p1b5/7p/1PN1n1p1/2Pr4/P5PP/R3QR1K b - - bm Ng3+ g3; id "WAC.273";
+func ParseEPDString(str string) *EPD {
+	epd := &EPD{}
+	epd_fields := strings.Split(str, ";")
+	fen_fields := strings.Split(epd_fields[0], " ")
+
+	epd.brd = ParseFENSlice(fen_fields[:4])
+
+	bm := regexp.MustCompile("bm")
+	am := regexp.MustCompile("am")
+	id := regexp.MustCompile("id")
+	var loc []int
+	var move_fields, id_fields []string
+	for _, field := range epd_fields {
+		loc = bm.FindStringIndex(field)
+		if loc != nil {
+			field = field[loc[1]:]
+			move_fields = strings.Split(field, " ")
+			for _, move_field := range move_fields {
+				epd.best_moves = append(epd.best_moves, move_field)
+			}
+			continue
+		}
+		loc = am.FindStringIndex(field)
+		if loc != nil {
+			field = field[:loc[1]+1]
+			move_fields = strings.Split(field, " ")
+			for _, move_field := range move_fields {
+				epd.avoid_moves = append(epd.avoid_moves, move_field)
+			}
+			continue
+		}
+		loc = id.FindStringIndex(field)
+		if loc != nil {
+			id_fields = strings.Split(field, " ")
+			epd.id = strings.Join(id_fields[2:], "")
+		}
+	}
+	return epd
+}
+
+var san_chars = [6]string{"P", "N", "B", "R", "Q", "K"}
+
+func ToSAN(brd *Board, m Move) string { // convert move to Standard Algebraic Notation
+	piece := m.Piece()
+	from, to := m.From(), m.To()
+
+	san := SquareString(to)
+
+	if piece == PAWN {
+		return PawnSAN(brd, m, san)
+	}
+
+	if piece == KING {
+		if to-from == 2 { // kingside castling
+			return "O-O"
+		} else if to-from == -2 { // queenside castling
+			return "O-O-O"
+		}
+	}
+
+	if m.IsCapture() {
+		san = "x" + san
+	}
+
+	// disambiguate moving piece
+	if pop_count(brd.pieces[brd.c][piece]) > 1 {
+		occ := brd.AllOccupied()
+		c := brd.c
+		var t BB
+		switch piece {
+		case KNIGHT:
+			t = knight_masks[to] & brd.pieces[c][piece]
+		case BISHOP:
+			t = bishop_attacks(occ, to) & brd.pieces[c][piece]
+		case ROOK:
+			t = rook_attacks(occ, to) & brd.pieces[c][piece]
+		case QUEEN:
+			t = queen_attacks(occ, to) & brd.pieces[c][piece]
+		}
+		if pop_count(t) > 1 {
+			if pop_count(column_masks[column(from)]&t) == 1 {
+				san = column_names[column(from)] + san
+			} else if pop_count(row_masks[row(from)]&t) == 1 {
+				san = strconv.Itoa(row(from)+1) + san
+			} else {
+				san = SquareString(from) + san
+			}
+		}
+	}
+
+	if GivesCheck(brd, m) {
+		san += "+"
+	}
+	san = san_chars[piece] + san
+	return san
+}
+
+func PawnSAN(brd *Board, m Move, san string) string {
+	if m.IsPromotion() {
+		san += san_chars[m.PromotedTo()]
+	}
+	if m.IsCapture() {
+		from, to := m.From(), m.To()
+		san = "x" + san
+		// disambiguate capturing pawn
+		if brd.TypeAt(to) == EMPTY { // en passant
+			san = column_names[column(from)] + san
+		} else {
+			t := pawn_attack_masks[brd.Enemy()][to] & brd.pieces[brd.c][PAWN]
+			if pop_count(t) > 1 {
+				san = column_names[column(from)] + san
+			}
+		}
+	}
+	if GivesCheck(brd, m) {
+		san += "+"
+	}
+
+	return san
+}
+
+func GivesCheck(brd *Board, m Move) bool {
+	hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
+	castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
+	make_move(brd, m)
+	in_check := is_in_check(brd)
+	unmake_move(brd, m, enp_target)
+	brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
+	brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
+	return in_check
 }
 
 func ParseFENSlice(fen_fields []string) *Board {
@@ -42,10 +203,14 @@ func ParseFENSlice(fen_fields []string) *Board {
 	ParsePlacement(brd, fen_fields[0])
 	brd.c = ParseSide(fen_fields[1])
 	brd.castle = ParseCastleRights(brd, fen_fields[2])
-	brd.enp_target = ParseEnpTarget(fen_fields[3])
-	if len(fen_fields) > 4 {
-		brd.halfmove_clock = ParseHalfmoveClock(fen_fields[4])
+	brd.hash_key ^= castle_zobrist(brd.castle)
+	if len(fen_fields) > 3 {
+		brd.enp_target = ParseEnpTarget(fen_fields[3])
+		if len(fen_fields) > 4 {
+			brd.halfmove_clock = ParseHalfmoveClock(fen_fields[4])
+		}
 	}
+	brd.hash_key ^= enp_zobrist(brd.enp_target)
 	return brd
 }
 
@@ -84,6 +249,7 @@ var fen_piece_chars = map[string]int{
 
 func ParsePlacement(brd *Board, str string) {
 	var row_str string
+	// fmt.Println(str)
 	row_fields := strings.Split(str, "/")
 	sq := 0
 	match_digit, _ := regexp.Compile("\\d")
@@ -99,6 +265,7 @@ func ParsePlacement(brd *Board, str string) {
 			} else {
 				c := uint8(fen_piece_chars[chr] >> 3)
 				piece_type := Piece(fen_piece_chars[chr] & 7)
+				// fmt.Printf("%d, %d, %d\n", piece_type, sq, c)
 				add_piece(brd, piece_type, sq, c) // place the piece on the board.
 				sq += 1
 			}
@@ -154,7 +321,7 @@ func ParseHalfmoveClock(str string) uint8 {
 	if non_numeric {
 		return 0
 	} else {
-		halmove_clock, _ := strconv.ParseInt(str, 10, 7)
+		halmove_clock, _ := strconv.ParseInt(str, 10, 8)
 		return uint8(halmove_clock)
 	}
 }

@@ -23,34 +23,23 @@
 
 package main
 
-import (
-	"fmt"
-)
-
-var main_ktable KTable
-
-type KTable [128]KEntry
-
-type KEntry struct {
-	first  Move
-	second Move
+type RepList struct {
+	m        Move
+	hash_key uint64
+	parent   *RepList
 }
 
-func (k *KTable) Store(m Move, ply int) {
-	if m != k[ply].first {
-		k[ply].second = k[ply].first
-		k[ply].first = m
+func (l *RepList) Scan(key uint64) bool {
+	p = l.parent
+	repetition_count := 0
+	for p != nil {
+		if p.hash_key == key {
+			repetition_count += 1
+			if repetition_count == 2 {
+				return true
+			}
+		}
+		p = p.parent
 	}
-}
-
-func (k *KTable) Clear() {
-	for _, entry := range k {
-		entry.first, entry.second = 0, 0
-	}
-}
-
-func (k *KTable) Print() {
-	for ply := 0; ply < 64; ply++ {
-		fmt.Printf("Ply %d, K1: %s, K2: %s\n", ply, k[ply].first.ToUCI(), k[ply].second.ToUCI())
-	}
+	return false
 }

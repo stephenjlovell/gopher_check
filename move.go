@@ -172,7 +172,7 @@ func (m Move) IsPromotion() bool {
 
 var piece_chars = [6]string{"p", "n", "b", "r", "q", "k"}
 
-func (m Move) ToString() string {
+func (m Move) ToUCI() string {
 	var str string
 
 	from_row := row(m.From())
