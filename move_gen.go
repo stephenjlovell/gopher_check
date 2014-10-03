@@ -24,7 +24,7 @@
 package main
 
 import (
-	// "fmt"
+// "fmt"
 )
 
 func get_all_moves(brd *Board, in_check bool, killers *KEntry) (*MoveList, *MoveList) {
@@ -447,10 +447,10 @@ func get_winning_captures(brd *Board) *MoveList {
 		m = NewMove(from, to, PAWN, brd.squares[to], QUEEN)
 		sort = SortPromotion(brd, m)
 		// if sort >= WINNING {
-			best_moves.Push(&SortItem{m, sort})
+		best_moves.Push(&SortItem{m, sort})
 		// } else {
 		// 	brd.Print()
-		// 	fmt.Println(m.ToString())
+		// 	fmt.Println(m.ToUCI())
 		// }
 	}
 
@@ -460,10 +460,10 @@ func get_winning_captures(brd *Board) *MoveList {
 		m = NewMove(from, to, PAWN, brd.squares[to], QUEEN)
 		sort = SortPromotion(brd, m)
 		// if sort >= WINNING {
-			best_moves.Push(&SortItem{m, sort})
+		best_moves.Push(&SortItem{m, sort})
 		// } else {
 		// 	brd.Print()
-		// 	fmt.Println(m.ToString())
+		// 	fmt.Println(m.ToUCI())
 		// }
 	}
 
@@ -474,10 +474,10 @@ func get_winning_captures(brd *Board) *MoveList {
 		m = NewPromotion(from, to, PAWN, QUEEN)
 		sort = SortPromotion(brd, m)
 		// if sort >= WINNING {
-			best_moves.Push(&SortItem{m, sort})
+		best_moves.Push(&SortItem{m, sort})
 		// } else {
 		// 	brd.Print()
-		// 	fmt.Println(m.ToString())
+		// 	fmt.Println(m.ToUCI())
 		// }
 	}
 

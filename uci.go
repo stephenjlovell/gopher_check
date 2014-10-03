@@ -53,7 +53,7 @@ func PrintInfo(score, depth, node_count int, time_elapsed time.Duration, pv *PV)
 	nps := int64(float64(node_count) / (float64(ms) / float64(1000.0)))
 	fmt.Printf("info score cp %d depth %d nodes %d nps %d time %d", score, depth, node_count, nps, ms)
 	if pv != nil {
-		fmt.Printf(" pv %s\n", pv.ToString())
+		fmt.Printf(" pv %s\n", pv.ToUCI())
 	}
 	fmt.Printf("NPS: %.4f m\n", float64(nps)/1000000)
 }
@@ -143,7 +143,7 @@ func ParseUCIGo(uci_fields []string, wg *sync.WaitGroup) {
 		}
 	}
 	move, _ := Search(current_board, restrict_search, int(depth), int(time))
-	fmt.Printf("bestmove %s\n", move.ToString())
+	fmt.Printf("bestmove %s\n", move.ToUCI())
 	wg.Done()
 }
 

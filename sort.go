@@ -37,8 +37,6 @@ import (
 // 21  MVV/LVA  (6 bits)  - Used to choose between captures of equal material gain/loss
 // 0   History heuristic : (21 bits)
 
-
-
 const (
 	SORT_CASTLE = (1 << 37)
 	SORT_KILLER = (1 << 38)
@@ -56,9 +54,9 @@ func SortLosingCapture(see int, victim, attacker Piece) uint64 { // 10 bits
 }
 
 func mvv_lva(victim, attacker Piece) uint64 { // returns value between 0 and 64
-	return uint64(((victim+1) << 3) - attacker) << 21
+	return uint64(((victim+1)<<3)-attacker) << 21
 }
-	
+
 // Promotion Captures:
 // if undefended, gain is promote_values[promoted_piece] + piece_values[captured_piece]
 // is defended, gain is SEE score.
@@ -74,7 +72,7 @@ func SortPromotion(brd *Board, m Move) uint64 {
 	}
 	if val >= 0 {
 		return SortWinningCapture(val, QUEEN, PAWN) // in event of material tie with regular capture,
-	} else {																			// try the promotion first.
+	} else { // try the promotion first.
 		return SortLosingCapture(val, QUEEN, PAWN)
 	}
 }

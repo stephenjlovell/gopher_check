@@ -70,12 +70,12 @@ import (
 const (
 	MAX_TIME    = 120000 // default search time limit in seconds (2m)
 	MAX_DEPTH   = 12
+	MAX_EXT     = MAX_DEPTH / 2
 	SPLIT_MIN   = 13 // set > MAX_DEPTH to disable parallel search.
 	F_PRUNE_MIN = 3  // should always be less than SPLIT_MIN
-	EXT_MAX     = 4
-	MAX_PLY     = MAX_DEPTH + EXT_MAX
+	MAX_PLY     = MAX_DEPTH + MAX_EXT
 	IID_MIN     = 6
-	COMMS_MIN   = 5 // minimum depth at which to send info to GUI.
+	COMMS_MIN   = 6 // minimum depth at which to send info to GUI.
 )
 
 type SearchResult struct {
@@ -94,16 +94,18 @@ var search_id int
 var cancel_search bool
 var uci_mode bool = false
 var uci_ponder bool = false
+var print_info bool = true
 
 func AbortSearch() {
 	cancel_search = true
-	fmt.Println("Search aborted by GUI")
+	if print_info {
+		fmt.Println("Search aborted by GUI")
+	}
 }
 
 func search_timer(timer *time.Timer) {
 	select {
 	case <-timer.C:
-		fmt.Println("Time up. Aborting search.")
 		AbortSearch()
 	}
 }
@@ -153,13 +155,13 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 
 		if cancel_search {
 			avg_branch := math.Pow(float64(sum)/float64(first_count), float64(1)/float64(depth-1))
-			if !uci_mode {
+			if !uci_mode && print_info {
 				fmt.Printf("Average Branching: %.4f\n", avg_branch)
 			}
 			return id_move[c], sum
 		} else {
 			sum += count
-			if d > COMMS_MIN { // don't print info for first few plys to reduce communication traffic.
+			if d > COMMS_MIN && print_info { // don't print info for first few plys to reduce communication traffic.
 				if uci_mode {
 					PrintInfo(guess, d, sum, time.Since(start), current_pv)
 				} else {
@@ -170,9 +172,11 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 			previous_count, old_pv = count, current_pv
 		}
 	}
-	PrintInfo(guess, depth, sum, time.Since(start), current_pv)
-	avg_branch := math.Pow(float64(sum)/float64(first_count), float64(1)/float64(depth-1))
-	fmt.Printf("Average Branching: %.4f\n", avg_branch)
+	if print_info {
+		PrintInfo(guess, depth, sum, time.Since(start), current_pv)
+		avg_branch := math.Pow(float64(sum)/float64(first_count), float64(1)/float64(depth-1))
+		fmt.Printf("Average Branching: %.4f\n", avg_branch)
+	}
 
 	return id_move[c], sum
 }
@@ -182,9 +186,10 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int, old_pv *PV) (Move, int,
 		return 0, 0, 1, nil
 	}
 	sum, count, legal_searched := 1, 0, 0
-	in_check, extension := is_in_check(brd), 0
-	if in_check {
-		extension = 1
+	in_check, extensions_left := is_in_check(brd), MAX_EXT
+	if in_check && extensions_left > 0 {
+		depth += 1
+		extensions_left -= 1
 	}
 
 	score, best, old_alpha := -INF, -INF, alpha
@@ -197,9 +202,9 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int, old_pv *PV) (Move, int,
 		first_move = old_pv.m
 		legal_searched += 1
 		if uci_mode && uci_ponder && depth > COMMS_MIN {
-			fmt.Printf("info currmove %s currmovenumber %d\n", first_move.ToString(), legal_searched)
+			fmt.Printf("info currmove %s currmovenumber %d\n", first_move.ToUCI(), legal_searched)
 		}
-		score, count, next_pv = ybw_make(brd, first_move, alpha, beta, depth-1+extension, 1, true, nil)
+		score, count, next_pv = ybw_make(brd, first_move, alpha, beta, depth-1, 1, extensions_left, true, nil)
 		sum += count
 		if score > best {
 			if score > alpha {
@@ -228,9 +233,9 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int, old_pv *PV) (Move, int,
 		}
 		legal_searched += 1
 		if uci_mode && uci_ponder && depth > COMMS_MIN {
-			fmt.Printf("info currmove %s currmovenumber %d\n", m.ToString(), legal_searched)
+			fmt.Printf("info currmove %s currmovenumber %d\n", m.ToUCI(), legal_searched)
 		}
-		score, count, next_pv = ybw_make(brd, m, alpha, beta, depth-1+extension, 1, true, nil)
+		score, count, next_pv = ybw_make(brd, m, alpha, beta, depth-1, 1, extensions_left, true, nil)
 		sum += count
 		if score > best {
 			if score > alpha {
@@ -259,9 +264,9 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int, old_pv *PV) (Move, int,
 		}
 		legal_searched += 1
 		if uci_mode && uci_ponder && depth > 5 {
-			fmt.Printf("info currmove %s currmovenumber %d\n", m.ToString(), legal_searched)
+			fmt.Printf("info currmove %s currmovenumber %d\n", m.ToUCI(), legal_searched)
 		}
-		score, count, next_pv = ybw_make(brd, m, alpha, beta, depth-1+extension, 1, true, nil)
+		score, count, next_pv = ybw_make(brd, m, alpha, beta, depth-1, 1, extensions_left, true, nil)
 		sum += count
 		if score > best {
 			if score > alpha {
@@ -298,7 +303,7 @@ func ybw_root(brd *Board, alpha, beta, guess, depth int, old_pv *PV) (Move, int,
 	}
 }
 
-func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool, old_pv *PV) (int, int, *PV) {
+func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left int, can_null bool, old_pv *PV) (int, int, *PV) {
 	if cancel_search {
 		return 0, 0, nil
 	}
@@ -307,9 +312,10 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool,
 		return quiescence(brd, alpha, beta, depth, ply, nil) // q-search is always sequential.
 	}
 
-	in_check, extension := is_in_check(brd), 0
-	if in_check {
-		extension = 1
+	in_check := is_in_check(brd)
+	if in_check && extensions_left > 0 {
+		extensions_left -= 1
+		depth += 1
 	}
 
 	if brd.halfmove_clock >= 100 {
@@ -343,7 +349,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool,
 		} else if hash_result != AVOID_NULL { // Null-Move Pruning
 			if !in_check && can_null && depth > 2 && in_endgame(brd, brd.c) == 0 &&
 				!pawns_only(brd, brd.c) && evaluate(brd, alpha, beta) >= beta {
-				score, count = null_make(brd, beta, null_depth-1, ply+1)
+				score, count = null_make(brd, beta, null_depth-1, ply+1, extensions_left)
 				sum += count
 				if score >= beta {
 					main_tt.store(brd, 0, depth, LOWER_BOUND, score)
@@ -353,7 +359,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool,
 		}
 		if hash_result == NO_MATCH && can_null && depth >= IID_MIN { // No hash move available. Use IID to get a decent first move to try.
 			var local_id_alpha, local_id_beta int
-			if (ply & 1) == 0 { // test if odd-ply
+			if (ply & 1) == 1 { // test if odd-ply
 				local_id_alpha, local_id_beta = -id_beta, -id_alpha
 			} else {
 				local_id_alpha, local_id_beta = id_alpha, id_beta
@@ -361,7 +367,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool,
 			if alpha == local_id_alpha && beta == local_id_beta { // Only use IID at expected PV nodes.
 				// This assumes use of PVSearch where non-PV nodes are searched with null windows. (as in PVS)
 				var local_pv *PV
-				score, count, local_pv = young_brothers_wait(brd, alpha, beta, depth-2+extension, ply, can_null, nil)
+				score, count, local_pv = young_brothers_wait(brd, alpha, beta, depth-2, ply, extensions_left, can_null, nil)
 				sum += count
 				if local_pv != nil {
 					first_move = local_pv.m
@@ -378,7 +384,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool,
 			temp_pv = old_pv.next
 		}
 		legal_searched += 1
-		score, count, next_pv = ybw_make(brd, first_move, alpha, beta, depth-1+extension, ply+1, can_null, temp_pv)
+		score, count, next_pv = ybw_make(brd, first_move, alpha, beta, depth-1, ply+1, extensions_left, can_null, temp_pv)
 		sum += count
 		if score > best {
 			if score > alpha {
@@ -406,7 +412,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool,
 			continue
 		}
 		legal_searched += 1
-		score, count, next_pv = ybw_make(brd, m, alpha, beta, depth-1+extension, ply+1, can_null, nil)
+		score, count, next_pv = ybw_make(brd, m, alpha, beta, depth-1, ply+1, extensions_left, can_null, nil)
 		sum += count
 		if score > best {
 			if score > alpha {
@@ -450,7 +456,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool,
 				brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
 				continue
 			}
-			score, count, next_pv := young_brothers_wait(brd, -beta, -alpha, depth-1+extension, ply+1, can_null, nil)
+			score, count, next_pv := young_brothers_wait(brd, -beta, -alpha, depth-1, ply+1, extensions_left, can_null, nil)
 			legal_searched += 1
 			score = -score
 			unmake_move(brd, m, enp_target) // to do: unmake move
@@ -483,7 +489,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool,
 			if item == nil {
 				break
 			}
-			score, count, next_pv = ybw_make(brd, item.move, alpha, beta, depth-1+extension, 1, true, nil)
+			score, count, next_pv = ybw_make(brd, item.move, alpha, beta, depth-1, 1, extensions_left, true, nil)
 			sum += count
 			if score > best {
 				if score > alpha {
@@ -512,7 +518,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool,
 			legal_searched += 1
 			child_counter++
 			go func() {
-				score, count, next_pv := ybw_make(new_brd, m, alpha, beta, depth-1+extension, ply+1, can_null, nil)
+				score, count, next_pv := ybw_make(new_brd, m, alpha, beta, depth-1, ply+1, extensions_left, can_null, nil)
 				result_child <- SearchResult{m, score, count, next_pv}
 			}()
 		}
@@ -569,6 +575,10 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply int, can_null bool,
 // Q-search subtrees are taller and narrower than in the main search making benefit of parallelism
 // smaller and raising communication and synchronization overhead.
 func quiescence(brd *Board, alpha, beta, depth, ply int, old_pv *PV) (int, int, *PV) {
+	if cancel_search {
+		return 0, 0, nil
+	}
+
 	in_check := is_in_check(brd)
 	if brd.halfmove_clock >= 100 {
 		if is_checkmate(brd, in_check) {
@@ -692,12 +702,12 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, old_pv *PV) (int, int, 
 	}
 }
 
-func ybw_make(brd *Board, m Move, alpha, beta, depth, ply int, can_null bool, old_pv *PV) (int, int, *PV) {
+func ybw_make(brd *Board, m Move, alpha, beta, depth, ply, extensions_left int, can_null bool, old_pv *PV) (int, int, *PV) {
 	hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
 	castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
 
 	make_move(brd, m) // to do: make move
-	score, sum, pv := young_brothers_wait(brd, -beta, -alpha, depth, ply, can_null, old_pv)
+	score, sum, pv := young_brothers_wait(brd, -beta, -alpha, depth, ply, extensions_left, can_null, old_pv)
 	unmake_move(brd, m, enp_target) // to do: unmake move
 
 	brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
@@ -718,14 +728,14 @@ func q_make(brd *Board, m Move, alpha, beta, depth, ply int, old_pv *PV) (int, i
 	return -score, sum, pv
 }
 
-func null_make(brd *Board, beta, depth, ply int) (int, int) {
+func null_make(brd *Board, beta, depth, ply, extensions_left int) (int, int) {
 	hash_key, enp_target := brd.hash_key, brd.enp_target
 	brd.c ^= 1
 	brd.hash_key ^= side_key
 	brd.hash_key ^= enp_zobrist(enp_target)
 	brd.enp_target = SQ_INVALID
 
-	score, sum, _ := young_brothers_wait(brd, -beta, -beta+1, depth, ply, false, nil)
+	score, sum, _ := young_brothers_wait(brd, -beta, -beta+1, depth, ply, extensions_left, false, nil)
 
 	brd.c ^= 1
 	brd.hash_key = hash_key

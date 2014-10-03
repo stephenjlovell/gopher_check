@@ -24,33 +24,15 @@
 package main
 
 import (
-	"fmt"
+// "fmt"
+// "testing"
 )
 
-var main_ktable KTable
+// func TestEPDParsing(t *testing.T) {
+//   test := load_epd_file("test_suites/wac_300.epd")
 
-type KTable [128]KEntry
+//   for _, epd := range test {
+//     epd.Print()
+//   }
 
-type KEntry struct {
-	first  Move
-	second Move
-}
-
-func (k *KTable) Store(m Move, ply int) {
-	if m != k[ply].first {
-		k[ply].second = k[ply].first
-		k[ply].first = m
-	}
-}
-
-func (k *KTable) Clear() {
-	for _, entry := range k {
-		entry.first, entry.second = 0, 0
-	}
-}
-
-func (k *KTable) Print() {
-	for ply := 0; ply < 64; ply++ {
-		fmt.Printf("Ply %d, K1: %s, K2: %s\n", ply, k[ply].first.ToUCI(), k[ply].second.ToUCI())
-	}
-}
+// }

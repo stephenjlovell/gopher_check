@@ -36,14 +36,14 @@ type PV struct {
 	next *PV
 }
 
-func (pv *PV) ToString() string {
+func (pv *PV) ToUCI() string {
 	str := ""
 	remaining := pv
 	if remaining != nil {
-		str = remaining.m.ToString()
+		str = remaining.m.ToUCI()
 		for remaining.next != nil {
 			remaining = remaining.next
-			str += " " + remaining.m.ToString()
+			str += " " + remaining.m.ToUCI()
 		}
 	}
 	return str
