@@ -23,23 +23,37 @@
 
 package main
 
+import (
+	// "fmt"
+)
+
 type RepList struct {
-	m        Move
-	hash_key uint64
-	parent   *RepList
+	key    uint32
+	parent *RepList
 }
 
-func (l *RepList) Scan(key uint64) bool {
-	p = l.parent
+func (l *RepList) Scan(big_key uint64) bool {
+	p := l.parent
+	key := uint32(big_key)
 	repetition_count := 0
 	for p != nil {
-		if p.hash_key == key {
+		if p.key == key {
 			repetition_count += 1
 			if repetition_count == 2 {
+				// fmt.Println("Repetition found.")
 				return true
 			}
 		}
-		p = p.parent
+		if p.parent == nil {
+			break
+		}
+		p = p.parent.parent
 	}
 	return false
 }
+
+
+
+
+
+

@@ -16,12 +16,16 @@ Performance:
 
 Debugging:
 
-Killer Move Heuristic
-
 
 To Do:
 
-Use check extensions only after the first check.
+
+Refactor search:
+
+  Remove use of old pv line.  Rely on hash table.
+  
+
+
 
 Add separate QSearch and Hashtable -based sorting at root nodes.
 
