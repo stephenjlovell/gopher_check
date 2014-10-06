@@ -24,7 +24,7 @@
 package main
 
 import (
-	"fmt"
+	// "fmt"
 )
 
 var non_king_value, endgame_value int
@@ -247,11 +247,11 @@ func adjusted_placement(brd *Board, c, e uint8) int {
 	var b BB
 	enemy_king_sq := furthest_forward(e, brd.pieces[e][KING])
 
-	if enemy_king_sq > 63 || enemy_king_sq < 0 {
-		brd.Print()
-		fmt.Printf("%d, %d", brd.material[c], brd.material[e])
-		fmt.Printf("Invalid King Square: %d\n", enemy_king_sq)
-	}
+	// if enemy_king_sq > 63 || enemy_king_sq < 0 {
+	// 	brd.Print()
+	// 	fmt.Printf("%d, %d", brd.material[c], brd.material[e])
+	// 	fmt.Printf("Invalid King Square: %d\n", enemy_king_sq)
+	// }
 
 	pawn_count := pop_count(brd.pieces[c][PAWN])
 
@@ -278,8 +278,10 @@ func adjusted_placement(brd *Board, c, e uint8) int {
 	for b = brd.pieces[c][KING]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
 		placement += king_pst[c][in_endgame(brd, c)][sq]
+
+		// to do: Add king saftey eval.
 	}
-	// placement += pawn_structure(brd, c, e)
+	placement += pawn_structure(brd, c, e)
 
 	return placement + mobility
 }

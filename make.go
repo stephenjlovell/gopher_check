@@ -281,8 +281,10 @@ func relocate_king(brd *Board, piece Piece, from, to int, c uint8) {
 	brd.occupied[c] ^= from_to
 	brd.squares[from] = EMPTY
 	brd.squares[to] = piece
-	in_endgame := in_endgame(brd, c)
-	brd.material[c] += int32(king_pst[c][in_endgame][to] - king_pst[c][in_endgame][from])
+
+	// King PST values are not incrementally updated during make/unmake.
+
 	// XOR out the key for piece at from, and XOR in the key for piece at to.
 	brd.hash_key ^= (zobrist(piece, from, c) ^ zobrist(piece, to, c))
 }
+

@@ -63,7 +63,7 @@ func TestPlayingStrength(t *testing.T) {
 	var move_str string
 	sum, score := 0, 0
 	for _, epd := range test {
-		move, count := Search(epd.brd, make([]Move, 0), MAX_DEPTH, 10000)
+		move, count := Search(epd.brd, make([]Move, 0), MAX_DEPTH, 1000)
 		move_str = ToSAN(epd.brd, move)
 		if correct_move(epd, move_str) {
 			score += 1
