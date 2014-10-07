@@ -34,7 +34,7 @@ Improve Pawn Evaluation -
   Separate out hashable elements of pawn evaluation (elements that depend only on other pawns).
   Implement Pawn Hashtable.  Update Make/Unmake.
 
-
+Improve king saftey
 
 
 Ideas:

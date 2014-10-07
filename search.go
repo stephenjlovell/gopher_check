@@ -74,7 +74,7 @@ const (
 	SPLIT_MIN   = 13 // set > MAX_DEPTH to disable parallel search.
 	F_PRUNE_MIN = 3  // should always be less than SPLIT_MIN
 	MAX_PLY     = MAX_DEPTH + MAX_EXT
-	IID_MIN     = 5
+	IID_MIN     = 4
 	COMMS_MIN   = 6 // minimum depth at which to send info to GUI.
 )
 
@@ -214,9 +214,8 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 	}
 
 	score, best := -INF, -INF
-	legal_searched := 0
 	old_alpha := alpha
-	sum, count := 1, 0
+	sum, count, legal_searched := 1, 0, 0
 	pv := &PV{}
 	reps := &RepList{uint32(brd.hash_key), old_reps}
 	var next_pv *PV
@@ -262,10 +261,8 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 	if alpha == local_id_alpha && beta == local_id_beta {
 		node_type = D_PV
 	}
-
-	if hash_result == NO_MATCH && node_type == D_PV && can_null && depth >= IID_MIN {
-		// No hash move available. If this is a PV node, use IID to get a decent first move to try.
-		// This assumes use of PVSearch where non-PV nodes are searched with null windows. (as in PVS)
+	// No hash move available. If this is a PV node, use IID to get a decent first move to try.
+	if hash_result == NO_MATCH && can_null && depth >= IID_MIN { //&& node_type != D_ALL {
 		var local_pv *PV
 		score, count, local_pv = young_brothers_wait(brd, alpha, beta, depth-2, ply, extensions_left, can_null, old_reps)
 		sum += count
@@ -304,9 +301,20 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		if m == first_move || !avoids_check(brd, m, in_check) {
 			continue
 		}
-		legal_searched += 1
+
+		// if alpha > old_alpha {
+		// 	score, count, next_pv = ybw_make(brd, m, alpha, alpha+1, depth-1, ply+1, extensions_left, can_null, reps)
+		// 	sum += count
+		// 	if alpha < -score && -score < beta {
+		// 		score, count, next_pv = ybw_make(brd, m, alpha, beta, depth-1, ply+1, extensions_left, can_null, reps)
+		// 		sum += count
+		// 	}
+		// } else {
 		score, count, next_pv = ybw_make(brd, m, alpha, beta, depth-1, ply+1, extensions_left, can_null, reps)
 		sum += count
+		// }
+
+		legal_searched += 1
 		if score > best {
 			if score > alpha {
 				if score >= beta {
@@ -329,13 +337,17 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 
 	if depth <= SPLIT_MIN { // Depth is too shallow for parallel search to be worthwhile.
 
-		f_prune := false
-		if depth <= F_PRUNE_MIN { // Determine if this node is safe for futility pruning.
-			f_prune = !in_check && ply > 0 && alpha > 100-INF && evaluate(brd, alpha, beta)+piece_values[BISHOP] < alpha
+		f_prune, can_reduce := false, false
+		if !in_check && ply > 0 && node_type != D_PV && alpha > 100-INF {
+			can_reduce = true
+			if depth <= F_PRUNE_MIN && evaluate(brd, alpha, beta)+piece_values[BISHOP] < alpha {
+				f_prune = true
+			}
 		}
+
 		hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
 		castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
-
+		var r_depth int
 		for _, item := range *remaining_moves { // search remaining moves sequentially.
 			m = item.move
 			if m == first_move || !avoids_check(brd, m, in_check) {
@@ -349,14 +361,32 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 				brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
 				continue
 			}
-			score, count, next_pv := young_brothers_wait(brd, -beta, -alpha, depth-1, ply+1, extensions_left, can_null, reps)
-			legal_searched += 1
+
+			// Late move reductions:
+			// reduce if not in check or giving check, item.order == 0, node_type != D_PV
+			r_depth = depth
+			if can_reduce && item.order == 0 && !is_in_check(brd) {
+				r_depth = depth - 1
+			}
+
+			// if alpha > old_alpha {
+			// 	score, count, next_pv = young_brothers_wait(brd, -alpha-1, -alpha, r_depth-1, ply+1, extensions_left, can_null, reps)
+			// 	sum += count
+			// 	if alpha < -score && -score < beta {
+			// 		score, count, next_pv = young_brothers_wait(brd, -beta, -alpha, r_depth-1, ply+1, extensions_left, can_null, reps)
+			// 		sum += count
+			// 	}
+			// } else {
+			score, count, next_pv = young_brothers_wait(brd, -beta, -alpha, r_depth-1, ply+1, extensions_left, can_null, reps)
+			sum += count
+			// }
+
 			score = -score
 			unmake_move(brd, m, enp_target) // to do: unmake move
 			brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
 			brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
 
-			sum += count
+			legal_searched += 1
 			if score > best {
 				if score > alpha {
 					if score >= beta {

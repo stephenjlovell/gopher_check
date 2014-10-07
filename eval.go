@@ -24,7 +24,7 @@
 package main
 
 import (
-// "fmt"
+	"fmt"
 )
 
 var non_king_value, endgame_value int
@@ -216,6 +216,11 @@ var highest_placement, lowest_placement int
 func evaluate(brd *Board, alpha, beta int) int {
 	c, e := brd.c, brd.Enemy()
 	material := int(brd.material[c] - brd.material[e])
+
+	if brd.pieces[c][KING] == 0 {
+		return -INF
+	}
+
 	// lazy evaluation: if material balance is already outside the search window by an amount that outweighs
 	// the largest possible placement evaluation, return the material as an approximate evaluation.
 	// This prevents the engine from wasting a lot of time evaluating unrealistic positions.
@@ -247,11 +252,11 @@ func adjusted_placement(brd *Board, c, e uint8) int {
 	var b BB
 	enemy_king_sq := furthest_forward(e, brd.pieces[e][KING])
 
-	// if enemy_king_sq > 63 || enemy_king_sq < 0 {
-	// 	brd.Print()
-	// 	fmt.Printf("%d, %d", brd.material[c], brd.material[e])
-	// 	fmt.Printf("Invalid King Square: %d\n", enemy_king_sq)
-	// }
+	if enemy_king_sq > 63 || enemy_king_sq < 0 {
+		brd.Print()
+		fmt.Printf("%d, %d", brd.material[c], brd.material[e])
+		fmt.Printf("Invalid King Square: %d\n", enemy_king_sq)
+	}
 
 	pawn_count := pop_count(brd.pieces[c][PAWN])
 

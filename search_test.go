@@ -33,7 +33,7 @@ import (
 func TestSearch(t *testing.T) {
 	setup()
 	sum := 0
-	depth := MAX_DEPTH - 4
+	depth := MAX_DEPTH - 2
 	for i, pos := range test_positions {
 		ResetAll() // reset all shared data structures and prepare to start a new game.
 		current_board = ParseFENString(pos)
