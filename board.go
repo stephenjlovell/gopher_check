@@ -136,8 +136,6 @@ var piece_graphics = [2][6]string{
 	{"\u2659", "\u2658", "\u2657", "\u2656", "\u2655", "\u2654"},
 }
 
-var current_board *Board = EmptyBoard()
-
 // Parse a FEN string and return a pointer to a new Board object
 // func NewBoard(fen string) *Board {
 

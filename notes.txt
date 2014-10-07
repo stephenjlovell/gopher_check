@@ -19,28 +19,20 @@ Debugging:
 
 To Do:
 
-
-Refactor search:
-  Remove use of old pv line.  Rely on hash table.
-  Remove separate root search function.
-
-
+Add separate check generator to Q-Search
 
 Add separate QSearch and Hashtable -based sorting at root nodes.
 
 Implement Principal Variation Search
 
-Add ability to accurately evaluate promotions via see().
+Implement Late-Move Reductions.
 
 Implement Pondering.
 
-Implement Late-Move Reductions.
-
-Improve Pawn Evaluation - Rebalance bonuses, improve handling of pawn promotion.
-Separate out hashable elements of pawn evaluation (elements that depend only on other pawns).
-Implement Pawn Hashtable.  Update Make/Unmake.
-
-Implement Draw By Threefold Repetition using linked lists
+Improve Pawn Evaluation - 
+  Rebalance bonuses, improve handling of pawn promotion.
+  Separate out hashable elements of pawn evaluation (elements that depend only on other pawns).
+  Implement Pawn Hashtable.  Update Make/Unmake.
 
 
 

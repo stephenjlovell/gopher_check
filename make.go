@@ -287,4 +287,3 @@ func relocate_king(brd *Board, piece Piece, from, to int, c uint8) {
 	// XOR out the key for piece at from, and XOR in the key for piece at to.
 	brd.hash_key ^= (zobrist(piece, from, c) ^ zobrist(piece, to, c))
 }
-

@@ -39,7 +39,8 @@ import (
 	"time"
 )
 
-// var ponder_mode bool = false
+var current_board *Board = EmptyBoard()
+var current_repetitions = &RepList{}
 
 func Milliseconds(d time.Duration) int64 {
 	return int64(d.Seconds() * float64(time.Second/time.Millisecond))
@@ -142,7 +143,7 @@ func ParseUCIGo(uci_fields []string, wg *sync.WaitGroup) {
 			uci_fields = uci_fields[:1]
 		}
 	}
-	move, _ := Search(current_board, restrict_search, int(depth), int(time))
+	move, _ := Search(current_board, current_repetitions, int(depth), int(time))
 	fmt.Printf("bestmove %s\n", move.ToUCI())
 	wg.Done()
 }
@@ -153,12 +154,12 @@ func ParseUCIPosition(uci_fields []string) *Board {
 	if len(uci_fields) == 0 || uci_fields[0] == "startpos" {
 		brd = ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 		if len(uci_fields) > 2 {
-			PlayMoveSequence(brd, uci_fields[1:])
+			current_repetitions = PlayMoveSequence(brd, uci_fields[1:])
 		}
 	} else if uci_fields[0] == "fen" {
 		brd = ParseFENSlice(uci_fields[1:])
 		if len(uci_fields) > 6 {
-			PlayMoveSequence(brd, uci_fields[5:])
+			current_repetitions = PlayMoveSequence(brd, uci_fields[5:])
 		}
 	} else {
 		fmt.Println("Empty board created.")
@@ -167,19 +168,24 @@ func ParseUCIPosition(uci_fields []string) *Board {
 	return brd
 }
 
-func PlayMoveSequence(brd *Board, uci_fields []string) {
+func PlayMoveSequence(brd *Board, uci_fields []string) *RepList {
 	var move Move
+	var reps *RepList
 	if uci_fields[0] == "moves" {
 		for _, move_str := range uci_fields[1:] {
 			move = ParseMove(brd, move_str)
 			make_move(brd, move)
+			reps = &RepList{uint32(brd.hash_key), reps}
 		}
 	} else if uci_fields[1] == "moves" {
 		for _, move_str := range uci_fields[2:] {
 			move = ParseMove(brd, move_str)
 			make_move(brd, move)
+			reps = &RepList{uint32(brd.hash_key), reps}
 		}
 	}
+	fmt.Printf("Repetition list of length %d created\n", reps.Len())
+	return reps
 }
 
 func StartPos() *Board {

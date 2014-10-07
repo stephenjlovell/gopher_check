@@ -24,7 +24,7 @@
 package main
 
 import (
-	// "fmt"
+// "fmt"
 )
 
 type RepList struct {
@@ -52,8 +52,15 @@ func (l *RepList) Scan(big_key uint64) bool {
 	return false
 }
 
-
-
-
-
-
+func (l *RepList) Len() int {
+	if l == nil {
+		return 0
+	}
+	sum := 0
+	p := l.parent
+	for p != nil {
+		sum += 1
+		p = p.parent
+	}
+	return sum
+}

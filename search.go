@@ -70,11 +70,11 @@ import (
 const (
 	MAX_TIME    = 120000 // default search time limit in seconds (2m)
 	MAX_DEPTH   = 12
-	MAX_EXT     = MAX_DEPTH/2
+	MAX_EXT     = 4
 	SPLIT_MIN   = 13 // set > MAX_DEPTH to disable parallel search.
 	F_PRUNE_MIN = 3  // should always be less than SPLIT_MIN
 	MAX_PLY     = MAX_DEPTH + MAX_EXT
-	IID_MIN     = 6
+	IID_MIN     = 5
 	COMMS_MIN   = 6 // minimum depth at which to send info to GUI.
 )
 
@@ -83,7 +83,6 @@ const (
 	D_CUT
 	D_ALL
 )
-
 
 type SearchResult struct {
 	move  Move
@@ -103,7 +102,7 @@ var uci_mode bool = false
 var uci_ponder bool = false
 var print_info bool = true
 
-var nodes_per_iteration [MAX_PLY]int
+var nodes_per_iteration [MAX_DEPTH + 1]int
 
 func AbortSearch() {
 	cancel_search = true
@@ -119,7 +118,7 @@ func search_timer(timer *time.Timer) {
 	}
 }
 
-func Search(brd *Board, restrict_search []Move, depth, time_limit int) (Move, int) {
+func Search(brd *Board, reps *RepList, depth, time_limit int) (Move, int) {
 	cancel_search = false
 	id_move[brd.c] = 0
 	start := time.Now()
@@ -133,9 +132,9 @@ func Search(brd *Board, restrict_search []Move, depth, time_limit int) (Move, in
 
 	go search_timer(timer) // abort the current search after time_limit seconds.
 
-	move, sum := iterative_deepening(brd, depth, start)
+	move, sum := iterative_deepening(brd, reps, depth, start)
 	timer.Stop() // cancel the timer to prevent it from interfering with the next search if it's not
-							 // garbage collected before then.
+	// garbage collected before then.
 	return move, sum
 }
 
@@ -143,15 +142,15 @@ var id_move [2]Move
 var id_score [2]int
 var id_alpha, id_beta int
 
-func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
+func iterative_deepening(brd *Board, reps *RepList, depth int, start time.Time) (Move, int) {
 	var guess, count, sum int
 	var current_pv *PV
 	c := brd.c
 
 	// to do: build repetition list from game history up to start of search.
-	mock_reps := &RepList{}
+	// mock_reps := &RepList{}
 	id_alpha, id_beta = -INF, INF // first iteration is always full-width.
-	guess, count, current_pv = young_brothers_wait(brd, id_alpha, id_beta, 1, 0, 0, true, mock_reps)
+	guess, count, current_pv = young_brothers_wait(brd, id_alpha, id_beta, 1, 0, MAX_EXT, true, reps)
 	nodes_per_iteration[1] += count
 	sum += count
 	id_move[c], id_score[c] = current_pv.m, guess
@@ -161,23 +160,25 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 
 		// to do: add aspiration windows
 
-		guess, count, current_pv = young_brothers_wait(brd, id_alpha, id_beta, d, 0, 0, true, mock_reps)
-		if current_pv == nil || current_pv.m == 0 {
-			fmt.Printf("No root PV returned.\n")
-		}
+		guess, count, current_pv = young_brothers_wait(brd, id_alpha, id_beta, d, 0, MAX_EXT, true, reps)
 		if cancel_search {
 			return id_move[c], sum
-		} 
+		}
+
 		nodes_per_iteration[d] += count
 		sum += count
 		if d > COMMS_MIN && print_info && uci_mode { // don't print info for first few plys to reduce communication traffic.
-			PrintInfo(guess, d, count, time.Since(start), current_pv)
+			PrintInfo(guess, d, sum, time.Since(start), current_pv)
 		}
-		id_move[c], id_score[c] = current_pv.m, guess
-		
+
+		if current_pv == nil || current_pv.m == 0 {
+			fmt.Printf("No root PV returned after depth %d.\n", d)
+		} else {
+			id_move[c], id_score[c] = current_pv.m, guess
+		}
 	}
 	if print_info {
-		PrintInfo(guess, depth, nodes_per_iteration[d-1], time.Since(start), current_pv)
+		PrintInfo(guess, depth, sum, time.Since(start), current_pv)
 	}
 
 	return id_move[c], sum
@@ -241,7 +242,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 					return score, sum, nil
 				}
 			}
-		}	
+		}
 	}
 
 	// Determine expected node type.
@@ -252,7 +253,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		if beta == local_id_beta {
 			node_type = D_CUT
 		}
-	} else {  // even-ply
+	} else { // even-ply
 		local_id_alpha, local_id_beta = id_alpha, id_beta
 		if alpha == local_id_alpha {
 			node_type = D_CUT
@@ -262,11 +263,11 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		node_type = D_PV
 	}
 
-	if hash_result == NO_MATCH && node_type == D_PV && can_null && depth >= IID_MIN { 
+	if hash_result == NO_MATCH && node_type == D_PV && can_null && depth >= IID_MIN {
 		// No hash move available. If this is a PV node, use IID to get a decent first move to try.
 		// This assumes use of PVSearch where non-PV nodes are searched with null windows. (as in PVS)
 		var local_pv *PV
-		score, count, local_pv = young_brothers_wait(brd, alpha, beta, depth-2, ply, extensions_left, can_null, reps)
+		score, count, local_pv = young_brothers_wait(brd, alpha, beta, depth-2, ply, extensions_left, can_null, old_reps)
 		sum += count
 		if local_pv != nil {
 			first_move = local_pv.m
@@ -374,7 +375,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 	} else { // now that decent bounds have been established, parallel search is possible.
 		// Make sure at least 3 nodes have been searched serially before spawning.
 		for ; legal_searched < 3; legal_searched++ {
-			item := remaining_moves.Dequeue()			
+			item := remaining_moves.Dequeue()
 			for item != nil && (item.move == first_move || !avoids_check(brd, item.move, in_check)) {
 				item = remaining_moves.Dequeue() // get the highest-sorted legal move from remaining_moves
 			}
@@ -485,10 +486,6 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, old_reps *RepList) (int
 		}
 	}
 
-	if ply > 128 {
-		fmt.Printf("%d ", ply)
-	}
-
 	score, best := -INF, -INF
 	sum, count := 1, 0
 	reps := &RepList{uint32(brd.hash_key), old_reps}
@@ -498,6 +495,7 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, old_reps *RepList) (int
 	if in_check {
 		best_moves, remaining_moves := &MoveList{}, &MoveList{}
 		get_evasions(brd, best_moves, remaining_moves, &main_ktable[ply]) // only legal moves generated here.
+		best_moves.Sort()
 		for _, item := range *best_moves {
 			m = item.move
 			legal_moves = true
@@ -513,6 +511,7 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, old_reps *RepList) (int
 				best = score
 			}
 		}
+		remaining_moves.Sort()
 		for _, item := range *remaining_moves {
 			m = item.move
 			legal_moves = true
@@ -544,16 +543,30 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, old_reps *RepList) (int
 			best = score
 		}
 
+		hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
+		castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
 		best_moves := get_winning_captures(brd)
 		for _, item := range *best_moves { // search the best moves sequentially.
 			m = item.move
 			if !avoids_check(brd, m, in_check) {
 				continue // prune illegal moves
 			}
-			if alpha > 100-INF && best+m.CapturedPiece().Value()+m.PromotedTo().PromoteValue()+piece_values[ROOK] < alpha {
-				continue // prune futile moves with no chance of raising alpha.
+
+			make_move(brd, m) // to do: make move
+			if alpha > 100-INF &&
+				best+m.CapturedPiece().Value()+m.PromotedTo().PromoteValue()+piece_values[ROOK] < alpha &&
+				!is_in_check(brd) {
+				unmake_move(brd, m, enp_target) // to do: unmake move
+				brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
+				brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
+				continue
 			}
-			score, count = q_make(brd, m, alpha, beta, depth-1, ply+1, reps)
+			score, count := quiescence(brd, -beta, -alpha, depth, ply, reps)
+			unmake_move(brd, m, enp_target) // to do: unmake move
+			brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
+			brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
+
+			score = -score
 			sum += count
 			if score > best {
 				if score > alpha {

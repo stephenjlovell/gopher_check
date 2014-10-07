@@ -24,7 +24,7 @@
 package main
 
 import (
-	// "fmt"
+// "fmt"
 )
 
 var non_king_value, endgame_value int
