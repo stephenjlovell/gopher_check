@@ -16,6 +16,8 @@ Performance:
 
 Debugging:
 
+Rare TT bug where entry is for the wrong color.
+
 
 To Do:
 

@@ -27,6 +27,18 @@ import (
 // "fmt"
 )
 
+func get_root_moves(brd *Board, in_check bool) *MoveList {
+	var moves MoveList
+	killers := &KEntry{}
+	if in_check {
+		get_evasions(brd, &moves, &moves, killers)
+	} else {
+		get_captures(brd, &moves, &moves)
+		get_non_captures(brd, &moves, killers)
+	}
+	return &moves
+}
+
 func get_all_moves(brd *Board, in_check bool, killers *KEntry) (*MoveList, *MoveList) {
 	var best_moves, remaining_moves MoveList
 	if in_check {

@@ -24,9 +24,12 @@
 package main
 
 import (
-	// "container/heap"
 	"sort"
 )
+
+// Root Sorting
+
+// At root, moves should be sorted based on subtree value rather than standard sorting.
 
 // bit pos. (LSB order)
 // 50

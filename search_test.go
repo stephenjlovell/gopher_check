@@ -29,55 +29,57 @@ import (
 	"testing"
 )
 
-// Do a fixed-depth search on a small number of positions.
-func TestSearch(t *testing.T) {
+// // Do a fixed-depth search on a small number of positions.
+// func TestSearch(t *testing.T) {
+// 	setup()
+// 	sum := 0
+// 	depth := MAX_DEPTH - 4
+// 	for i, pos := range test_positions {
+// 		ResetAll() // reset all shared data structures and prepare to start a new game.
+// 		current_board = ParseFENString(pos)
+// 		fmt.Printf("%d. ", i+1)
+// 		_, count := Search(current_board, &RepList{}, depth, MAX_TIME)
+// 		sum += count
+// 	}
+// 	fmt.Printf("Total nodes searched: %.4f m\n", float64(sum)/1000000.0)
+// 	fmt.Printf("Average Branching factor by iteration:\n")
+// 	var branching float64
+// 	fmt.Printf("D: 0, N: %d\n", nodes_per_iteration[0])
+// 	fmt.Printf("D: 1, N: %d\n", nodes_per_iteration[1])
+// 	for d := 2; d <= depth; d++ {
+// 		branching = math.Pow(float64(nodes_per_iteration[d])/float64(nodes_per_iteration[1]), float64(1)/float64(d-1))
+// 		fmt.Printf("D: %d, N: %d, EBF: %.4f\n", d, nodes_per_iteration[d], branching)
+// 	}
+// }
+
+func TestPlayingStrength(t *testing.T) {
 	setup()
-	sum := 0
-	depth := MAX_DEPTH - 2
-	for i, pos := range test_positions {
-		ResetAll() // reset all shared data structures and prepare to start a new game.
-		current_board = ParseFENString(pos)
-		fmt.Printf("%d. ", i+1)
-		_, count := Search(current_board, &RepList{}, depth, MAX_TIME)
+	print_info = false
+	depth := MAX_DEPTH-6
+	test := load_epd_file("test_suites/wac_75.epd")
+	var move_str string
+	sum, score := 0, 0
+	for _, epd := range test {
+		ResetAll()
+		move, count := Search(epd.brd, &RepList{}, depth, 30000)
+		move_str = ToSAN(epd.brd, move)
+		if correct_move(epd, move_str) {
+			score += 1
+			fmt.Printf("-")
+		} else {
+			fmt.Printf("X")
+		}
 		sum += count
 	}
-	fmt.Printf("Total nodes searched: %.4f m\n", float64(sum)/1000000.0)
+	fmt.Printf("\nTotal nodes searched: %.4f m\n", float64(sum)/1000000.0)
+	fmt.Printf("Total score: %d/%d\n", score, len(test))
 	fmt.Printf("Average Branching factor by iteration:\n")
 	var branching float64
 	for d := 2; d <= depth; d++ {
 		branching = math.Pow(float64(nodes_per_iteration[d])/float64(nodes_per_iteration[1]), float64(1)/float64(d-1))
-		fmt.Printf("%d EBF: %.4f\n", d, branching)
+		fmt.Printf("%d ABF: %.4f\n", d, branching)
 	}
 }
-
-// func TestPlayingStrength(t *testing.T) {
-// 	setup()
-// 	print_info = false
-// 	depth := MAX_DEPTH-4
-// 	test := load_epd_file("test_suites/wac_300.epd")
-// 	var move_str string
-// 	sum, score := 0, 0
-// 	for _, epd := range test {
-// 		ResetAll()
-// 		move, count := Search(epd.brd, &RepList{}, depth, 1000)
-// 		move_str = ToSAN(epd.brd, move)
-// 		if correct_move(epd, move_str) {
-// 			score += 1
-// 			fmt.Printf("-")
-// 		} else {
-// 			fmt.Printf("X")
-// 		}
-// 		sum += count
-// 	}
-// 	fmt.Printf("\nTotal nodes searched: %.4f m\n", float64(sum)/1000000.0)
-// 	fmt.Printf("Total score: %d/%d\n", score, len(test))
-// 	fmt.Printf("Average Branching factor by iteration:\n")
-// 	var branching float64
-// 	for d := 2; d <= depth; d++ {
-// 		branching = math.Pow(float64(nodes_per_iteration[d])/float64(nodes_per_iteration[1]), float64(1)/float64(d-1))
-// 		fmt.Printf("%d ABF: %.4f\n", d, branching)
-// 	}
-// }
 
 func correct_move(epd *EPD, move_str string) bool {
 	for _, a := range epd.avoid_moves {

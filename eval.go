@@ -208,10 +208,19 @@ func setup_eval() {
 func setup_eval_constants() {
 	non_king_value = piece_values[PAWN]*8 + piece_values[KNIGHT]*2 + piece_values[BISHOP]*2 +
 		piece_values[ROOK]*2 + piece_values[QUEEN]
-	endgame_value = piece_values[KING] + (non_king_value / 4)
+	endgame_value = piece_values[KING] + (non_king_value / 3)
 }
 
 var highest_placement, lowest_placement int
+
+func is_passed_pawn(brd *Board, m Move) bool {
+	if m.Piece() != PAWN {
+		return false
+	} else {
+		c, e := brd.c, brd.Enemy()
+		return pawn_passed_masks[c][m.From()]&brd.pieces[e][PAWN] == 0
+	}
+}
 
 func evaluate(brd *Board, alpha, beta int) int {
 	c, e := brd.c, brd.Enemy()
@@ -258,35 +267,34 @@ func adjusted_placement(brd *Board, c, e uint8) int {
 		fmt.Printf("Invalid King Square: %d\n", enemy_king_sq)
 	}
 
-	pawn_count := pop_count(brd.pieces[c][PAWN])
+	// pawn_count := pop_count(brd.pieces[c][PAWN])
 
 	for b = brd.pieces[c][KNIGHT]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
-		placement += tropism_bonus[sq][enemy_king_sq][KNIGHT] + knight_pawns[pawn_count]
+		// placement += tropism_bonus[sq][enemy_king_sq][KNIGHT] + knight_pawns[pawn_count]
 		mobility += knight_mobility[pop_count(knight_masks[sq]&available&unguarded)]
 	}
 	for b = brd.pieces[c][BISHOP]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
-		placement += tropism_bonus[sq][enemy_king_sq][BISHOP]
+		// placement += tropism_bonus[sq][enemy_king_sq][BISHOP]
 		mobility += bishop_mobility[pop_count(bishop_attacks(occ, sq)&available&unguarded)]
 	}
 	for b = brd.pieces[c][ROOK]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
-		placement += tropism_bonus[sq][enemy_king_sq][ROOK] + rook_pawns[pawn_count]
+		// placement += tropism_bonus[sq][enemy_king_sq][ROOK] + rook_pawns[pawn_count]
 		mobility += rook_mobility[pop_count(rook_attacks(occ, sq)&available&unguarded)]
 	}
 	for b = brd.pieces[c][QUEEN]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
-		placement += tropism_bonus[sq][enemy_king_sq][QUEEN]
+		// placement += tropism_bonus[sq][enemy_king_sq][QUEEN]
 		mobility += queen_mobility[pop_count(queen_attacks(occ, sq)&available&unguarded)]
 	}
 	for b = brd.pieces[c][KING]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
 		placement += king_pst[c][in_endgame(brd, c)][sq]
-
 		// to do: Add king saftey eval.
 	}
-	placement += pawn_structure(brd, c, e)
+	// placement += pawn_structure(brd, c, e)
 
 	return placement + mobility
 }
@@ -309,7 +317,7 @@ func pawn_structure(brd *Board, c, e uint8) int {
 	for b := own_pawns; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
 		// passed pawns
-		if !(pawn_passed_masks[c][sq]&enemy_pawns > 0) {
+		if pawn_passed_masks[c][sq]&enemy_pawns == 0 {
 			structure += passed_pawn_bonus[c][row(sq)]
 			if row(sq) == promote_row[c][0] {
 				if !is_attacked_by(brd, get_offset(c, sq, 8), e, c) {

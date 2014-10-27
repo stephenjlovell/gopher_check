@@ -109,6 +109,8 @@ func (tt *TT) get_slot(hash_key uint64) *Slot {
 
 func (tt *TT) probe(brd *Board, depth, null_depth int, alpha, beta, score *int) (Move, int) {
 
+	// return Move(0), NO_MATCH
+
 	hash_key := brd.hash_key
 	slot := tt.get_slot(hash_key)
 
@@ -215,7 +217,7 @@ var zobrist_table [2][8][64]uint64 // keep array dimensions powers of 2 for fast
 
 var enp_table [65]uint64 // integer keys representing the en-passant target square, if any.
 var castle_table [16]uint64
-var side_key = random_key() // Integer key representing a change in side-to-move.
+var side_key uint64 // Integer key representing a change in side-to-move.
 
 const (
 	MAX_RAND = (1 << 32) - 1
@@ -240,6 +242,7 @@ func setup_zobrist() {
 		enp_table[sq] = random_key()
 	}
 	enp_table[64] = 0
+	side_key = random_key()
 }
 
 func zobrist(pc Piece, sq int, c uint8) uint64 {
