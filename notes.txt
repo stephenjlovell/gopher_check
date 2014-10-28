@@ -9,7 +9,9 @@ Performance:
   9299 total goroutines spawned
 
 
-
+Total nodes searched: 138.0991 m
+Total score: 278/300
+8 ABF: 2.9258
 
 
 

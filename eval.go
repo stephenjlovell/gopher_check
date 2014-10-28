@@ -256,7 +256,17 @@ func evaluate(brd *Board, alpha, beta int) int {
 	if material+piece_values[ROOK] < alpha || material-piece_values[ROOK] > beta {
 		return material
 	}
-	return material + adjusted_placement(brd, c, e) - adjusted_placement(brd, e, c)
+	return material + adjusted_placement(brd, c, e) - adjusted_placement(brd, e, c) + tempo_bonus(c)
+}
+
+var tempo_bonus [2]int = { -10, 10 }
+
+func tempo_bonus(c uint8) int {
+	if c == side_to_move {
+		return 10
+	} else {
+		return -10
+	}
 }
 
 // current ranges (approximate):

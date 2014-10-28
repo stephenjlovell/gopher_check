@@ -96,6 +96,7 @@ type BoundUpdate struct {
 	alpha_update bool
 }
 
+var side_to_move uint8
 var search_id int
 var cancel_search bool
 var uci_mode bool = false
@@ -120,6 +121,7 @@ func search_timer(timer *time.Timer) {
 
 func Search(brd *Board, reps *RepList, depth, time_limit int) (Move, int) {
 	cancel_search = false
+	side_to_move = brd.c
 	id_move[brd.c] = 0
 	start := time.Now()
 	timer := time.NewTimer(time.Duration(time_limit) * time.Millisecond)
@@ -315,8 +317,8 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		// 		sum += count
 		// 	}
 		// } else {
-		if m.IsPromotion() && extensions_left > 0 {
-			score, count, next_pv = ybw_make(brd, m, alpha, beta, depth, ply+1, extensions_left-1, can_null, reps)
+		if m.IsPromotion() {
+			score, count, next_pv = ybw_make(brd, m, alpha, beta, depth, ply+1, extensions_left, can_null, reps)
 		} else {
 			score, count, next_pv = ybw_make(brd, m, alpha, beta, depth-1, ply+1, extensions_left, can_null, reps)				
 		}
@@ -391,11 +393,11 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		// } else {
 
 
-		if m.IsPromotion() && extensions_left > 0 {
-			score, count, next_pv = young_brothers_wait(brd, -beta, -alpha, r_depth, ply+1, extensions_left-1, can_null, reps)	
-		} else {
+		// if m.IsPromotion() {
+		// 	score, count, next_pv = young_brothers_wait(brd, -beta, -alpha, r_depth, ply+1, extensions_left, can_null, reps)	
+		// } else {
 			score, count, next_pv = young_brothers_wait(brd, -beta, -alpha, r_depth-1, ply+1, extensions_left, can_null, reps)
-		}
+		// }
 
 		sum += count
 		// }

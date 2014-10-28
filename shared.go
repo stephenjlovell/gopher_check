@@ -151,7 +151,6 @@ func setup() {
 
 	setup_bitwise_ops()
 	setup_masks()
-	setup_bonus_table()
 
 	setup_eval()
 	setup_zobrist()
