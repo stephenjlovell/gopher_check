@@ -144,6 +144,7 @@ func setup_queen_masks() {
 
 func setup_king_masks() {
 	var sq int
+	var center BB
 	for i := 0; i < 64; i++ {
 		for j := 0; j < 8; j++ {
 			sq = i + king_offsets[j]
@@ -151,7 +152,15 @@ func setup_king_masks() {
 				king_masks[i].Add(sq)
 			}
 		}
+		center = king_masks[i] | sq_mask_on[i]
+		// The king zone is the 3 x 4 square area consisting of the squares around the king and the squares facing
+		// the enemy side.
+		king_zone_masks[WHITE][i] = center | (center << 8)
+		king_zone_masks[BLACK][i] = center | (center >> 8)
+		king_shield_masks[WHITE][i] = pawn_attack_masks[WHITE][i] | (sq_mask_on[i] << 8)
+		king_shield_masks[BLACK][i] = pawn_attack_masks[BLACK][i] | (sq_mask_on[i] >> 8)
 	}
+
 }
 
 func setup_row_masks() {

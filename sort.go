@@ -24,7 +24,7 @@
 package main
 
 import (
-// "fmt"
+	// "fmt"
 	"sort"
 )
 
@@ -40,7 +40,6 @@ import (
 // 22  MVV/LVA  (6 bits)  - Used to choose between captures of equal material gain/loss
 // 1   History heuristic : (21 bits)
 // 0 Castles  (1 bit)
-
 
 const (
 	SORT_CASTLE = 1

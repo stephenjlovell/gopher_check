@@ -24,15 +24,21 @@
 package main
 
 import (
-	"fmt"
+// "fmt"
 )
 
 var non_king_value, endgame_value int
 
+// var passed_pawn_bonus = [2][8]int{
+// 	{0, 49, 28, 16, 9, 5, 3, 0},
+// 	{0, 3, 5, 9, 16, 28, 49, 0},
+// }
+
 var passed_pawn_bonus = [2][8]int{
-	{0, 49, 28, 16, 9, 5, 3, 0},
-	{0, 3, 5, 9, 16, 16, 28, 49},
+	{0, 98, 56, 32, 18, 10, 6, 0},
+	{0, 6, 10, 18, 32, 56, 98, 0},
 }
+
 
 var promote_row = [2][2]int{
 	{1, 2},
@@ -186,6 +192,20 @@ var king_pst = [2][2][64]int{{ // Black // False
 		-20, -10, 0, 10, 10, 0, -10, -20,
 		-30, -20, -10, 0, 0, -10, -20, -30}}}
 
+// {   0,  2,  3,  6, 12, 18, 25, 37, 50, 75,
+//    100,125,150,175,200,225,250,275,300,325,
+//    350,375,400,425,450,475,500,525,550,575
+//    600,600,600,600,600 }
+
+var king_threat_bonus = [32]int{
+	0, 2, 3, 5, 9, 15, 24, 37, 55, 79, 111,
+	150, 195, 244, 293, 337, 370, 389,
+	389, 389, 389, 389, 389, 389, 389,
+	389, 389, 389, 389, 389, 389, 389,
+}
+
+var pawn_shield_bonus = [4]int{-9, -3, 3, 9}
+
 // adjust value of knights and rooks based on number of pawns in play.
 var knight_pawns = [16]int{-20, -16, -12, -8, -4, 0, 4, 8, 12}
 var rook_pawns = [16]int{16, 12, 8, 4, 2, 0, -2, -4, -8}
@@ -245,6 +265,8 @@ func evaluate(brd *Board, alpha, beta int) int {
 // Pawn structure: { -65, 168 }
 // { -256, 305} => +/- 561
 
+var king_test int
+
 func adjusted_placement(brd *Board, c, e uint8) int {
 
 	friendly := brd.Placement(c)
@@ -257,94 +279,125 @@ func adjusted_placement(brd *Board, c, e uint8) int {
 	} else { // black to move
 		unguarded = ^(((brd.pieces[e][PAWN] & (^column_masks[0])) << 7) | ((brd.pieces[e][PAWN] & (^column_masks[7])) << 9))
 	}
-	var sq, mobility, placement int
-	var b BB
+	var sq, mobility, placement, king_threats int
+	var b, attacks BB
 	enemy_king_sq := furthest_forward(e, brd.pieces[e][KING])
 
-	if enemy_king_sq > 63 || enemy_king_sq < 0 {
-		brd.Print()
-		fmt.Printf("%d, %d", brd.material[c], brd.material[e])
-		fmt.Printf("Invalid King Square: %d\n", enemy_king_sq)
-	}
+	enemy_king_zone := king_zone_masks[e][enemy_king_sq]
 
-	// pawn_count := pop_count(brd.pieces[c][PAWN])
+	pawn_count := pop_count(brd.pieces[c][PAWN])
 
 	for b = brd.pieces[c][KNIGHT]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
-		// placement += tropism_bonus[sq][enemy_king_sq][KNIGHT] + knight_pawns[pawn_count]
-		mobility += knight_mobility[pop_count(knight_masks[sq]&available&unguarded)]
+		placement += knight_pawns[pawn_count]
+		attacks = knight_masks[sq] & available
+		king_threats += pop_count(attacks & enemy_king_zone)
+		mobility += knight_mobility[pop_count(attacks&unguarded)]
 	}
 	for b = brd.pieces[c][BISHOP]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
-		// placement += tropism_bonus[sq][enemy_king_sq][BISHOP]
-		mobility += bishop_mobility[pop_count(bishop_attacks(occ, sq)&available&unguarded)]
+		attacks = bishop_attacks(occ, sq) & available
+		king_threats += pop_count(attacks & enemy_king_zone)
+		mobility += bishop_mobility[pop_count(attacks&unguarded)]
 	}
 	for b = brd.pieces[c][ROOK]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
-		// placement += tropism_bonus[sq][enemy_king_sq][ROOK] + rook_pawns[pawn_count]
-		mobility += rook_mobility[pop_count(rook_attacks(occ, sq)&available&unguarded)]
+		placement += rook_pawns[pawn_count]
+		attacks = rook_attacks(occ, sq) & available
+		king_threats += pop_count(attacks & enemy_king_zone)
+		mobility += rook_mobility[pop_count(attacks&unguarded)]
 	}
 	for b = brd.pieces[c][QUEEN]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
-		// placement += tropism_bonus[sq][enemy_king_sq][QUEEN]
-		mobility += queen_mobility[pop_count(queen_attacks(occ, sq)&available&unguarded)]
+		attacks = queen_attacks(occ, sq) & available
+		king_threats += pop_count(attacks & enemy_king_zone)
+		mobility += queen_mobility[pop_count(attacks&unguarded)]
 	}
+	endgame := in_endgame(brd, c)
 	for b = brd.pieces[c][KING]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
-		placement += king_pst[c][in_endgame(brd, c)][sq]
-		// to do: Add king saftey eval.
+		attacks = king_masks[sq] & available
+		king_threats += pop_count(attacks & enemy_king_zone)
+
+		if endgame == 0 {
+			placement += king_threat_bonus[king_threats]
+			placement += pawn_shield_bonus[pop_count(brd.pieces[c][PAWN]&king_shield_masks[c][sq])]
+		}
+		placement += king_pst[c][endgame][sq]
 	}
-	// placement += pawn_structure(brd, c, e)
+
+	placement += pawn_structure(brd, c, e, endgame, enemy_king_sq)
 
 	return placement + mobility
 }
 
 // PAWN EVALUATION
-//
 // Good structures:
 //   -Passed pawns - Bonus for pawns unblocked by an enemy pawn on the same or adjacent file.
 //                   May eventually get promoted.
 //   -Pawn duos - Pawns side by side to another friendly pawn receive a small bonus
-//
 // Bad structures:
 //   -Isolated pawns - Penalty for any pawn without friendly pawns on adjacent files.
 //   -Double/tripled pawns - Penalty for having multiple pawns on the same file.
-func pawn_structure(brd *Board, c, e uint8) int {
+func pawn_structure(brd *Board, c, e uint8, endgame, enemy_king_sq int) int {
 	var structure, sq int
 	own_pawns := brd.pieces[c][PAWN]
 	enemy_pawns := brd.pieces[e][PAWN]
 
 	for b := own_pawns; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
+
 		// passed pawns
 		if pawn_passed_masks[c][sq]&enemy_pawns == 0 {
-			structure += passed_pawn_bonus[c][row(sq)]
-			if row(sq) == promote_row[c][0] {
-				if !is_attacked_by(brd, get_offset(c, sq, 8), e, c) {
-					structure += passed_pawn_bonus[c][row(sq)] // double the value of the bonus if path to promotion is undefended.
-				}
-			} else if row(sq) == promote_row[c][1] {
-				if !is_attacked_by(brd, get_offset(c, sq, 8), e, c) &&
-					!is_attacked_by(brd, get_offset(c, sq, 16), e, c) {
-					structure += passed_pawn_bonus[c][row(sq)] // double the value of the bonus if path to promotion is undefended.
+			base_bonus := (passed_pawn_bonus[c][row(sq)]*(endgame + 3))/2
+			minor_bonus := base_bonus / 4
+
+			structure += base_bonus
+			if pawn_passed_masks[c][sq] & column_masks[column(sq)] & brd.occupied[e] == 0 {
+				structure += minor_bonus // pawn is not directly blocked by any enemy piece.			
+			}
+
+			// reduce the bonus by up to 1/2 based on the proximity of the enemy king.
+			structure -= (7 - chebyshev_distance(sq, enemy_king_sq)) * (minor_bonus/3)
+
+			next := get_offset(c, sq, 8)
+			if brd.squares[next] == EMPTY {
+				if !is_attacked_by(brd, next, e, c) {  	// next square undefended.
+					structure += minor_bonus
+					next = get_offset(c, next, 8)
+					if next >= 0 && next < 64 && brd.squares[next] == EMPTY {
+						if !is_attacked_by(brd, next, e, c) {  	// next square undefended.
+							structure += minor_bonus
+							next = get_offset(c, next, 8)
+							if next >= 0 && next < 64 && brd.squares[next] == EMPTY {
+								if !is_attacked_by(brd, next, e, c) {  	// next square undefended.
+									structure += minor_bonus
+								}	
+							}
+						}	
+					}
 				}
 			}
+
 		}
+
 		// isolated pawns
 		if pawn_isolated_masks[sq]&own_pawns == 0 {
 			structure += isolated_pawn_penalty
 		}
+
 		// pawn duos
 		if pawn_side_masks[sq]&own_pawns > 0 {
 			structure += pawn_duo_bonus
 		}
+
 	}
 	var column_count int
 	for i := 0; i < 8; i++ {
 		// doubled/tripled pawns
 		column_count = pop_count(column_masks[i] & own_pawns)
 		if column_count > 1 {
-			structure += double_pawn_penalty << (uint(column_count - 2))
+			structure += (double_pawn_penalty * (column_count - 1))
 		}
 	}
 	return structure

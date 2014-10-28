@@ -70,7 +70,7 @@ import (
 const (
 	MAX_TIME    = 120000 // default search time limit in seconds (2m)
 	MAX_DEPTH   = 12
-	MAX_EXT     = 0
+	MAX_EXT     = 12
 	SPLIT_MIN   = 13 // set > MAX_DEPTH to disable parallel search.
 	F_PRUNE_MIN = 3  // should always be less than SPLIT_MIN
 	MAX_PLY     = MAX_DEPTH + MAX_EXT
@@ -202,7 +202,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 
 	in_check := is_in_check(brd)
 	if in_check && extensions_left > 0 {
-		if MAX_EXT > extensions_left {  // only extend after the first check.
+		if MAX_EXT > extensions_left { // only extend after the first check.
 			depth += 1
 		}
 		extensions_left -= 1
@@ -307,17 +307,22 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 			continue
 		}
 
-		if alpha > old_alpha && node_type != D_PV {
-			score, count, next_pv = ybw_make(brd, m, alpha, alpha+1, depth-1, ply+1, extensions_left, can_null, reps)
-			sum += count
-			if alpha < score && score < beta {
-				score, count, next_pv = ybw_make(brd, m, alpha, beta, depth-1, ply+1, extensions_left, can_null, reps)
-				sum += count
-			}
+		// if alpha > old_alpha && node_type != D_PV {
+		// 	score, count, next_pv = ybw_make(brd, m, alpha, alpha+1, depth-1, ply+1, extensions_left, can_null, reps)
+		// 	sum += count
+		// 	if alpha < score && score < beta {
+		// 		score, count, next_pv = ybw_make(brd, m, alpha, beta, depth-1, ply+1, extensions_left, can_null, reps)
+		// 		sum += count
+		// 	}
+		// } else {
+		if m.IsPromotion() && extensions_left > 0 {
+			score, count, next_pv = ybw_make(brd, m, alpha, beta, depth, ply+1, extensions_left-1, can_null, reps)
 		} else {
-			score, count, next_pv = ybw_make(brd, m, alpha, beta, depth-1, ply+1, extensions_left, can_null, reps)
-			sum += count
+			score, count, next_pv = ybw_make(brd, m, alpha, beta, depth-1, ply+1, extensions_left, can_null, reps)				
 		}
+
+		sum += count
+		// }
 
 		legal_searched += 1
 		if score > best {
@@ -376,17 +381,24 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 			r_depth = depth - 1
 		}
 
-		if alpha > old_alpha && node_type != D_PV {
-			score, count, next_pv = young_brothers_wait(brd, -alpha-1, -alpha, r_depth-1, ply+1, extensions_left, can_null, reps)
-			sum += count
-			if alpha < -score && -score < beta {
-				score, count, next_pv = young_brothers_wait(brd, -beta, -alpha, r_depth-1, ply+1, extensions_left, can_null, reps)
-				sum += count
-			}
+		// if alpha > old_alpha && node_type != D_PV {
+		// 	score, count, next_pv = young_brothers_wait(brd, -alpha-1, -alpha, r_depth-1, ply+1, extensions_left, can_null, reps)
+		// 	sum += count
+		// 	if alpha < -score && -score < beta {
+		// 		score, count, next_pv = young_brothers_wait(brd, -beta, -alpha, r_depth-1, ply+1, extensions_left, can_null, reps)
+		// 		sum += count
+		// 	}
+		// } else {
+
+
+		if m.IsPromotion() && extensions_left > 0 {
+			score, count, next_pv = young_brothers_wait(brd, -beta, -alpha, r_depth, ply+1, extensions_left-1, can_null, reps)	
 		} else {
 			score, count, next_pv = young_brothers_wait(brd, -beta, -alpha, r_depth-1, ply+1, extensions_left, can_null, reps)
-			sum += count
 		}
+
+		sum += count
+		// }
 
 		score = -score
 		unmake_move(brd, m, enp_target) // to do: unmake move

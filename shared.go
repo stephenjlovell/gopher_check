@@ -71,14 +71,13 @@ var row_masks [8]BB
 var column_masks [8]BB
 var ray_masks [8][64]BB
 
-var pawn_attack_masks, pawn_passed_masks [2][64]BB
-
 var pawn_isolated_masks, pawn_side_masks [64]BB
 
 var intervening [64][64]BB
 var castle_queenside_intervening, castle_kingside_intervening [2]BB
 
 var knight_masks, bishop_masks, rook_masks, queen_masks, king_masks, sq_mask_on, sq_mask_off [64]BB
+var pawn_attack_masks, pawn_passed_masks, king_zone_masks, king_shield_masks [2][64]BB
 
 const (
 	OFF_SINGLE = iota
@@ -152,8 +151,8 @@ func setup() {
 
 	setup_bitwise_ops()
 	setup_masks()
-
 	setup_bonus_table()
+
 	setup_eval()
 	setup_zobrist()
 	setup_main_tt()
