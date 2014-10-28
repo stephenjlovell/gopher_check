@@ -185,7 +185,6 @@ func iterative_deepening(brd *Board, reps *RepList, depth int, start time.Time) 
 	return id_move[c], sum
 }
 
-
 func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left int, can_null bool, old_reps *RepList) (int, int, *PV) {
 
 	if depth <= 0 {
@@ -203,8 +202,10 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 
 	in_check := is_in_check(brd)
 	if in_check && extensions_left > 0 {
+		if MAX_EXT > extensions_left {  // only extend after the first check.
+			depth += 1
+		}
 		extensions_left -= 1
-		depth += 1
 	}
 
 	if brd.halfmove_clock >= 100 {
@@ -231,17 +232,10 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 	var hash_result int
 	first_move, hash_result = main_tt.probe(brd, depth, null_depth, &alpha, &beta, &score)
 
-	// if first_move > 0 && !first_move.IsValid(brd) {
-	// 	// brd.PrintDetails()
-	// 	brd.Print()
-	// 	fmt.Printf("Invalid hash move detected:%s\n", first_move.ToString())
-	// }
-
-
 	if ply > 0 {
 		if hash_result == CUTOFF_FOUND {
 			return score, sum, nil
-		} else if hash_result != AVOID_NULL { 
+		} else if hash_result != AVOID_NULL {
 			// Null-Move Pruning
 			if !in_check && can_null && depth > 2 && in_endgame(brd, brd.c) == 0 &&
 				!pawns_only(brd, brd.c) && evaluate(brd, alpha, beta) >= beta {

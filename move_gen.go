@@ -458,12 +458,7 @@ func get_winning_captures(brd *Board) *MoveList {
 		from = to + pawn_from_offsets[c][OFF_LEFT]
 		m = NewMove(from, to, PAWN, brd.squares[to], QUEEN)
 		sort = SortPromotion(brd, m)
-		// if sort >= WINNING {
 		best_moves.Push(&SortItem{m, sort})
-		// } else {
-		// 	brd.Print()
-		// 	fmt.Println(m.ToUCI())
-		// }
 	}
 
 	for ; promotion_captures_right > 0; promotion_captures_right.Clear(to) {
@@ -471,12 +466,7 @@ func get_winning_captures(brd *Board) *MoveList {
 		from = to + pawn_from_offsets[c][OFF_RIGHT]
 		m = NewMove(from, to, PAWN, brd.squares[to], QUEEN)
 		sort = SortPromotion(brd, m)
-		// if sort >= WINNING {
 		best_moves.Push(&SortItem{m, sort})
-		// } else {
-		// 	brd.Print()
-		// 	fmt.Println(m.ToUCI())
-		// }
 	}
 
 	// promotion advances
@@ -485,12 +475,7 @@ func get_winning_captures(brd *Board) *MoveList {
 		from = to + pawn_from_offsets[c][OFF_SINGLE]
 		m = NewPromotion(from, to, PAWN, QUEEN)
 		sort = SortPromotion(brd, m)
-		// if sort >= WINNING {
 		best_moves.Push(&SortItem{m, sort})
-		// } else {
-		// 	brd.Print()
-		// 	fmt.Println(m.ToUCI())
-		// }
 	}
 
 	// regular pawn attacks

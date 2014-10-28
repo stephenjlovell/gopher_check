@@ -37,7 +37,7 @@ func (h *HTable) Store(m Move, c uint8, count int) {
 
 func (h *HTable) Probe(pc Piece, c uint8, to int) uint64 {
 	if h[c][pc][to] > 0 {
-		return (((h[c][pc][to] >> 3) & mask_of_length[21]) | 1)
+		return (((h[c][pc][to] >> 3) & mask_of_length[21]) | 1) << 1
 	}
 	return uint64(0)
 }

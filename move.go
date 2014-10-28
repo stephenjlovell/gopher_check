@@ -24,7 +24,7 @@
 package main
 
 import (
-"fmt"
+	"fmt"
 )
 
 const (
@@ -54,7 +54,7 @@ func (m Move) IsValid(brd *Board) bool {
 	if brd.pieces[c][piece]&sq_mask_on[from] == 0 { // Check that there's really a piece of this type on the from square.
 		// brd.pieces[c][piece].Print()
 		// sq_mask_on[from].Print()
-		fmt.Printf("No piece of type %s available at from square.\n", piece_chars[piece])
+		// fmt.Printf("No piece of type %s available at from square.\n", piece_chars[piece])
 		return false
 	}
 
@@ -99,7 +99,7 @@ func (m Move) IsValid(brd *Board) bool {
 		}
 	case KING:
 		if abs(to-from) == 2 { // validate castle moves
-			if c == WHITE && (brd.castle & 12) > 0 {
+			if c == WHITE && (brd.castle&12) > 0 {
 				switch to {
 				case C1:
 					if !((brd.castle&C_WQ > uint8(0)) && castle_queenside_intervening[WHITE]&brd.AllOccupied() == 0 &&
@@ -114,7 +114,7 @@ func (m Move) IsValid(brd *Board) bool {
 						return false
 					}
 				}
-			} else if c == BLACK && (brd.castle & 3) > 0 {
+			} else if c == BLACK && (brd.castle&3) > 0 {
 				switch to {
 				case C8:
 					if !((brd.castle&C_BQ > uint8(0)) && castle_queenside_intervening[BLACK]&brd.AllOccupied() == 0 &&
@@ -186,7 +186,6 @@ func (m Move) IsPromotion() bool {
 }
 
 var piece_chars = [6]string{"p", "n", "b", "r", "q", "k"}
-
 
 func (m Move) ToString() string { // string representation used for debugging only.
 	var str string

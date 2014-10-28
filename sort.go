@@ -24,6 +24,7 @@
 package main
 
 import (
+// "fmt"
 	"sort"
 )
 
@@ -35,13 +36,14 @@ import (
 // 50
 // 39  Promotions and captures SEE >= 0  (11 bits)
 // 38  Killers  (1 bit)
-// 37  Castles  (1 bit)
-// 27  Promotions and captures SEE < 0  (10 bits)
-// 21  MVV/LVA  (6 bits)  - Used to choose between captures of equal material gain/loss
-// 0   History heuristic : (21 bits)
+// 28  Promotions and captures SEE < 0  (10 bits)
+// 22  MVV/LVA  (6 bits)  - Used to choose between captures of equal material gain/loss
+// 1   History heuristic : (21 bits)
+// 0 Castles  (1 bit)
+
 
 const (
-	SORT_CASTLE = (1 << 37)
+	SORT_CASTLE = 1
 	SORT_KILLER = (1 << 38)
 	WINNING     = (1 << 39)
 )
@@ -49,15 +51,15 @@ const (
 // {-780, 1660}, 12 bits  promotions and captures
 
 func SortWinningCapture(see int, victim, attacker Piece) uint64 { // 11 bits
-	return (uint64(see|1) << 39) | (mvv_lva(victim, attacker))
+	return (uint64(see|1) << 39) | mvv_lva(victim, attacker)
 }
 
 func SortLosingCapture(see int, victim, attacker Piece) uint64 { // 10 bits
-	return (uint64((see+780)|1) << 27) | (mvv_lva(victim, attacker))
+	return (uint64((see+780)|1) << 28) | mvv_lva(victim, attacker)
 }
 
 func mvv_lva(victim, attacker Piece) uint64 { // returns value between 0 and 64
-	return uint64(((victim+1)<<3)-attacker) << 21
+	return uint64(((victim+1)<<3)-attacker) << 22
 }
 
 // Promotion Captures:
@@ -74,9 +76,9 @@ func SortPromotion(brd *Board, m Move) uint64 {
 		val = promote_values[m.PromotedTo()] + m.CapturedPiece().Value()
 	}
 	if val >= 0 {
-		return SortWinningCapture(val, QUEEN, PAWN) // in event of material tie with regular capture,
+		return SortWinningCapture(val, m.CapturedPiece(), PAWN) // in event of material tie with regular capture,
 	} else { // try the promotion first.
-		return SortLosingCapture(val, QUEEN, PAWN)
+		return SortLosingCapture(val, m.CapturedPiece(), PAWN)
 	}
 }
 
