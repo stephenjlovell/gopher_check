@@ -29,16 +29,10 @@ import (
 
 var non_king_value, endgame_value int
 
-// var passed_pawn_bonus = [2][8]int{
-// 	{0, 49, 28, 16, 9, 5, 3, 0},
-// 	{0, 3, 5, 9, 16, 28, 49, 0},
-// }
-
 var passed_pawn_bonus = [2][8]int{
-	{0, 98, 56, 32, 18, 10, 6, 0},
-	{0, 6, 10, 18, 32, 56, 98, 0},
+	{0, 128, 64, 32, 16, 8, 4, 0},
+	{0, 4, 8, 16, 32, 64, 128, 0},
 }
-
 
 var promote_row = [2][2]int{
 	{1, 2},
@@ -223,6 +217,7 @@ var queen_mobility = [32]int{-10, -6, -3, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 
 
 func setup_eval() {
 	setup_eval_constants()
+	setup_borders()
 }
 
 func setup_eval_constants() {
@@ -259,13 +254,15 @@ func evaluate(brd *Board, alpha, beta int) int {
 	return material + adjusted_placement(brd, c, e) - adjusted_placement(brd, e, c) + tempo_bonus(c)
 }
 
-var tempo_bonus [2]int = { -10, 10 }
+func lazy_eval(brd *Board) int {
+	return int(brd.material[brd.c] - brd.material[brd.Enemy()])
+}
 
 func tempo_bonus(c uint8) int {
 	if c == side_to_move {
-		return 10
+		return 5
 	} else {
-		return -10
+		return -5
 	}
 }
 
@@ -275,7 +272,7 @@ func tempo_bonus(c uint8) int {
 // Pawn structure: { -65, 168 }
 // { -256, 305} => +/- 561
 
-var king_test int
+var queen_tropism_bonus = [8]int{0, 12, 9, 6, 3, 0, -3, -6}
 
 func adjusted_placement(brd *Board, c, e uint8) int {
 
@@ -322,7 +319,12 @@ func adjusted_placement(brd *Board, c, e uint8) int {
 		attacks = queen_attacks(occ, sq) & available
 		king_threats += pop_count(attacks & enemy_king_zone)
 		mobility += queen_mobility[pop_count(attacks&unguarded)]
+
+		// add minor queen tropism bonus
+		// placement += queen_tropism_bonus[chebyshev_distance(sq, enemy_king_sq)]
+
 	}
+
 	endgame := in_endgame(brd, c)
 	for b = brd.pieces[c][KING]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
@@ -330,16 +332,32 @@ func adjusted_placement(brd *Board, c, e uint8) int {
 		king_threats += pop_count(attacks & enemy_king_zone)
 
 		if endgame == 0 {
-			placement += king_threat_bonus[king_threats]
 			placement += pawn_shield_bonus[pop_count(brd.pieces[c][PAWN]&king_shield_masks[c][sq])]
 		}
 		placement += king_pst[c][endgame][sq]
 	}
 
+	// Squares along the edges of the board receive higher king threat bonuses, since there are fewer
+	// places where the king can escape.
+	placement += king_threat_bonus[king_threats+borders[enemy_king_sq]]
+
 	placement += pawn_structure(brd, c, e, endgame, enemy_king_sq)
 
 	return placement + mobility
 }
+
+var borders [64]int
+
+func setup_borders() {
+	for i := 0; i < 64; i++ {
+		borders[i] = 8 - pop_count(king_masks[i]) - 1
+		if borders[i] < 0 {
+			borders[i] = 0
+		}
+	}
+}
+
+var pawn_tropism_factor = [8]int{0, 3, 2, 2, 1, 0, 0, 0}
 
 // PAWN EVALUATION
 // Good structures:
@@ -359,36 +377,42 @@ func pawn_structure(brd *Board, c, e uint8, endgame, enemy_king_sq int) int {
 
 		// passed pawns
 		if pawn_passed_masks[c][sq]&enemy_pawns == 0 {
-			base_bonus := (passed_pawn_bonus[c][row(sq)]*(endgame + 3))/2
-			minor_bonus := base_bonus / 4
-
-			structure += base_bonus
-			if pawn_passed_masks[c][sq] & column_masks[column(sq)] & brd.occupied[e] == 0 {
-				structure += minor_bonus // pawn is not directly blocked by any enemy piece.			
+			base_bonus := passed_pawn_bonus[c][row(sq)]
+			if endgame == 1 {
+				base_bonus += base_bonus >> 1 // increase the base bonus by half during endgame.
 			}
 
-			// reduce the bonus by up to 1/2 based on the proximity of the enemy king.
-			structure -= (7 - chebyshev_distance(sq, enemy_king_sq)) * (minor_bonus/3)
+			minor_bonus := base_bonus >> 2
+
+			structure += base_bonus
+			if (pawn_passed_masks[c][sq] & column_masks[column(sq)] & brd.occupied[e]) > 0 {
+				structure -= base_bonus >> 1 // pawn is directly blocked by an enemy piece.
+			}
+
+			structure -= pawn_tropism_factor[chebyshev_distance(sq, enemy_king_sq)] * minor_bonus
+
+			if pawn_isolated_masks[sq]&own_pawns > 0 {
+				structure += minor_bonus
+			}
 
 			next := get_offset(c, sq, 8)
 			if brd.squares[next] == EMPTY {
-				if !is_attacked_by(brd, next, e, c) {  	// next square undefended.
+				if !is_attacked_by(brd, next, e, c) { // next square undefended.
 					structure += minor_bonus
 					next = get_offset(c, next, 8)
 					if next >= 0 && next < 64 && brd.squares[next] == EMPTY {
-						if !is_attacked_by(brd, next, e, c) {  	// next square undefended.
+						if !is_attacked_by(brd, next, e, c) { // next square undefended.
 							structure += minor_bonus
 							next = get_offset(c, next, 8)
 							if next >= 0 && next < 64 && brd.squares[next] == EMPTY {
-								if !is_attacked_by(brd, next, e, c) {  	// next square undefended.
+								if !is_attacked_by(brd, next, e, c) { // next square undefended.
 									structure += minor_bonus
-								}	
+								}
 							}
-						}	
+						}
 					}
 				}
 			}
-
 		}
 
 		// isolated pawns

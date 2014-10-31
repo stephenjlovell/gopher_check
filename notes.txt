@@ -8,11 +8,17 @@ Performance:
   2886936 total capture nodes
   9299 total goroutines spawned
 
+10/27/14
 
 Total nodes searched: 138.0991 m
 Total score: 278/300
 8 ABF: 2.9258
 
+10/28/14
+
+Total nodes searched: 985.2459 m
+Total score: 290/300
+10 ABF: 2.9052
 
 
 

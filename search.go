@@ -318,7 +318,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		// 	}
 		// } else {
 		if m.IsPromotion() {
-			score, count, next_pv = ybw_make(brd, m, alpha, beta, depth, ply+1, extensions_left, can_null, reps)
+			score, count, next_pv = ybw_make(brd, m, alpha, beta, depth, ply+1, extensions_left-1, can_null, reps)
 		} else {
 			score, count, next_pv = ybw_make(brd, m, alpha, beta, depth-1, ply+1, extensions_left, can_null, reps)				
 		}
@@ -393,11 +393,11 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		// } else {
 
 
-		// if m.IsPromotion() {
-		// 	score, count, next_pv = young_brothers_wait(brd, -beta, -alpha, r_depth, ply+1, extensions_left, can_null, reps)	
-		// } else {
+		if m.IsPromotion() {
+			score, count, next_pv = young_brothers_wait(brd, -beta, -alpha, r_depth, ply+1, extensions_left-1, can_null, reps)	
+		} else {
 			score, count, next_pv = young_brothers_wait(brd, -beta, -alpha, r_depth-1, ply+1, extensions_left, can_null, reps)
-		// }
+		}
 
 		sum += count
 		// }
