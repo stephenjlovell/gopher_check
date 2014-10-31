@@ -27,8 +27,6 @@ import (
 // "fmt"
 )
 
-var non_king_value, endgame_value int
-
 var passed_pawn_bonus = [2][8]int{
 	{0, 128, 64, 32, 16, 8, 4, 0},
 	{0, 4, 8, 16, 32, 64, 128, 0},
@@ -39,9 +37,13 @@ var promote_row = [2][2]int{
 	{6, 5},
 }
 
-const isolated_pawn_penalty int = -5
-const double_pawn_penalty int = -10
-const pawn_duo_bonus int = 3
+const (
+	ENDGAME_COUNT    = 18
+	DUO_BONUS        = 2
+	ISOLATED_PENALTY = -4
+)
+
+var double_pawn_penalty = [8]int{0, 0, -15, -30, -45, -60, -75, -90}
 
 var main_pst = [2][6][64]int{
 	{ // Black
@@ -200,9 +202,14 @@ var king_threat_bonus = [32]int{
 
 var pawn_shield_bonus = [4]int{-9, -3, 3, 9}
 
-// adjust value of knights and rooks based on number of pawns in play.
+// adjusts value of knights and rooks based on number of pawns in play.
 var knight_pawns = [16]int{-20, -16, -12, -8, -4, 0, 4, 8, 12}
 var rook_pawns = [16]int{16, 12, 8, 4, 2, 0, -2, -4, -8}
+
+// adjusts the value of bishop pairs based on number of enemy pawns in play.
+// var bishop_pair_pawns = [16]int{ 50, 50, 50, 50, 37, 25, 12, 6, 3 }
+// var bishop_pair_pawns = [16]int{ 24, 24, 24, 24, 18, 12, 6, 3, 0 }
+var bishop_pair_pawns = [16]int{10, 10, 8, 8, 6, 4, 2, 1, 0}
 
 // max mobility bonus/penalty should be 2.5% of piece value:
 // 8.0, 8.325000000000001, 12.75, 22.0
@@ -216,14 +223,7 @@ var queen_mobility = [32]int{-10, -6, -3, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 
 	12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16}
 
 func setup_eval() {
-	setup_eval_constants()
 	setup_borders()
-}
-
-func setup_eval_constants() {
-	non_king_value = piece_values[PAWN]*8 + piece_values[KNIGHT]*2 + piece_values[BISHOP]*2 +
-		piece_values[ROOK]*2 + piece_values[QUEEN]
-	endgame_value = piece_values[KING] + (non_king_value / 3)
 }
 
 var highest_placement, lowest_placement int
@@ -237,25 +237,31 @@ func is_passed_pawn(brd *Board, m Move) bool {
 	}
 }
 
+var placement_test int
+
 func evaluate(brd *Board, alpha, beta int) int {
 	c, e := brd.c, brd.Enemy()
 	material := int(brd.material[c] - brd.material[e])
-
-	if brd.pieces[c][KING] == 0 {
-		return -INF
-	}
-
+	// if brd.pieces[c][KING] == 0 {
+	// 	return -INF
+	// }
 	// lazy evaluation: if material balance is already outside the search window by an amount that outweighs
-	// the largest possible placement evaluation, return the material as an approximate evaluation.
+	// the largest likely placement evaluation, return the material as an approximate evaluation.
 	// This prevents the engine from wasting a lot of time evaluating unrealistic positions.
-	if material+piece_values[ROOK] < alpha || material-piece_values[ROOK] > beta {
-		return material
+
+	if material+piece_values[BISHOP] < alpha || material-piece_values[BISHOP] > beta {
+		return material + tempo_bonus(c)
 	}
-	return material + adjusted_placement(brd, c, e) - adjusted_placement(brd, e, c) + tempo_bonus(c)
+	placement := adjusted_placement(brd, c, e) - adjusted_placement(brd, e, c) + tempo_bonus(c)
+	// if placement > placement_test {
+	// 	placement_test = placement
+	// 	fmt.Printf("%d ", placement_test)
+	// }
+	return material + placement
 }
 
 func lazy_eval(brd *Board) int {
-	return int(brd.material[brd.c] - brd.material[brd.Enemy()])
+	return int(brd.material[brd.c]-brd.material[brd.Enemy()]) + tempo_bonus(brd.c)
 }
 
 func tempo_bonus(c uint8) int {
@@ -269,8 +275,9 @@ func tempo_bonus(c uint8) int {
 // current ranges (approximate):
 // PST bonus: {-152, 82}
 // Mobility: { -39, 55}
-// Pawn structure: { -65, 168 }
-// { -256, 305} => +/- 561
+// Pawn structure: {  }
+
+// overall +- 550
 
 var queen_tropism_bonus = [8]int{0, 12, 9, 6, 3, 0, -3, -6}
 
@@ -301,7 +308,13 @@ func adjusted_placement(brd *Board, c, e uint8) int {
 		king_threats += pop_count(attacks & enemy_king_zone)
 		mobility += knight_mobility[pop_count(attacks&unguarded)]
 	}
-	for b = brd.pieces[c][BISHOP]; b > 0; b.Clear(sq) {
+
+	b = brd.pieces[c][BISHOP]
+	// if pop_count(b) > 1 {
+	// 	// A pair of bishops is more useful the fewer enemy pawns are in play.
+	// 	placement += bishop_pair_pawns[pop_count(brd.pieces[e][PAWN])]
+	// }
+	for ; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
 		attacks = bishop_attacks(occ, sq) & available
 		king_threats += pop_count(attacks & enemy_king_zone)
@@ -321,11 +334,11 @@ func adjusted_placement(brd *Board, c, e uint8) int {
 		mobility += queen_mobility[pop_count(attacks&unguarded)]
 
 		// add minor queen tropism bonus
-		// placement += queen_tropism_bonus[chebyshev_distance(sq, enemy_king_sq)]
+		placement += queen_tropism_bonus[chebyshev_distance(sq, enemy_king_sq)]
 
 	}
 
-	endgame := in_endgame(brd, c)
+	endgame := in_endgame(brd)
 	for b = brd.pieces[c][KING]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
 		attacks = king_masks[sq] & available
@@ -334,7 +347,7 @@ func adjusted_placement(brd *Board, c, e uint8) int {
 		if endgame == 0 {
 			placement += pawn_shield_bonus[pop_count(brd.pieces[c][PAWN]&king_shield_masks[c][sq])]
 		}
-		placement += king_pst[c][endgame][sq]
+		// placement += king_pst[c][endgame][sq]
 	}
 
 	// Squares along the edges of the board receive higher king threat bonuses, since there are fewer
@@ -377,15 +390,26 @@ func pawn_structure(brd *Board, c, e uint8, endgame, enemy_king_sq int) int {
 
 		// passed pawns
 		if pawn_passed_masks[c][sq]&enemy_pawns == 0 {
+
 			base_bonus := passed_pawn_bonus[c][row(sq)]
+
 			if endgame == 1 {
 				base_bonus += base_bonus >> 1 // increase the base bonus by half during endgame.
 			}
+			structure += base_bonus
 
 			minor_bonus := base_bonus >> 2
+			// passed pawns that are blocked by a friendly rook can't promote and can immobilize the
+			// friendly rook if the pawn is attacked.
+			if pawn_blocked_masks[c][sq]&brd.pieces[c][ROOK] > 0 {
+				if is_attacked_by(brd, sq, e, c) {
+					structure -= base_bonus >> 1
+				} else {
+					structure -= minor_bonus
+				}
+			}
 
-			structure += base_bonus
-			if (pawn_passed_masks[c][sq] & column_masks[column(sq)] & brd.occupied[e]) > 0 {
+			if (pawn_blocked_masks[c][sq] & brd.occupied[e]) > 0 {
 				structure -= base_bonus >> 1 // pawn is directly blocked by an enemy piece.
 			}
 
@@ -417,22 +441,18 @@ func pawn_structure(brd *Board, c, e uint8, endgame, enemy_king_sq int) int {
 
 		// isolated pawns
 		if pawn_isolated_masks[sq]&own_pawns == 0 {
-			structure += isolated_pawn_penalty
+			structure += ISOLATED_PENALTY
 		}
 
 		// pawn duos
 		if pawn_side_masks[sq]&own_pawns > 0 {
-			structure += pawn_duo_bonus
+			structure += DUO_BONUS
 		}
 
 	}
-	var column_count int
+
 	for i := 0; i < 8; i++ {
-		// doubled/tripled pawns
-		column_count = pop_count(column_masks[i] & own_pawns)
-		if column_count > 1 {
-			structure += (double_pawn_penalty * (column_count - 1))
-		}
+		structure += double_pawn_penalty[pop_count(column_masks[i]&own_pawns)]
 	}
 	return structure
 }
@@ -445,8 +465,8 @@ func get_offset(c uint8, sq, off int) int {
 	}
 }
 
-func in_endgame(brd *Board, c uint8) int {
-	if int(brd.material[c]) <= endgame_value {
+func in_endgame(brd *Board) int {
+	if brd.endgame_counter < ENDGAME_COUNT {
 		return 1
 	} else {
 		return 0

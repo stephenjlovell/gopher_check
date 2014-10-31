@@ -77,7 +77,7 @@ var intervening [64][64]BB
 var castle_queenside_intervening, castle_kingside_intervening [2]BB
 
 var knight_masks, bishop_masks, rook_masks, queen_masks, king_masks, sq_mask_on, sq_mask_off [64]BB
-var pawn_attack_masks, pawn_passed_masks, king_zone_masks, king_shield_masks [2][64]BB
+var pawn_attack_masks, pawn_blocked_masks, pawn_passed_masks, king_zone_masks, king_shield_masks [2][64]BB
 
 const (
 	OFF_SINGLE = iota
@@ -86,9 +86,8 @@ const (
 	OFF_RIGHT
 )
 
-var piece_values = [8]int{100, 320, 333, 510, 880, 5000, 0, 0} // default piece values
-// 220  13, 177,  370
-// 190
+var piece_values = [8]int{100, 320, 333, 510, 880, 5000} // default piece values
+var endgame_count_values = [8]uint8{1, 3, 3, 5, 9}       // piece values used to determine endgame status
 
 var promote_values = [8]int{0, 220, 233, 410, 780, 0, 0, 0}
 
@@ -99,8 +98,6 @@ var rook_offsets = [4]int{8, 1, -8, -1}
 var king_offsets = [8]int{-9, -7, 7, 9, -8, -1, 1, 8}
 var pawn_attack_offsets = [4]int{9, 7, -9, -7}
 var pawn_advance_offsets = [4]int{8, 16, -8, -16}
-
-// var pawn_enp_offsets = [2]int{1, -1}
 
 var directions [64][64]int
 

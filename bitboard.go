@@ -224,6 +224,7 @@ func setup_pawn_structure_masks() {
 			sq -= 8
 		}
 		center = pawn_passed_masks[WHITE][i]
+		pawn_blocked_masks[WHITE][i] = center
 		if col != 0 {
 			pawn_passed_masks[WHITE][i] |= (center >> 1)
 		} // queenside row
@@ -231,6 +232,7 @@ func setup_pawn_structure_masks() {
 			pawn_passed_masks[WHITE][i] |= (center << 1)
 		} // kingside row
 		center = pawn_passed_masks[BLACK][i]
+		pawn_blocked_masks[BLACK][i] = center
 		if col != 0 {
 			pawn_passed_masks[BLACK][i] |= (center >> 1)
 		} // queenside row

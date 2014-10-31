@@ -72,7 +72,8 @@ const (
 	MAX_DEPTH   = 12
 	MAX_EXT     = 12
 	SPLIT_MIN   = 13 // set > MAX_DEPTH to disable parallel search.
-	F_PRUNE_MIN = 3  // should always be less than SPLIT_MIN
+	F_PRUNE_MAX = 3  // should always be less than SPLIT_MIN
+	LMR_MIN     = 2
 	MAX_PLY     = MAX_DEPTH + MAX_EXT
 	IID_MIN     = 4
 	COMMS_MIN   = 6 // minimum depth at which to send info to GUI.
@@ -239,7 +240,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 			return score, sum, nil
 		} else if hash_result != AVOID_NULL {
 			// Null-Move Pruning
-			if !in_check && can_null && depth > 2 && in_endgame(brd, brd.c) == 0 &&
+			if !in_check && can_null && depth > 2 && in_endgame(brd) == 0 &&
 				!pawns_only(brd, brd.c) && evaluate(brd, alpha, beta) >= beta {
 				score, count = null_make(brd, beta, null_depth-1, ply+1, extensions_left, reps)
 				sum += count
@@ -317,10 +318,10 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		// 		sum += count
 		// 	}
 		// } else {
-		if m.IsPromotion() {
+		if m.IsPromotion() && extensions_left > 0 {
 			score, count, next_pv = ybw_make(brd, m, alpha, beta, depth, ply+1, extensions_left-1, can_null, reps)
 		} else {
-			score, count, next_pv = ybw_make(brd, m, alpha, beta, depth-1, ply+1, extensions_left, can_null, reps)				
+			score, count, next_pv = ybw_make(brd, m, alpha, beta, depth-1, ply+1, extensions_left, can_null, reps)
 		}
 
 		sum += count
@@ -351,10 +352,11 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 
 	f_prune, can_reduce := false, false
 	if !in_check && ply > 0 && node_type != D_PV && alpha > 100-INF {
-		if depth > F_PRUNE_MIN {
-			can_reduce = true
-		} else if evaluate(brd, alpha, beta)+piece_values[BISHOP] < alpha {
+		if depth <= F_PRUNE_MAX && evaluate(brd, alpha, beta)+piece_values[BISHOP] < alpha {
 			f_prune = true
+		}
+		if depth >= LMR_MIN {
+			can_reduce = true
 		}
 	}
 
@@ -369,7 +371,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 
 		make_move(brd, m)
 
-		if f_prune && legal_searched > 1 && m.IsQuiet() && !is_passed_pawn(brd, m) && !is_in_check(brd) {
+		if f_prune && legal_searched > 0 && m.IsQuiet() && !is_passed_pawn(brd, m) && !is_in_check(brd) {
 			unmake_move(brd, m, enp_target)
 			brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
 			brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
@@ -377,7 +379,6 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		}
 
 		// Late move reductions:
-		// reduce if not in check or giving check, item.order == 0, node_type != D_PV
 		r_depth = depth
 		if can_reduce && item.order == 0 && !is_passed_pawn(brd, m) && !is_in_check(brd) {
 			r_depth = depth - 1
@@ -392,9 +393,8 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		// 	}
 		// } else {
 
-
-		if m.IsPromotion() {
-			score, count, next_pv = young_brothers_wait(brd, -beta, -alpha, r_depth, ply+1, extensions_left-1, can_null, reps)	
+		if m.IsPromotion() && extensions_left > 0 {
+			score, count, next_pv = young_brothers_wait(brd, -beta, -alpha, r_depth, ply+1, extensions_left-1, can_null, reps)
 		} else {
 			score, count, next_pv = young_brothers_wait(brd, -beta, -alpha, r_depth-1, ply+1, extensions_left, can_null, reps)
 		}

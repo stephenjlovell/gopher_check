@@ -35,16 +35,17 @@ func (pc Piece) PromoteValue() int { return promote_values[pc] }
 // When spawning new goroutines for subtree search, a deep copy of the Board struct will have to be made
 // and passed to the new goroutine.  Keep this struct as small as possible.
 type Board struct {
-	pieces         [2][6]BB  // 768 bits
-	squares        [64]Piece // 512 bits
-	occupied       [2]BB     // 128 bits
-	material       [2]int32  // 64  bits
-	hash_key       uint64    // 64  bits
-	pawn_hash_key  uint64    // 64  bits
-	c              uint8     // 8   bits
-	castle         uint8     // 8   bits
-	enp_target     uint8     // 8 	bits
-	halfmove_clock uint8     // 8 	bits
+	pieces          [2][6]BB  // 768 bits
+	squares         [64]Piece // 512 bits
+	occupied        [2]BB     // 128 bits
+	material        [2]int32  // 64  bits
+	hash_key        uint64    // 64  bits
+	pawn_hash_key   uint64    // 64  bits
+	c               uint8     // 8   bits
+	castle          uint8     // 8   bits
+	enp_target      uint8     // 8 	bits
+	halfmove_clock  uint8     // 8 	bits
+	endgame_counter uint8     // 8 	bits
 }
 
 func EmptyBoard() *Board {
