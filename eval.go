@@ -193,11 +193,15 @@ var king_pst = [2][2][64]int{{ // Black // False
 //    350,375,400,425,450,475,500,525,550,575
 //    600,600,600,600,600 }
 
-var king_threat_bonus = [32]int{
-	0, 2, 3, 5, 9, 15, 24, 37, 55, 79, 111,
-	150, 195, 244, 293, 337, 370, 389,
-	389, 389, 389, 389, 389, 389, 389,
-	389, 389, 389, 389, 389, 389, 389,
+var king_threat_bonus = [64]int{
+	0, 2, 3, 5, 9, 15, 24, 37, 
+	55, 79, 111, 150, 195, 244, 293, 337,
+	370, 389, 389, 389, 389, 389, 389, 389,
+	389, 389, 389, 389, 389, 389, 389, 389,
+	389, 389, 389, 389, 389, 389, 389, 389,
+	389, 389, 389, 389, 389, 389, 389, 389,
+	389, 389, 389, 389, 389, 389, 389, 389,
+	389, 389, 389, 389, 389, 389, 389, 389,
 }
 
 var pawn_shield_bonus = [4]int{-9, -3, 3, 9}
@@ -242,9 +246,9 @@ var placement_test int
 func evaluate(brd *Board, alpha, beta int) int {
 	c, e := brd.c, brd.Enemy()
 	material := int(brd.material[c] - brd.material[e])
-	// if brd.pieces[c][KING] == 0 {
-	// 	return -INF
-	// }
+	if brd.pieces[c][KING] == 0 {
+		return -INF
+	}
 	// lazy evaluation: if material balance is already outside the search window by an amount that outweighs
 	// the largest likely placement evaluation, return the material as an approximate evaluation.
 	// This prevents the engine from wasting a lot of time evaluating unrealistic positions.
@@ -352,7 +356,8 @@ func adjusted_placement(brd *Board, c, e uint8) int {
 
 	// Squares along the edges of the board receive higher king threat bonuses, since there are fewer
 	// places where the king can escape.
-	placement += king_threat_bonus[king_threats+borders[enemy_king_sq]]
+	border_bonus := borders[enemy_king_sq]
+	placement += king_threat_bonus[king_threats+border_bonus]
 
 	placement += pawn_structure(brd, c, e, endgame, enemy_king_sq)
 

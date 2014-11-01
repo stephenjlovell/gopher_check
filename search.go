@@ -76,6 +76,7 @@ const (
 	LMR_MIN     = 2
 	MAX_PLY     = MAX_DEPTH + MAX_EXT
 	IID_MIN     = 4
+	MAX_Q_CHECKS = 2
 	COMMS_MIN   = 6 // minimum depth at which to send info to GUI.
 )
 
@@ -191,7 +192,7 @@ func iterative_deepening(brd *Board, reps *RepList, depth int, start time.Time) 
 func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left int, can_null bool, old_reps *RepList) (int, int, *PV) {
 
 	if depth <= 0 {
-		score, sum := quiescence(brd, alpha, beta, depth, ply, old_reps) // q-search is always sequential.
+		score, sum := quiescence(brd, alpha, beta, depth, ply, MAX_Q_CHECKS, old_reps) // q-search is always sequential.
 		return score, sum, nil
 	}
 
@@ -518,7 +519,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 
 // Q-Search will always be done sequentially: Q-search subtrees are taller and narrower than in the main search,
 // making benefit of parallelism smaller and raising communication and synchronization overhead.
-func quiescence(brd *Board, alpha, beta, depth, ply int, old_reps *RepList) (int, int) {
+func quiescence(brd *Board, alpha, beta, depth, ply, checks_remaining int, old_reps *RepList) (int, int) {
 	if cancel_search {
 		return 0, 0
 	}
@@ -543,13 +544,14 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, old_reps *RepList) (int
 
 	var m Move
 	if in_check {
+		checks_remaining -= 1
 		best_moves, remaining_moves := &MoveList{}, &MoveList{}
 		get_evasions(brd, best_moves, remaining_moves, &main_ktable[ply]) // only legal moves generated here.
 		best_moves.Sort()
 		for _, item := range *best_moves {
 			m = item.move
 			legal_moves = true
-			score, count = q_make(brd, m, alpha, beta, depth-1, ply+1, reps)
+			score, count = q_make(brd, m, alpha, beta, depth-1, ply+1, checks_remaining, reps)
 			sum += count
 			if score > best {
 				if score > alpha {
@@ -565,7 +567,7 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, old_reps *RepList) (int
 		for _, item := range *remaining_moves {
 			m = item.move
 			legal_moves = true
-			score, count = q_make(brd, m, alpha, beta, depth-1, ply+1, reps)
+			score, count = q_make(brd, m, alpha, beta, depth-1, ply+1, checks_remaining, reps)
 			sum += count
 			if score > best {
 				if score > alpha {
@@ -611,7 +613,7 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, old_reps *RepList) (int
 				brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
 				continue
 			}
-			score, count := quiescence(brd, -beta, -alpha, depth, ply, reps)
+			score, count := quiescence(brd, -beta, -alpha, depth, ply, checks_remaining, reps)
 			unmake_move(brd, m, enp_target) // to do: unmake move
 			brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
 			brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
@@ -628,6 +630,26 @@ func quiescence(brd *Board, alpha, beta, depth, ply int, old_reps *RepList) (int
 				best = score
 			}
 		}
+
+		if checks_remaining > 0 {
+			checking_moves := get_checks(brd, &main_ktable[ply])
+			for _, item := range *checking_moves {
+				m = item.move
+				m.IsValid(brd)
+				score, count = q_make(brd, m, alpha, beta, depth-1, ply+1, checks_remaining, reps)
+				sum += count
+				if score > best {
+					if score > alpha {
+						if score >= beta {
+							return score, sum
+						}
+						alpha = score
+					}
+					best = score
+				}
+			}			
+		}
+
 	}
 
 	return best, sum
@@ -646,12 +668,12 @@ func ybw_make(brd *Board, m Move, alpha, beta, depth, ply, extensions_left int, 
 	return -score, sum, pv
 }
 
-func q_make(brd *Board, m Move, alpha, beta, depth, ply int, reps *RepList) (int, int) {
+func q_make(brd *Board, m Move, alpha, beta, depth, ply, checks_remaining int, reps *RepList) (int, int) {
 	hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
 	castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
 
 	make_move(brd, m) // to do: make move
-	score, sum := quiescence(brd, -beta, -alpha, depth, ply, reps)
+	score, sum := quiescence(brd, -beta, -alpha, depth, ply, checks_remaining, reps)
 	unmake_move(brd, m, enp_target) // to do: unmake move
 
 	brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key

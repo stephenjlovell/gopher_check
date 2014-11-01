@@ -58,10 +58,10 @@ const ( // direction codes (0...8)
 	NE
 	SE
 	SW
-	NORTH
+	NORTH // 4
 	EAST
 	SOUTH
-	WEST
+	WEST  // 7
 	DIR_INVALID
 )
 
