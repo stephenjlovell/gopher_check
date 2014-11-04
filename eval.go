@@ -24,7 +24,7 @@
 package main
 
 import (
-// "fmt"
+"fmt"
 )
 
 var passed_pawn_bonus = [2][8]int{
@@ -247,7 +247,8 @@ func evaluate(brd *Board, alpha, beta int) int {
 	c, e := brd.c, brd.Enemy()
 	material := int(brd.material[c] - brd.material[e])
 	if brd.pieces[c][KING] == 0 {
-		return -INF
+		fmt.Println("The king is dead. Long live the king.")
+		return -MATE
 	}
 	// lazy evaluation: if material balance is already outside the search window by an amount that outweighs
 	// the largest likely placement evaluation, return the material as an approximate evaluation.

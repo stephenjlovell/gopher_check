@@ -71,7 +71,7 @@ const (
 	MAX_TIME     = 120000 // default search time limit in seconds (2m)
 	MAX_DEPTH    = 12
 	MAX_EXT      = 12
-	SPLIT_MIN    = 13 // set > MAX_DEPTH to disable parallel search.
+	SPLIT_MIN    = 4 // set > MAX_DEPTH to disable parallel search.
 	F_PRUNE_MAX  = 3  // should always be less than SPLIT_MIN
 	LMR_MIN      = 2
 	MAX_PLY      = MAX_DEPTH + MAX_EXT
@@ -81,9 +81,9 @@ const (
 )
 
 const (
-	D_PV = iota
-	D_CUT
-	D_ALL
+	Y_PV = iota
+	Y_CUT
+	Y_ALL
 )
 
 type SearchResult struct {
@@ -157,7 +157,7 @@ func iterative_deepening(brd *Board, reps *RepList, depth int, start time.Time) 
 
 	id_alpha, id_beta = -INF, INF // first iteration is always full-width.
 
-	guess, count, current_pv = young_brothers_wait(brd, id_alpha, id_beta, 1, 0, MAX_EXT, true, true, reps)
+	guess, count, current_pv = young_brothers_wait(brd, id_alpha, id_beta, 1, 0, MAX_EXT, true, true, Y_PV, reps)
 	nodes_per_iteration[1] += count
 	sum += count
 	if current_pv != nil {
@@ -199,7 +199,7 @@ func iterative_deepening(brd *Board, reps *RepList, depth int, start time.Time) 
 		// id_alpha = max(id_alpha, -INF)
 		// id_beta = min(id_beta, INF)
 
-		guess, count, current_pv = young_brothers_wait(brd, id_alpha, id_beta, d, 0, MAX_EXT, true, true, reps)
+		guess, count, current_pv = young_brothers_wait(brd, id_alpha, id_beta, d, 0, MAX_EXT, true, true, Y_PV, reps)
 		sum += count
 
 		if cancel_search {
@@ -207,6 +207,8 @@ func iterative_deepening(brd *Board, reps *RepList, depth int, start time.Time) 
 		} else if current_pv != nil {
 			id_move[c], id_score[c] = current_pv.m, guess
 			current_pv.Save(brd, d)
+		} else {
+			fmt.Printf("Nil PV returned to ID\n")
 		}
 
 		nodes_per_iteration[d] += count
@@ -231,7 +233,7 @@ func iterative_deepening(brd *Board, reps *RepList, depth int, start time.Time) 
 	return id_move[c], sum
 }
 
-func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left int, can_null, can_split bool, old_reps *RepList) (int, int, *PV) {
+func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left int, can_null, can_split bool, node_type int, old_reps *RepList) (int, int, *PV) {
 
 	if depth <= 0 {
 		score, sum := quiescence(brd, alpha, beta, depth, ply, MAX_Q_CHECKS, old_reps) // q-search is always sequential.
@@ -256,7 +258,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 
 	if brd.halfmove_clock >= 100 {
 		if is_checkmate(brd, in_check) {
-			return ply - INF, 1, nil
+			return ply - MATE, 1, nil
 		} else {
 			return 0, 1, nil
 		}
@@ -278,7 +280,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 	var hash_result int
 	first_move, hash_result = main_tt.probe(brd, depth, null_depth, &alpha, &beta, &score)
 
-	if ply > 0 {
+	if node_type != Y_PV {
 		if hash_result == CUTOFF_FOUND {
 			return score, sum, nil
 		} else if hash_result != AVOID_NULL {
@@ -295,38 +297,31 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		}
 	}
 
-	// Determine expected node type.
-	node_type := D_ALL
-	var local_id_alpha, local_id_beta int
-	if (ply & 1) == 1 { // odd-ply
-		local_id_alpha, local_id_beta = -id_beta, -id_alpha
-		if beta == local_id_beta {
-			node_type = D_CUT
-		}
-	} else { // even-ply
-		local_id_alpha, local_id_beta = id_alpha, id_beta
-		if alpha == local_id_alpha {
-			node_type = D_CUT
-		}
-	}
-	if alpha == local_id_alpha && beta == local_id_beta {
-		node_type = D_PV
-	}
-
 	// No hash move available. If on the PV, use IID to get a decent first move to try.
-	if hash_result == NO_MATCH && can_null && depth >= IID_MIN { //&& node_type != D_ALL {
+	if hash_result == NO_MATCH && can_null && depth >= IID_MIN && node_type != Y_ALL { //&& node_type != Y_ALL {
 		var local_pv *PV
-		score, count, local_pv = young_brothers_wait(brd, alpha, beta, depth-2, ply, extensions_left, can_null, can_split, old_reps)
+		score, count, local_pv = young_brothers_wait(brd, alpha, beta, depth-2, ply, extensions_left, can_null, false, node_type, old_reps)
 		sum += count
 		if local_pv != nil {
 			first_move = local_pv.m
+		} else {
+			fmt.Println("Nil PV returned in IID")
 		}
 	}
 
+	var child_type int
 	// If a hash move or IID move is available, try it first.
 	if first_move.IsValid(brd) && avoids_check(brd, first_move, in_check) {
-		legal_searched += 1
-		score, count, next_pv = ybw_make(brd, first_move, alpha, beta, depth-1, ply+1, extensions_left, can_null, can_split, reps)
+		switch node_type {
+		case Y_PV:
+			child_type = Y_PV
+		case Y_CUT:
+			child_type = Y_ALL
+		case Y_ALL:
+			child_type = Y_CUT
+		}
+
+		score, count, next_pv = ybw_make(brd, first_move, alpha, beta, depth-1, ply+1, extensions_left, can_null, can_split, child_type, reps)
 		sum += count
 		if score > best {
 			if score > alpha {
@@ -342,6 +337,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 			best_move = first_move
 			best = score
 		}
+		legal_searched += 1
 	}
 
 	// Generate tactical (non-quiet) moves.  Good moves will be searched sequentially to establish good bounds
@@ -356,21 +352,26 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 			continue
 		}
 
+		if legal_searched > 5 && node_type == Y_CUT {
+			node_type = Y_ALL
+		}
+		child_type = determine_child_type(node_type, legal_searched)
+
 		r_depth, r_extensions = depth, extensions_left
 		if m.IsPromotion() && extensions_left > 0 {
 			r_depth = depth + 1
 			r_extensions = extensions_left - 1
 		}
 
-		if ply == 0 && alpha > old_alpha {
-			score, count, next_pv = ybw_make(brd, m, alpha, alpha+1, r_depth-1, ply+1, r_extensions, can_null, can_split, reps)
+		if node_type == Y_PV && alpha > old_alpha {
+			score, count, next_pv = ybw_make(brd, m, alpha, alpha+1, r_depth-1, ply+1, r_extensions, can_null, can_split, child_type, reps)
 			sum += count
-			if alpha < score && score < beta {
-				score, count, next_pv = ybw_make(brd, m, alpha, beta, r_depth-1, ply+1, r_extensions, can_null, can_split, reps)
+			if score > alpha {
+				score, count, next_pv = ybw_make(brd, m, alpha, beta, r_depth-1, ply+1, r_extensions, can_null, can_split, Y_ALL, reps)
 				sum += count
 			}
 		} else {
-			score, count, next_pv = ybw_make(brd, m, alpha, beta, r_depth-1, ply+1, r_extensions, can_null, can_split, reps)
+			score, count, next_pv = ybw_make(brd, m, alpha, beta, r_depth-1, ply+1, r_extensions, can_null, can_split, child_type, reps)
 			sum += count
 		}
 
@@ -392,7 +393,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 	}
 
 	f_prune, can_reduce := false, false
-	if !in_check && ply > 0 && node_type != D_PV && alpha > 100-INF {
+	if !in_check && ply > 0 && node_type != Y_PV && alpha > 100-MATE {
 		if depth <= F_PRUNE_MAX && evaluate(brd, alpha, beta)+piece_values[BISHOP] < alpha {
 			f_prune = true
 		}
@@ -404,10 +405,10 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 	hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
 	castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
 
-	split_point := can_split && node_type == D_ALL && depth >= SPLIT_MIN
-
-	var child_counter int
-	result_child := make(chan SearchResult, 10)
+	// split_point := can_split && depth >= SPLIT_MIN
+	// var child_counter int
+	// result_child := make(chan SearchResult, 20)
+	// var split bool
 
 	// Delay the generation of remaining moves until all promotions, winning captures, and killer moves have been searched.
 	// if a cutoff occurs, this will reduce move generation effort substantially.
@@ -428,6 +429,11 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 			continue
 		}
 
+		if legal_searched > 5 && node_type == Y_CUT {
+			node_type = Y_ALL
+		}
+		child_type = determine_child_type(node_type, legal_searched)
+
 		r_depth, r_extensions = depth, extensions_left
 		if m.IsPromotion() && extensions_left > 0 {
 			r_depth = depth + 1
@@ -436,35 +442,39 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 			r_depth = depth - 1 // Late move reductions
 		}
 
-		if ply == 0 && alpha > old_alpha {
-			score, count, next_pv = young_brothers_wait(brd, -alpha-1, -alpha, r_depth-1, ply+1, r_extensions, can_null, can_split, reps)
+		if node_type == Y_PV && alpha > old_alpha {
+			score, count, next_pv = young_brothers_wait(brd, -alpha-1, -alpha, r_depth-1, ply+1, r_extensions, can_null, can_split, child_type, reps)
+			score = -score
 			sum += count
-			if alpha < -score && -score < beta {
-				score, count, next_pv = young_brothers_wait(brd, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, can_split, reps)
+			if score > alpha {
+				score, count, next_pv = young_brothers_wait(brd, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, can_split, Y_ALL, reps)
+				score = -score
 				sum += count
 			}
-			score = -score
 		} else {
-			// If decent bounds have been established, parallel search is possible.
-			// Make sure at least 3 nodes have been searched serially before spawning.
-			if split_point && legal_searched > 3 {
-				child_counter++
-				go func(copy *Board, alpha, beta, depth, ply, extensions int, can_null bool, reps *RepList) {
-					score, count, next_pv := young_brothers_wait(copy, -beta, -alpha, depth-1, ply+1, extensions, can_null, false, reps)
-					result_child <- SearchResult{m, -score, count, next_pv}
-				}(brd.Copy(), alpha, beta, r_depth, ply, r_extensions, can_null, reps)
-			} else {
-				score, count, next_pv = young_brothers_wait(brd, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, can_split, reps)
+			// // If decent bounds have been established, parallel search is possible.
+			// // Make sure at least 3 nodes have been searched serially before spawning.
+			// if split_point && legal_searched > 3 && node_type == Y_ALL {
+			// 	child_counter++
+			// 	split = true
+			// 	go func(copy *Board, alpha, beta, depth, ply, extensions int, can_null bool, node_type int, reps *RepList) {
+			// 		score, count, next_pv := young_brothers_wait(copy, -beta, -alpha, depth-1, ply+1, extensions, can_null, false, node_type, reps)
+			// 		result_child <- SearchResult{m, -score, count, next_pv}
+			// 	}(brd.Copy(), alpha, beta, r_depth, ply, r_extensions, can_null, child_type, reps)
+			// } else {
+				// split = false
+				score, count, next_pv = young_brothers_wait(brd, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, can_split, child_type, reps)
 				sum += count
 				score = -score
-			}
+			// }
 		}
+		legal_searched += 1
 
 		unmake_move(brd, m, enp_target) // to do: unmake move
 		brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
 		brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
 
-		if !(split_point && legal_searched > 3) {
+		// if !split {
 			if score > best {
 				if score > alpha {
 					if score >= beta {
@@ -480,37 +490,35 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 				best = score
 			}
 		}
+	// }
 
-		legal_searched += 1
-	}
-
-	if child_counter > 0 {
-	remaining_pieces:
-		for {
-			select { // wait for a message to come in on one of the channels.
-			case result := <-result_child: // one of the child subtrees has been completely searched.
-				sum += result.count
-				if result.score > best {
-					if result.score > alpha {
-						if result.score >= beta {
-							store_cutoff(brd, result.move, depth, ply, result.count)
-							main_tt.store(brd, result.move, depth, LOWER_BOUND, score)
-							return result.score, sum, nil
-						}
-						alpha = result.score
-						pv.m = result.move
-						pv.next = result.pv
-					}
-					best_move = result.move
-					best = score
-				}
-				child_counter--
-				if child_counter == 0 {
-					break remaining_pieces // exit the for loop
-				}
-			}
-		}
-	}
+	// if child_counter > 0 {
+	// remaining_pieces:
+	// 	for {
+	// 		select { // wait for a message to come in on one of the channels.
+	// 		case result := <-result_child: // one of the child subtrees has been completely searched.
+	// 			sum += result.count
+	// 			if result.score > best {
+	// 				if result.score > alpha {
+	// 					if result.score >= beta {
+	// 						store_cutoff(brd, result.move, depth, ply, result.count)
+	// 						main_tt.store(brd, result.move, depth, LOWER_BOUND, score)
+	// 						return result.score, sum, nil
+	// 					}
+	// 					alpha = result.score
+	// 					pv.m = result.move
+	// 					pv.next = result.pv
+	// 				}
+	// 				best_move = result.move
+	// 				best = score
+	// 			}
+	// 			child_counter--
+	// 			if child_counter == 0 {
+	// 				break remaining_pieces // exit the for loop
+	// 			}
+	// 		}
+	// 	}
+	// }
 
 	if legal_searched > 0 {
 		if alpha > old_alpha {
@@ -523,14 +531,16 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		}
 	} else { // draw or checkmate detected.
 		if in_check {
-			main_tt.store(brd, 0, depth, EXACT, ply-INF)
-			return ply - INF, sum, nil
+			main_tt.store(brd, 0, depth, EXACT, ply-MATE)
+			return ply-MATE, sum, nil
 		} else {
 			main_tt.store(brd, 0, depth, EXACT, 0)
 			return 0, sum, nil
 		}
 	}
 }
+
+
 
 // Q-Search will always be done sequentially: Q-search subtrees are taller and narrower than in the main search,
 // making benefit of parallelism smaller and raising communication and synchronization overhead.
@@ -546,7 +556,7 @@ func quiescence(brd *Board, alpha, beta, depth, ply, checks_remaining int, old_r
 	in_check := is_in_check(brd)
 	if brd.halfmove_clock >= 100 {
 		if is_checkmate(brd, in_check) {
-			return ply - INF, 1
+			return ply-MATE, 1
 		} else {
 			return 0, 1
 		}
@@ -595,11 +605,12 @@ func quiescence(brd *Board, alpha, beta, depth, ply, checks_remaining int, old_r
 			}
 		}
 		if !legal_moves {
-			return ply - INF, 1 // detect checkmate.
+			return ply-MATE, 1 // detect checkmate.
 		}
 	} else {
 
 		score = evaluate(brd, alpha, beta) // stand pat
+
 		if score > best {
 			if score > alpha {
 				if score >= beta {
@@ -620,7 +631,7 @@ func quiescence(brd *Board, alpha, beta, depth, ply, checks_remaining int, old_r
 			}
 
 			make_move(brd, m) // to do: make move
-			if alpha > 100-INF &&
+			if alpha > 100-MATE &&
 				best+m.CapturedPiece().Value()+m.PromotedTo().PromoteValue()+piece_values[ROOK] < alpha &&
 				!is_in_check(brd) {
 				unmake_move(brd, m, enp_target) // to do: unmake move
@@ -650,7 +661,9 @@ func quiescence(brd *Board, alpha, beta, depth, ply, checks_remaining int, old_r
 			checking_moves := get_checks(brd, &main_ktable[ply])
 			for _, item := range *checking_moves {
 				m = item.move
-				m.IsValid(brd)
+				if !avoids_check(brd, m, false) {
+					continue
+				}
 				score, count = q_make(brd, m, alpha, beta, depth-1, ply+1, checks_remaining, reps)
 				sum += count
 				if score > best {
@@ -670,12 +683,36 @@ func quiescence(brd *Board, alpha, beta, depth, ply, checks_remaining int, old_r
 	return best, sum
 }
 
-func ybw_make(brd *Board, m Move, alpha, beta, depth, ply, extensions_left int, can_null, can_split bool, reps *RepList) (int, int, *PV) {
+
+func determine_child_type(node_type, legal_searched int) int {
+	switch node_type {
+	case Y_PV:
+		if legal_searched == 0 {
+			return Y_PV
+		} else {
+			return Y_CUT
+		}
+	case Y_CUT:
+		if legal_searched == 0 {
+			return Y_ALL
+		} else {
+			return Y_CUT
+		}
+	case Y_ALL:
+		return Y_CUT
+	default:
+		fmt.Println("Invalid node type detected.")
+		return node_type
+	}
+}
+
+
+func ybw_make(brd *Board, m Move, alpha, beta, depth, ply, extensions_left int, can_null, can_split bool, node_type int, reps *RepList) (int, int, *PV) {
 	hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
 	castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
 
 	make_move(brd, m) // to do: make move
-	score, sum, pv := young_brothers_wait(brd, -beta, -alpha, depth, ply, extensions_left, can_null, can_split, reps)
+	score, sum, pv := young_brothers_wait(brd, -beta, -alpha, depth, ply, extensions_left, can_null, can_split, node_type, reps)
 	unmake_move(brd, m, enp_target) // to do: unmake move
 
 	brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
@@ -703,7 +740,7 @@ func null_make(brd *Board, beta, depth, ply, extensions_left int, can_split bool
 	brd.hash_key ^= enp_zobrist(enp_target)
 	brd.enp_target = SQ_INVALID
 
-	score, sum, _ := young_brothers_wait(brd, -beta, -beta+1, depth, ply, extensions_left, false, can_split, reps)
+	score, sum, _ := young_brothers_wait(brd, -beta, -beta+1, depth, ply, extensions_left, false, can_split, Y_CUT, reps)
 
 	brd.c ^= 1
 	brd.hash_key = hash_key

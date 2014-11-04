@@ -31,6 +31,7 @@ import (
 
 const (
 	INF = 10000 // an arbitrarily large score used to signal checkmate.
+	MATE = INF - 1
 ) // total value of all starting pieces for one side: 9006
 
 // Transposition Table, Killer moves, History Table should be shared by all goroutines.

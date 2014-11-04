@@ -24,7 +24,6 @@ Total score: 290/300
 
 Total nodes searched: 109.6689 m
 Total score: 277/300
-Average Branching factor by iteration:
 8 ABF: 2.8568
 
 Total nodes searched: 915.6214 m
@@ -35,8 +34,13 @@ Total score: 288/300
 
 Total nodes searched: 106.1947 m
 Total score: 277/300
-Average Branching factor by iteration:
 8 ABF: 2.8389
+
+11/4/14
+
+Total nodes searched: 102.2577 m
+Total score: 285/300
+8 ABF: 2.4326
 
 
 Debugging:

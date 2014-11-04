@@ -102,12 +102,21 @@ func (pv *PV) Save(brd *Board, depth int) {
 // The root node is a PV node.
 // The first child of a PV node is a PV node.
 // The further children are searched by a scout search as CUT nodes.
+
 // Research is done as PV nodes.
 
-// The first node of bad pruning is a CUT node.
 // The node after a null move is a CUT node.
-// The first node of null move verification is a CUT node
 // Internal iterative deeping does not change the node type.
+
 // The first child of a CUT node is an ALL node.
 // Further children of a CUT node are CUT nodes.
 // Children of ALL nodes are CUT nodes.
+
+
+// The first node of bad pruning is a CUT node.
+// The first node of null move verification is a CUT node
+
+
+
+
+
