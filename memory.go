@@ -85,7 +85,7 @@ func (b *Bucket) Type() int {
 	return int((b.data >> 26) & uint64(3))
 }
 func (b *Bucket) Value() int {
-	return int((b.data >> 28) & uint64(131071))
+	return int(((b.data >> 28) & mask_of_length[17])-INF)
 }
 func (b *Bucket) Id() int {
 	return int((b.data >> 45) & uint64(511))
@@ -94,7 +94,7 @@ func (b *Bucket) Id() int {
 func NewBucket(hash_key uint64, move Move, depth, entry_type, value int) Bucket {
 	entry_data := uint64(depth) // maximum allowable depth of 31
 	entry_data |= (uint64(move) << 5) | (uint64(entry_type) << 26) |
-		(uint64(value) << 28) | (uint64(search_id) << 45)
+		(uint64(value+INF) << 28) | (uint64(search_id) << 45)
 	return Bucket{
 		key:  (hash_key ^ entry_data), // XOR in entry_data to provide a way to check for race conditions.
 		data: entry_data,
