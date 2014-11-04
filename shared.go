@@ -61,7 +61,7 @@ const ( // direction codes (0...8)
 	NORTH // 4
 	EAST
 	SOUTH
-	WEST  // 7
+	WEST // 7
 	DIR_INVALID
 )
 

@@ -46,22 +46,13 @@ Rare TT bug where entry is for the wrong color.
 
 To Do:
 
-Add separate check generator to Q-Search
-
-Add separate QSearch and Hashtable -based sorting at root nodes.
-
-Implement Principal Variation Search
-
-Implement Late-Move Reductions.
+Implement Aspiration Windows in Iterative Deepening.
 
 Implement Pondering.
 
 Improve Pawn Evaluation - 
-  Rebalance bonuses, improve handling of pawn promotion.
   Separate out hashable elements of pawn evaluation (elements that depend only on other pawns).
   Implement Pawn Hashtable.  Update Make/Unmake.
-
-Improve king saftey
 
 
 Ideas:

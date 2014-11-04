@@ -858,7 +858,7 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 func get_checks(brd *Board, killers *KEntry) *MoveList {
 	c, e := brd.c, brd.Enemy()
 	checking_moves := &MoveList{}
-	king_sq := furthest_forward(e, brd.pieces[e][KING])	
+	king_sq := furthest_forward(e, brd.pieces[e][KING])
 	var f, t, single_advances, target, queen_target BB
 	var from, to, see int
 	var m Move
@@ -866,25 +866,25 @@ func get_checks(brd *Board, killers *KEntry) *MoveList {
 	empty := ^occ
 	// Pawn direct checks
 	if c > 0 { // white to move
-		single_advances = (brd.pieces[WHITE][PAWN] << 8)&empty
+		single_advances = (brd.pieces[WHITE][PAWN] << 8) & empty
 	} else { // black to move
-		single_advances = (brd.pieces[BLACK][PAWN] >> 8)&empty
+		single_advances = (brd.pieces[BLACK][PAWN] >> 8) & empty
 	}
 	target = pawn_attack_masks[e][king_sq]
-	for t = single_advances&target; t > 0; t.Clear(to) {
+	for t = single_advances & target; t > 0; t.Clear(to) {
 		to = furthest_forward(c, t)
 		from = to + pawn_from_offsets[c][OFF_SINGLE]
 		see = get_see(brd, from, to, EMPTY)
 		if see == 0 {
 			m = NewRegularMove(from, to, PAWN)
-			checking_moves.Push(&SortItem{m, main_htable.Probe(PAWN, c, to)})			
+			checking_moves.Push(&SortItem{m, main_htable.Probe(PAWN, c, to)})
 		}
 	}
 	// Knight direct checks
 	target = knight_masks[king_sq] & empty
 	for f = brd.pieces[c][KNIGHT]; f > 0; f.Clear(from) {
-		from = furthest_forward(c, f)                               // Locate each knight for the side to move.
-		for t = (knight_masks[from] & target); t > 0; t.Clear(to) { 
+		from = furthest_forward(c, f) // Locate each knight for the side to move.
+		for t = (knight_masks[from] & target); t > 0; t.Clear(to) {
 			to = furthest_forward(c, t)
 			see = get_see(brd, from, to, EMPTY)
 			if see == 0 {
@@ -923,7 +923,7 @@ func get_checks(brd *Board, killers *KEntry) *MoveList {
 		for t = (rook_attacks(occ, from) & target); t > 0; t.Clear(to) { // generate to squares
 			to = furthest_forward(c, t)
 			see = get_see(brd, from, to, EMPTY)
-			if see == 0 { 
+			if see == 0 {
 				m = NewRegularMove(from, to, ROOK)
 				if m == killers.first || m == killers.second {
 					checking_moves.Push(&SortItem{m, SORT_KILLER})
@@ -939,7 +939,7 @@ func get_checks(brd *Board, killers *KEntry) *MoveList {
 		for t = (queen_attacks(occ, from) & queen_target); t > 0; t.Clear(to) { // generate to squares
 			to = furthest_forward(c, t)
 			see = get_see(brd, from, to, EMPTY)
-			if see == 0 { 
+			if see == 0 {
 				m = NewRegularMove(from, to, QUEEN)
 				if m == killers.first || m == killers.second {
 					checking_moves.Push(&SortItem{m, SORT_KILLER})
@@ -953,12 +953,12 @@ func get_checks(brd *Board, killers *KEntry) *MoveList {
 	// indirect (discovered) checks
 	var rook_blockers, bishop_blockers BB
 
-	rook_blockers = rook_attacks(occ, king_sq)&(brd.pieces[c][BISHOP]|
-																brd.pieces[c][KNIGHT]|brd.pieces[c][PAWN])
-	bishop_blockers = bishop_attacks(occ, king_sq)&(brd.pieces[c][ROOK]|
-																brd.pieces[c][KNIGHT]|brd.pieces[c][PAWN])
+	rook_blockers = rook_attacks(occ, king_sq) & (brd.pieces[c][BISHOP] |
+		brd.pieces[c][KNIGHT] | brd.pieces[c][PAWN])
+	bishop_blockers = bishop_attacks(occ, king_sq) & (brd.pieces[c][ROOK] |
+		brd.pieces[c][KNIGHT] | brd.pieces[c][PAWN])
 	if rook_blockers > 0 {
-		rook_attackers := rook_attacks(occ^rook_blockers, king_sq)&(brd.pieces[c][ROOK]|brd.pieces[c][QUEEN])
+		rook_attackers := rook_attacks(occ^rook_blockers, king_sq) & (brd.pieces[c][ROOK] | brd.pieces[c][QUEEN])
 		for dir := NORTH; dir <= WEST; dir++ {
 			if ray_masks[dir][king_sq]&rook_attackers == 0 {
 				rook_blockers &= (^ray_masks[dir][king_sq])
@@ -966,81 +966,79 @@ func get_checks(brd *Board, killers *KEntry) *MoveList {
 		}
 	}
 	if bishop_blockers > 0 {
-		bishop_attackers := bishop_attacks(occ^bishop_blockers, king_sq)&(brd.pieces[c][BISHOP]|brd.pieces[c][QUEEN])		
+		bishop_attackers := bishop_attacks(occ^bishop_blockers, king_sq) & (brd.pieces[c][BISHOP] | brd.pieces[c][QUEEN])
 		for dir := NW; dir <= SW; dir++ {
 			if ray_masks[dir][king_sq]&bishop_attackers == 0 {
 				bishop_blockers &= (^ray_masks[dir][king_sq])
 			}
 		}
 	}
-	
+
 	var unblock_path BB // blockers must move off the path of attack.
 
-	for f = brd.pieces[c][BISHOP]&rook_blockers; f > 0; f.Clear(from) {
+	for f = brd.pieces[c][BISHOP] & rook_blockers; f > 0; f.Clear(from) {
 		from = furthest_forward(c, f)
-		unblock_path = (^intervening[king_sq][from])&empty
+		unblock_path = (^intervening[king_sq][from]) & empty
 		for t = (bishop_attacks(occ, from) & unblock_path); t > 0; t.Clear(to) { // generate to squares
 			to = furthest_forward(c, t)
 			// see = get_see(brd, from, to, EMPTY)
 			// if see == 0 {
-				m = NewRegularMove(from, to, BISHOP)
-				if m == killers.first || m == killers.second {
-					checking_moves.Push(&SortItem{m, SORT_KILLER})
-				} else {
-					checking_moves.Push(&SortItem{m, main_htable.Probe(BISHOP, c, to)})
-				}
+			m = NewRegularMove(from, to, BISHOP)
+			if m == killers.first || m == killers.second {
+				checking_moves.Push(&SortItem{m, SORT_KILLER})
+			} else {
+				checking_moves.Push(&SortItem{m, main_htable.Probe(BISHOP, c, to)})
+			}
 			// }
 		}
 	}
 
-	for f = brd.pieces[c][ROOK]&bishop_blockers; f > 0; f.Clear(from) {
+	for f = brd.pieces[c][ROOK] & bishop_blockers; f > 0; f.Clear(from) {
 		from = furthest_forward(c, f)
-		unblock_path = (^intervening[king_sq][from])&empty
+		unblock_path = (^intervening[king_sq][from]) & empty
 		for t = (rook_attacks(occ, from) & unblock_path); t > 0; t.Clear(to) { // generate to squares
 			to = furthest_forward(c, t)
 			// see = get_see(brd, from, to, EMPTY)
 			// if see == 0 {
-				m = NewRegularMove(from, to, ROOK)
-				if m == killers.first || m == killers.second {
-					checking_moves.Push(&SortItem{m, SORT_KILLER})
-				} else {
-					checking_moves.Push(&SortItem{m, main_htable.Probe(ROOK, c, to)})
-				}
+			m = NewRegularMove(from, to, ROOK)
+			if m == killers.first || m == killers.second {
+				checking_moves.Push(&SortItem{m, SORT_KILLER})
+			} else {
+				checking_moves.Push(&SortItem{m, main_htable.Probe(ROOK, c, to)})
+			}
 			// }
 		}
 	}
 
-
-	for t = single_advances&(bishop_blockers|rook_blockers); t > 0; t.Clear(to) {
+	for t = single_advances & (bishop_blockers | rook_blockers); t > 0; t.Clear(to) {
 		to = furthest_forward(c, t)
 		from = to + pawn_from_offsets[c][OFF_SINGLE]
 		// see = get_see(brd, from, to, EMPTY)
 		// if see == 0 {
-			m = NewRegularMove(from, to, PAWN)
-			checking_moves.Push(&SortItem{m, main_htable.Probe(PAWN, c, to)})			
+		m = NewRegularMove(from, to, PAWN)
+		checking_moves.Push(&SortItem{m, main_htable.Probe(PAWN, c, to)})
 		// }
 	}
 
 	// knight
 
-	for f = brd.pieces[c][KNIGHT]&(bishop_blockers|rook_blockers); f > 0; f.Clear(from) {
-		from = furthest_forward(c, f)                               // Locate each knight for the side to move.
-		for t = (knight_masks[from] & empty); t > 0; t.Clear(to) { 
+	for f = brd.pieces[c][KNIGHT] & (bishop_blockers | rook_blockers); f > 0; f.Clear(from) {
+		from = furthest_forward(c, f) // Locate each knight for the side to move.
+		for t = (knight_masks[from] & empty); t > 0; t.Clear(to) {
 			to = furthest_forward(c, t)
 			// see = get_see(brd, from, to, EMPTY)
 			// if see == 0 {
-				m = NewRegularMove(from, to, KNIGHT)
-				if m == killers.first || m == killers.second {
-					checking_moves.Push(&SortItem{m, SORT_KILLER})
-				} else {
-					checking_moves.Push(&SortItem{m, main_htable.Probe(KNIGHT, c, to)})
-				}
+			m = NewRegularMove(from, to, KNIGHT)
+			if m == killers.first || m == killers.second {
+				checking_moves.Push(&SortItem{m, SORT_KILLER})
+			} else {
+				checking_moves.Push(&SortItem{m, main_htable.Probe(KNIGHT, c, to)})
+			}
 			// }
 		}
 	}
 
 	// start with queen mask.  All blocking pieces will intersect it.
-
 
 	checking_moves.Sort()
 	return checking_moves

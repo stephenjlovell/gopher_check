@@ -32,8 +32,9 @@ func is_on_pv(brd *Board) bool {
 }
 
 type PV struct {
-	m    Move
-	next *PV
+	m     Move
+	value int
+	next  *PV
 }
 
 func (pv *PV) ToUCI() string {
@@ -49,6 +50,40 @@ func (pv *PV) ToUCI() string {
 	return str
 }
 
+// Save the PV entries to the main transposition table.
+func (pv *PV) Save(brd *Board, depth int) {
+	copy := brd.Copy() // create a local copy of the board to avoid having to unmake moves.
+	remaining := pv
+	extensions_left := MAX_EXT
+	var m Move
+
+	for remaining != nil {
+		m = remaining.m
+		if !m.IsValid(copy) {
+			break
+		}
+
+		if is_in_check(brd) && extensions_left > 0 {
+			if MAX_EXT > extensions_left { // only extend after the first check.
+				depth += 1
+			}
+			extensions_left -= 1
+		}
+
+		main_tt.store(copy, m, depth, EXACT, remaining.value)
+
+		make_move(copy, m)
+
+		if m.IsPromotion() {
+			extensions_left -= 1
+		} else {
+			depth -= 1
+		}
+
+		remaining = remaining.next
+	}
+}
+
 // Implementation options - linked list.
 
 // Creation:
@@ -60,11 +95,6 @@ func (pv *PV) ToUCI() string {
 // When no move is a PV move, any local PVs beneath are discarded. If there is a best move, it should still be returned as the last item in the pv list
 
 // Root returns a pointer to final PV for current iteration to ID.
-
-// Usage for move ordering:
-
-// On start of new iteration, a pointer to the previous PV is passed to the root.
-// When searching a move from previous pv, pass pv.next to child. If not on previous pv, pass nil.
 
 // Node criteria as defined by Onno Garms:
 // http://www.talkchess.com/forum/viewtopic.php?t=38408&postdays=0&postorder=asc&topic_view=flat&start=10
