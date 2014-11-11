@@ -43,14 +43,26 @@ Total score: 285/300
 8 ABF: 2.4326
 
 
+11/10/14
+
+Total nodes searched: 100.8826 m
+Total score: 286/300
+8 ABF: 2.4297
+
+Total nodes searched: 100.3758 m
+Total score: 285/300
+8 ABF: 2.4257
+
+
 Debugging:
 
-Rare TT bug where entry is for the wrong color.
 
 
 To Do:
 
-Implement Aspiration Windows in Iterative Deepening.
+Improve Selectivity:
+  -Track static evaluation in main tree.  Use LMR and Futility Pruning only when static eval 
+  for side to move is decreasing.
 
 Implement Pondering.
 

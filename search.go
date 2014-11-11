@@ -181,6 +181,8 @@ func iterative_deepening(brd *Board, reps *RepList, depth int, start time.Time) 
 		// 	id_alpha = guess - (STEP_SIZE << 2)
 		// case 3:
 		// 	id_alpha = guess - (STEP_SIZE << 3)
+		// case 4: 
+		// 	id_alpha = guess - (STEP_SIZE << 4)
 		// default:
 		// 	id_alpha = -INF
 		// }
@@ -193,6 +195,8 @@ func iterative_deepening(brd *Board, reps *RepList, depth int, start time.Time) 
 		// 	id_beta = guess + (STEP_SIZE << 2)
 		// case 3:
 		// 	id_beta = guess + (STEP_SIZE << 3)
+		// case 4:
+		// 	id_beta = guess + (STEP_SIZE << 4)
 		// default:
 		// 	id_beta = INF
 		// }
@@ -282,7 +286,8 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 
 	if node_type != Y_PV {
 		if hash_result == CUTOFF_FOUND {
-			return score, sum, nil
+			pv.m, pv.value = first_move, score
+			return score, sum, pv
 		} else if hash_result != AVOID_NULL {
 			// Null-Move Pruning
 			if !in_check && can_null && depth > 2 && in_endgame(brd) == 0 &&
@@ -298,14 +303,12 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 	}
 
 	// No hash move available. If on the PV, use IID to get a decent first move to try.
-	if hash_result == NO_MATCH && can_null && depth >= IID_MIN && node_type != Y_ALL { //&& node_type != Y_ALL {
+	if hash_result == NO_MATCH && can_null && depth >= IID_MIN {//&& node_type != Y_ALL { 
 		var local_pv *PV
 		score, count, local_pv = young_brothers_wait(brd, alpha, beta, depth-2, ply, extensions_left, can_null, false, node_type, old_reps)
 		sum += count
 		if local_pv != nil {
 			first_move = local_pv.m
-		} else {
-			fmt.Println("Nil PV returned in IID")
 		}
 	}
 
@@ -326,12 +329,12 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		if score > best {
 			if score > alpha {
 				if score >= beta {
+					pv.m, pv.value, pv.next = first_move, score, nil
 					store_cutoff(brd, first_move, depth, ply, count)
 					main_tt.store(brd, first_move, depth, LOWER_BOUND, score)
-					return score, sum, nil
+					return score, sum, pv
 				}
 				alpha = score
-				pv.m = first_move
 				pv.next = next_pv
 			}
 			best_move = first_move
@@ -379,12 +382,12 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		if score > best {
 			if score > alpha {
 				if score >= beta {
+					pv.m, pv.value, pv.next = m, score, nil
 					store_cutoff(brd, m, depth, ply, count)
 					main_tt.store(brd, m, depth, LOWER_BOUND, score)
-					return score, sum, nil
+					return score, sum, pv
 				}
 				alpha = score
-				pv.m = m
 				pv.next = next_pv
 			}
 			best_move = m
@@ -478,12 +481,12 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 			if score > best {
 				if score > alpha {
 					if score >= beta {
+						pv.m, pv.value, pv.next = m, score, nil
 						store_cutoff(brd, m, depth, ply, count) // what happens on refutation of main pv?
 						main_tt.store(brd, m, depth, LOWER_BOUND, score)
-						return score, sum, nil
+						return score, sum, pv
 					}
 					alpha = score
-					pv.m = m
 					pv.next = next_pv
 				}
 				best_move = m
@@ -501,12 +504,13 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 	// 			if result.score > best {
 	// 				if result.score > alpha {
 	// 					if result.score >= beta {
+	// 						pv.m, pv.value, pv.next = result.move, result.score, nil
 	// 						store_cutoff(brd, result.move, depth, ply, result.count)
 	// 						main_tt.store(brd, result.move, depth, LOWER_BOUND, score)
-	// 						return result.score, sum, nil
+	// 						return result.score, sum, pv
 	// 					}
 	// 					alpha = result.score
-	// 					pv.m = result.move
+	// 					// pv.m = result.move
 	// 					pv.next = result.pv
 	// 				}
 	// 				best_move = result.move
@@ -521,13 +525,14 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 	// }
 
 	if legal_searched > 0 {
+		pv.m, pv.value = best_move, best
 		if alpha > old_alpha {
 			main_tt.store(brd, best_move, depth, EXACT, best) // local PV node found.
-			pv.value = best
 			return best, sum, pv
 		} else {
+			pv.next = nil
 			main_tt.store(brd, best_move, depth, UPPER_BOUND, best)
-			return best, sum, nil
+			return best, sum, pv
 		}
 	} else { // draw or checkmate detected.
 		if in_check {
@@ -539,7 +544,6 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		}
 	}
 }
-
 
 
 // Q-Search will always be done sequentially: Q-search subtrees are taller and narrower than in the main search,
