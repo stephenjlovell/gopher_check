@@ -101,8 +101,6 @@ type BoundUpdate struct {
 var side_to_move uint8
 var search_id int
 var cancel_search bool
-var uci_mode bool = false
-var uci_ponder bool = false
 var print_info bool = true
 
 var nodes_per_iteration [MAX_DEPTH + 1]int

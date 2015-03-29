@@ -1,3 +1,4 @@
 ./chess
 ./gopher_check
 ./load_balancer/load_balancer
+./log.txt
