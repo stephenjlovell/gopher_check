@@ -72,7 +72,7 @@ const (
 	MAX_DEPTH    = 12
 	MAX_EXT      = 12
 	SPLIT_MIN    = 4 // set > MAX_DEPTH to disable parallel search.
-	F_PRUNE_MAX  = 3  // should always be less than SPLIT_MIN
+	F_PRUNE_MAX  = 3 // should always be less than SPLIT_MIN
 	LMR_MIN      = 2
 	MAX_PLY      = MAX_DEPTH + MAX_EXT
 	IID_MIN      = 4
@@ -179,7 +179,7 @@ func iterative_deepening(brd *Board, reps *RepList, depth int, start time.Time) 
 		// 	id_alpha = guess - (STEP_SIZE << 2)
 		// case 3:
 		// 	id_alpha = guess - (STEP_SIZE << 3)
-		// case 4: 
+		// case 4:
 		// 	id_alpha = guess - (STEP_SIZE << 4)
 		// default:
 		// 	id_alpha = -INF
@@ -301,7 +301,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 	}
 
 	// No hash move available. If on the PV, use IID to get a decent first move to try.
-	if hash_result == NO_MATCH && can_null && depth >= IID_MIN {//&& node_type != Y_ALL { 
+	if hash_result == NO_MATCH && can_null && depth >= IID_MIN { //&& node_type != Y_ALL {
 		var local_pv *PV
 		score, count, local_pv = young_brothers_wait(brd, alpha, beta, depth-2, ply, extensions_left, can_null, false, node_type, old_reps)
 		sum += count
@@ -463,10 +463,10 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 			// 		result_child <- SearchResult{m, -score, count, next_pv}
 			// 	}(brd.Copy(), alpha, beta, r_depth, ply, r_extensions, can_null, child_type, reps)
 			// } else {
-				// split = false
-				score, count, next_pv = young_brothers_wait(brd, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, can_split, child_type, reps)
-				sum += count
-				score = -score
+			// split = false
+			score, count, next_pv = young_brothers_wait(brd, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, can_split, child_type, reps)
+			sum += count
+			score = -score
 			// }
 		}
 		legal_searched += 1
@@ -476,21 +476,21 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
 
 		// if !split {
-			if score > best {
-				if score > alpha {
-					if score >= beta {
-						pv.m, pv.value, pv.next = m, score, nil
-						store_cutoff(brd, m, depth, ply, count) // what happens on refutation of main pv?
-						main_tt.store(brd, m, depth, LOWER_BOUND, score)
-						return score, sum, pv
-					}
-					alpha = score
-					pv.next = next_pv
+		if score > best {
+			if score > alpha {
+				if score >= beta {
+					pv.m, pv.value, pv.next = m, score, nil
+					store_cutoff(brd, m, depth, ply, count) // what happens on refutation of main pv?
+					main_tt.store(brd, m, depth, LOWER_BOUND, score)
+					return score, sum, pv
 				}
-				best_move = m
-				best = score
+				alpha = score
+				pv.next = next_pv
 			}
+			best_move = m
+			best = score
 		}
+	}
 	// }
 
 	// if child_counter > 0 {
@@ -535,14 +535,13 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 	} else { // draw or checkmate detected.
 		if in_check {
 			main_tt.store(brd, 0, depth, EXACT, ply-MATE)
-			return ply-MATE, sum, nil
+			return ply - MATE, sum, nil
 		} else {
 			main_tt.store(brd, 0, depth, EXACT, 0)
 			return 0, sum, nil
 		}
 	}
 }
-
 
 // Q-Search will always be done sequentially: Q-search subtrees are taller and narrower than in the main search,
 // making benefit of parallelism smaller and raising communication and synchronization overhead.
@@ -558,7 +557,7 @@ func quiescence(brd *Board, alpha, beta, depth, ply, checks_remaining int, old_r
 	in_check := is_in_check(brd)
 	if brd.halfmove_clock >= 100 {
 		if is_checkmate(brd, in_check) {
-			return ply-MATE, 1
+			return ply - MATE, 1
 		} else {
 			return 0, 1
 		}
@@ -607,7 +606,7 @@ func quiescence(brd *Board, alpha, beta, depth, ply, checks_remaining int, old_r
 			}
 		}
 		if !legal_moves {
-			return ply-MATE, 1 // detect checkmate.
+			return ply - MATE, 1 // detect checkmate.
 		}
 	} else {
 
@@ -685,7 +684,6 @@ func quiescence(brd *Board, alpha, beta, depth, ply, checks_remaining int, old_r
 	return best, sum
 }
 
-
 func determine_child_type(node_type, legal_searched int) int {
 	switch node_type {
 	case Y_PV:
@@ -707,7 +705,6 @@ func determine_child_type(node_type, legal_searched int) int {
 		return node_type
 	}
 }
-
 
 func ybw_make(brd *Board, m Move, alpha, beta, depth, ply, extensions_left int, can_null, can_split bool, node_type int, reps *RepList) (int, int, *PV) {
 	hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key

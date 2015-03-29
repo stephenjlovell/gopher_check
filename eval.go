@@ -24,7 +24,7 @@
 package main
 
 import (
-"fmt"
+	"fmt"
 )
 
 var passed_pawn_bonus = [2][8]int{

@@ -31,8 +31,8 @@ package main
 
 import (
 	"bufio"
-	"log"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -68,9 +68,9 @@ func ReadUCICommand() {
 	var input string
 	var wg sync.WaitGroup
 
-	f, err := os.OpenFile("log.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+	f, err := os.OpenFile("log.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-	  fmt.Printf("error opening file: %v", err)
+		fmt.Printf("error opening file: %v", err)
 	}
 	defer f.Close()
 
@@ -94,7 +94,7 @@ func ReadUCICommand() {
 
 			case "debug":
 				if len(uci_fields) > 1 {
-					UCIDebug(uci_fields[1:])					
+					UCIDebug(uci_fields[1:])
 				}
 				fmt.Printf("readyok\n")
 
@@ -130,7 +130,7 @@ func ReadUCICommand() {
 
 			case "stop": // stop calculating and return a result as soon as possible.
 				AbortSearch()
-				
+
 			case "ponderhit":
 				UCIInvalid(uci_fields) // placeholder until pondering is implemented.
 			case "quit":
@@ -142,7 +142,7 @@ func ReadUCICommand() {
 
 			default:
 				UCIInvalid(uci_fields)
-			}			
+			}
 		}
 	}
 }
@@ -180,16 +180,16 @@ func UCISetOption(uci_fields []string) {
 }
 
 func UCIRegister(uci_fields []string) {
-// The following tokens are allowed:
-// * later
-//    the user doesn't want to register the engine now.
-// * name 
-//    the engine should be registered with the name 
-// * code 
-//    the engine should be registered with the code 
-// Example:
-//    "register later"
-//    "register name Stefan MK code 4359874324"
+	// The following tokens are allowed:
+	// * later
+	//    the user doesn't want to register the engine now.
+	// * name
+	//    the engine should be registered with the name
+	// * code
+	//    the engine should be registered with the code
+	// Example:
+	//    "register later"
+	//    "register name Stefan MK code 4359874324"
 
 }
 

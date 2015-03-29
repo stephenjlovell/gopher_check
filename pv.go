@@ -112,11 +112,5 @@ func (pv *PV) Save(brd *Board, depth int) {
 // Further children of a CUT node are CUT nodes.
 // Children of ALL nodes are CUT nodes.
 
-
 // The first node of bad pruning is a CUT node.
 // The first node of null move verification is a CUT node
-
-
-
-
-

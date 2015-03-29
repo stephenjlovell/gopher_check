@@ -85,7 +85,7 @@ func (b *Bucket) Type() int {
 	return int((b.data >> 26) & uint64(3))
 }
 func (b *Bucket) Value() int {
-	return int(((b.data >> 28) & mask_of_length[17])-INF)
+	return int(((b.data >> 28) & mask_of_length[17]) - INF)
 }
 func (b *Bucket) Id() int {
 	return int((b.data >> 45) & uint64(511))
