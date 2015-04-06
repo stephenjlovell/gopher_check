@@ -249,19 +249,15 @@ func PlayMoveSequence(brd *Board, uci_fields []string) *RepList {
 	var move Move
 	var reps *RepList
 	if uci_fields[0] == "moves" {
-		for _, move_str := range uci_fields[1:] {
-			move = ParseMove(brd, move_str)
-			make_move(brd, move)
-			reps = &RepList{uint32(brd.hash_key), reps}
-		}
+		uci_fields = uci_fields[1:]
 	} else if uci_fields[1] == "moves" {
-		for _, move_str := range uci_fields[2:] {
-			move = ParseMove(brd, move_str)
-			make_move(brd, move)
-			reps = &RepList{uint32(brd.hash_key), reps}
-		}
+		uci_fields = uci_fields[2:]
 	}
-	// fmt.Printf("Repetition list of length %d created\n", reps.Len())
+	for _, move_str := range uci_fields {
+		move = ParseMove(brd, move_str)
+		make_move(brd, move)
+		reps = &RepList{uint32(brd.hash_key), reps}
+	}
 	return reps
 }
 
