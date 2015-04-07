@@ -27,6 +27,20 @@ import (
 // "fmt"
 )
 
+func NewMoveGenerator(node_type int, in_check bool) {
+}
+
+
+type MoveGenerator struct {
+}
+
+// move generator used by SplitPoint struct
+type SharedMoveGenerator struct {
+}
+
+
+
+
 func get_root_moves(brd *Board, in_check bool) *MoveList {
 	var moves MoveList
 	killers := &KEntry{}

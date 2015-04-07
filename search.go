@@ -23,47 +23,8 @@
 
 package main
 
-// Modified Young Brothers Wait (YBW) approach
-
-// At each node, search the most promising (leftmost) child sequentially first,
-// then send the rest of the successors to the load balancer.
-// The requester then blocks until it receives a cancellation flag, a result, or an updated bound.
-
-// Completion
-
-// When each child completes, its result is sent back via a channel to the requester node.
-// On completion, each node sends a cancellation flag indicating no more work is needed.
-
-// Alpha Updates
-
-// Bounds are stored locally in the call stack.
-// When alpha is updated, the update is piped down to all running child requests via a channel.  For requests still
-// in queue, use a closure to scope the arguments so that when a worker executes the job it does so with the latest
-// bounds from the requestor.
-
-// When an alpha update is received from the node above, use the received value to update the locally scoped alpha
-// value.
-
-// Cancellation
-
-// Spawning behavior
-
-// When some moves are scored far better than others, those nodes would be searched sequentially in hopes of
-// achieving a cutoff without incurring communication overhead.
-
-// Search phases
-
-// To reduce synchronization overhead, all search below some depth threshold will be handled sequentially.
-
-// Hash Move (Always)
-// YBW/Parallel search allowed (Ply <= 5)
-// IID (Depth >= 4)
-// Null Move (Depth >= 3)
-// Futility pruning (Depth <= 2)
-
 import (
 	"fmt"
-	// "math"
 	"time"
 )
 
@@ -163,43 +124,8 @@ func iterative_deepening(brd *Board, reps *RepList, depth int, start time.Time) 
 		current_pv.Save(brd, 1)
 	}
 
-	// id_alpha, id_beta = guess-STEP_SIZE, guess+STEP_SIZE
-
 	var d int
-	// var fail_low_count, fail_high_count int
-
 	for d = 2; d <= depth; {
-
-		// switch fail_low_count {
-		// case 0:
-		// 	id_alpha = guess - STEP_SIZE
-		// case 1:
-		// 	id_alpha = guess - (STEP_SIZE << 1)
-		// case 2:
-		// 	id_alpha = guess - (STEP_SIZE << 2)
-		// case 3:
-		// 	id_alpha = guess - (STEP_SIZE << 3)
-		// case 4:
-		// 	id_alpha = guess - (STEP_SIZE << 4)
-		// default:
-		// 	id_alpha = -INF
-		// }
-		// switch fail_high_count {
-		// case 0:
-		// 	id_beta = guess + STEP_SIZE
-		// case 1:
-		// 	id_beta = guess + (STEP_SIZE << 1)
-		// case 2:
-		// 	id_beta = guess + (STEP_SIZE << 2)
-		// case 3:
-		// 	id_beta = guess + (STEP_SIZE << 3)
-		// case 4:
-		// 	id_beta = guess + (STEP_SIZE << 4)
-		// default:
-		// 	id_beta = INF
-		// }
-		// id_alpha = max(id_alpha, -INF)
-		// id_beta = min(id_beta, INF)
 
 		guess, count, current_pv = young_brothers_wait(brd, id_alpha, id_beta, d, 0, MAX_EXT, true, true, Y_PV, reps)
 		sum += count
@@ -208,7 +134,7 @@ func iterative_deepening(brd *Board, reps *RepList, depth int, start time.Time) 
 			return id_move[c], sum
 		} else if current_pv != nil {
 			id_move[c], id_score[c] = current_pv.m, guess
-			current_pv.Save(brd, d)
+			current_pv.Save(brd, d) // install PV to transposition table prior to next iteration.
 		} else {
 			fmt.Printf("Nil PV returned to ID\n")
 		}
@@ -218,14 +144,7 @@ func iterative_deepening(brd *Board, reps *RepList, depth int, start time.Time) 
 			PrintInfo(guess, d, sum, time.Since(start), current_pv)
 		}
 
-		// if guess >= id_beta {
-		// 	fail_high_count += 1
-		// } else if guess <= id_alpha {
-		// 	fail_low_count += 1
-		// } else {
 		d++
-		// }
-
 	}
 
 	if print_info {

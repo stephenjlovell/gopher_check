@@ -56,6 +56,14 @@ Total score: 285/300
 
 Debugging:
 
+Search refactoring:
+
+  -Create MoveGenerator type to coordinate batched move generation across workers. 
+  Send ordered moves via channel.
+
+  -Move shared memory into SplitPoint struct to reduce communication costs.
+  -Move responsibility for repetition list, pv into explicit stack.
+
 
 
 To Do:

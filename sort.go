@@ -106,12 +106,12 @@ func (l *MoveList) Push(item *SortItem) {
 	*l = append(*l, item)
 }
 
-func (l *MoveList) Dequeue() *SortItem {
-	old := *l
-	if len(old) == 0 {
-		return nil
-	}
-	item := old[0]
-	*l = old[1:]
-	return item
-}
+// func (l *MoveList) Dequeue() *SortItem {
+// 	old := *l
+// 	if len(old) == 0 {
+// 		return nil
+// 	}
+// 	item := old[0]
+// 	*l = old[1:]
+// 	return item
+// }

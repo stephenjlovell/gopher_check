@@ -23,14 +23,6 @@
 
 package main
 
-// import (
-//   "fmt"
-// )
-
-func is_on_pv(brd *Board) bool {
-	return false
-}
-
 type PV struct {
 	m     Move
 	value int
@@ -83,8 +75,6 @@ func (pv *PV) Save(brd *Board, depth int) {
 		remaining = remaining.next
 	}
 }
-
-// Implementation options - linked list.
 
 // Creation:
 
