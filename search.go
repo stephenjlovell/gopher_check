@@ -202,11 +202,13 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 	first_move, hash_result = main_tt.probe(brd, depth, null_depth, &alpha, &beta, &score)
 
 	if node_type != Y_PV {
-		if hash_result == CUTOFF_FOUND {
+
+		if hash_result == CUTOFF_FOUND {  // Hash hit
 			pv.m, pv.value = first_move, score
 			return score, sum, pv
-		} else if hash_result != AVOID_NULL {
-			// Null-Move Pruning
+
+		} else if hash_result != AVOID_NULL {  // Null-Move Pruning
+			
 			if !in_check && can_null && depth > 2 && in_endgame(brd) == 0 &&
 				!pawns_only(brd, brd.c) && evaluate(brd, alpha, beta) >= beta {
 				score, count = null_make(brd, beta, null_depth-1, ply+1, extensions_left, can_split, reps)
@@ -219,8 +221,10 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		}
 	}
 
-	// No hash move available. If on the PV, use IID to get a decent first move to try.
+
+	// IID
 	if hash_result == NO_MATCH && can_null && depth >= IID_MIN { //&& node_type != Y_ALL {
+	// No hash move available. If on the PV, use IID to get a decent first move to try.
 		var local_pv *PV
 		score, count, local_pv = young_brothers_wait(brd, alpha, beta, depth-2, ply, extensions_left, can_null, false, node_type, old_reps)
 		sum += count
@@ -228,6 +232,8 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 			first_move = local_pv.m
 		}
 	}
+
+
 
 	var child_type int
 	// If a hash move or IID move is available, try it first.
@@ -259,6 +265,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		}
 		legal_searched += 1
 	}
+
 
 	// Generate tactical (non-quiet) moves.  Good moves will be searched sequentially to establish good bounds
 	// before remaining nodes are searched in parallel.
@@ -322,19 +329,16 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		}
 	}
 
-	hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
-	castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
 
-	// split_point := can_split && depth >= SPLIT_MIN
-	// var child_counter int
-	// result_child := make(chan SearchResult, 20)
-	// var split bool
+
 
 	// Delay the generation of remaining moves until all promotions, winning captures, and killer moves have been searched.
 	// if a cutoff occurs, this will reduce move generation effort substantially.
+	hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
+	castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
 	get_remaining_moves(brd, in_check, remaining_moves, &main_ktable[ply])
 
-	for _, item := range *remaining_moves { // search remaining moves sequentially.
+	for _, item := range *remaining_moves { 
 		m = item.move
 		if m == first_move || !avoids_check(brd, m, in_check) {
 			continue
@@ -372,21 +376,9 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 				sum += count
 			}
 		} else {
-			// // If decent bounds have been established, parallel search is possible.
-			// // Make sure at least 3 nodes have been searched serially before spawning.
-			// if split_point && legal_searched > 3 && node_type == Y_ALL {
-			// 	child_counter++
-			// 	split = true
-			// 	go func(copy *Board, alpha, beta, depth, ply, extensions int, can_null bool, node_type int, reps *RepList) {
-			// 		score, count, next_pv := young_brothers_wait(copy, -beta, -alpha, depth-1, ply+1, extensions, can_null, false, node_type, reps)
-			// 		result_child <- SearchResult{m, -score, count, next_pv}
-			// 	}(brd.Copy(), alpha, beta, r_depth, ply, r_extensions, can_null, child_type, reps)
-			// } else {
-			// split = false
 			score, count, next_pv = young_brothers_wait(brd, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, can_split, child_type, reps)
 			sum += count
 			score = -score
-			// }
 		}
 		legal_searched += 1
 
@@ -394,7 +386,6 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
 		brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
 
-		// if !split {
 		if score > best {
 			if score > alpha {
 				if score >= beta {
@@ -410,36 +401,6 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 			best = score
 		}
 	}
-	// }
-
-	// if child_counter > 0 {
-	// remaining_pieces:
-	// 	for {
-	// 		select { // wait for a message to come in on one of the channels.
-	// 		case result := <-result_child: // one of the child subtrees has been completely searched.
-	// 			sum += result.count
-	// 			if result.score > best {
-	// 				if result.score > alpha {
-	// 					if result.score >= beta {
-	// 						pv.m, pv.value, pv.next = result.move, result.score, nil
-	// 						store_cutoff(brd, result.move, depth, ply, result.count)
-	// 						main_tt.store(brd, result.move, depth, LOWER_BOUND, score)
-	// 						return result.score, sum, pv
-	// 					}
-	// 					alpha = result.score
-	// 					// pv.m = result.move
-	// 					pv.next = result.pv
-	// 				}
-	// 				best_move = result.move
-	// 				best = score
-	// 			}
-	// 			child_counter--
-	// 			if child_counter == 0 {
-	// 				break remaining_pieces // exit the for loop
-	// 			}
-	// 		}
-	// 	}
-	// }
 
 	if legal_searched > 0 {
 		pv.m, pv.value = best_move, best

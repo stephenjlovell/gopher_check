@@ -25,46 +25,99 @@ package main
 
 import (
 // "fmt"
+	"sync"
 )
 
-func NewMoveGenerator(node_type int, in_check bool) {
-}
+// Current search stages:
 
+// 1. Hash move if available
+// 2. IID move if no hash move available.
+// 3. Evasions or Winning captures/promotions via get_best_moves(). No pruning - extensions only.
+// 4. All other moves via get_remaining_moves().  Futility pruning and Late-move reductions applied.
+
+// Q-search stages
+
+// 1. Evasions or winning captures/promotions get_best_moves(). Specialized futility pruning.
+// 2. Non-captures that give check via get_checks().
+
+const (
+	STAGE_FIRST = iota
+	STAGE_WINNING
+	STAGE_REMAINING
+)
+
+func NewMG(brd *Board, stk *Stack, in_check bool, first_move Move) *MoveGenerator {
+	return &MoveGenerator{
+		brd: brd,
+		stk: stk,
+		in_check: in_check,
+		first_move: first_move,
+	}
+}
 
 type MoveGenerator struct {
+	sync.Mutex
+	brd *Board
+	stk *Stack
+	stage int
+	in_check bool
+
+	first_move 			Move
+	best_moves 			MoveList
+	remaining_moves MoveList
+	ready 					chan Move // channel to store moves ready to be consumed by workers.
 }
 
-// move generator used by SplitPoint struct
-type SharedMoveGenerator struct {
-}
+func (g *MoveGenerator) next() Move {
 
-
-
-
-func get_root_moves(brd *Board, in_check bool) *MoveList {
-	var moves MoveList
-	killers := &KEntry{}
-	if in_check {
-		get_evasions(brd, &moves, &moves, killers)
-	} else {
-		get_captures(brd, &moves, &moves)
-		get_non_captures(brd, &moves, killers)
+	for {
+		select {
+		case m := <-g.ready:
+			// check legality and avoid duplicating first_move
+			return m
+		default:
+			g.next_batch()
+		}		
 	}
-	return &moves
+
 }
 
-func get_all_moves(brd *Board, in_check bool, killers *KEntry) (*MoveList, *MoveList) {
-	var best_moves, remaining_moves MoveList
-	if in_check {
-		get_evasions(brd, &best_moves, &remaining_moves, killers)
-	} else {
-		get_captures(brd, &best_moves, &remaining_moves)
-		get_non_captures(brd, &remaining_moves, killers)
+func (g *MoveGenerator) next_batch() {
+	switch g.stage {
+	case STAGE_FIRST:
+		g.ready <- g.first_move
+	
+	case STAGE_WINNING:
+
+		if g.in_check {
+			get_evasions(g.brd, &g.best_moves, &g.remaining_moves, &g.stk.killers)
+		} else {
+			get_captures(g.brd, &g.best_moves, &g.remaining_moves)
+		}
+		g.best_moves.Sort()
+
+		for _, item := range g.best_moves {
+			g.ready <- item.move
+		}
+
+	case STAGE_REMAINING:
+
+		if !g.in_check {
+			get_non_captures(g.brd, &g.remaining_moves, &g.stk.killers)
+		}
+		g.remaining_moves.Sort()
+		for _, item := range g.remaining_moves {
+			g.ready <- item.move
+		}
+
+	default:
+		close(g.ready)
 	}
-	best_moves.Sort()
-	remaining_moves.Sort()
-	return &best_moves, &remaining_moves
+
+	g.stage++
 }
+
+
 
 func get_best_moves(brd *Board, in_check bool, killers *KEntry) (*MoveList, *MoveList) {
 	var best_moves, remaining_moves MoveList
@@ -300,7 +353,7 @@ func get_captures(brd *Board, best_moves, remaining_moves *MoveList) {
 		from = to + pawn_from_offsets[c][OFF_SINGLE]
 		m = NewPromotion(from, to, PAWN, QUEEN)
 		sort = SortPromotion(brd, m)
-		if sort >= WINNING {
+		if sort >= SORT_WINNING {
 			best_moves.Push(&SortItem{m, sort})
 		} else {
 			remaining_moves.Push(&SortItem{m, sort})
@@ -669,7 +722,7 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 			if is_pinned(brd, from, c, e) == 0 {
 				m = NewPromotion(from, to, PAWN, QUEEN)
 				sort = SortPromotion(brd, m)
-				if sort >= WINNING {
+				if sort >= SORT_WINNING {
 					best_moves.Push(&SortItem{m, sort})
 				} else {
 					remaining_moves.Push(&SortItem{m, sort})
@@ -989,6 +1042,8 @@ func get_checks(brd *Board, killers *KEntry) *MoveList {
 	}
 
 	var unblock_path BB // blockers must move off the path of attack.
+
+	// Discovered checks should not be made if the checking piece will just be recaptured at a loss...
 
 	for f = brd.pieces[c][BISHOP] & rook_blockers; f > 0; f.Clear(from) {
 		from = furthest_forward(c, f)

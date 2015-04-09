@@ -35,7 +35,7 @@ type SplitPoint struct {
 	parent *SplitPoint
 	master *Worker
 	brd    *Board
-	stack  []Stack
+	stack  Stack
 	depth     int
 	node_type int
 
@@ -58,7 +58,7 @@ type Stack struct {
 	pv_move       Move
 	current_move  Move
 	tt_move       Move
-	excluded_move Move
+
 	killers       KEntry
 
 	// add repetition list
