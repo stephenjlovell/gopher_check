@@ -36,7 +36,7 @@ func TestLegalMoveGen(t *testing.T) {
 	setup()
 	brd := StartPos()
 	copy := brd.Copy()
-	depth := 5
+	depth := 4
 	start := time.Now()
 	sum := Perft(brd, depth)
 	elapsed := time.Since(start)

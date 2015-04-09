@@ -29,10 +29,10 @@ import (
 )
 
 const (
-	MAX_TIME     = 120000 // default search time limit in seconds (2m)
+	MAX_TIME     = 120000 // default search time limit in milliseconds (2m)
 	MAX_DEPTH    = 12
 	MAX_EXT      = 12
-	SPLIT_MIN    = 4 // set > MAX_DEPTH to disable parallel search.
+	SPLIT_MIN    = 13 // set > MAX_DEPTH to disable parallel search.
 	F_PRUNE_MAX  = 3 // should always be less than SPLIT_MIN
 	LMR_MIN      = 2
 	MAX_PLY      = MAX_DEPTH + MAX_EXT
@@ -46,18 +46,6 @@ const (
 	Y_CUT
 	Y_ALL
 )
-
-type SearchResult struct {
-	move  Move
-	score int
-	count int
-	pv    *PV
-}
-
-type BoundUpdate struct {
-	bound        int
-	alpha_update bool
-}
 
 var side_to_move uint8
 var search_id int
@@ -222,7 +210,7 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 	}
 
 	// IID
-	if hash_result == NO_MATCH && can_null && depth >= IID_MIN && !in_check {
+	if hash_result == NO_MATCH && can_null && depth >= IID_MIN { // skip IID when in check?
 		// No hash move available. If on the PV, use IID to get a decent first move to try.
 		var local_pv *PV
 		score, count, local_pv = young_brothers_wait(brd, alpha, beta, depth-2, ply, extensions_left, can_null, false, node_type, old_reps)
@@ -531,26 +519,26 @@ func quiescence(brd *Board, alpha, beta, depth, ply, checks_remaining int, old_r
 			}
 		}
 
-		if checks_remaining > 0 {
-			checking_moves := get_checks(brd, &main_ktable[ply])
-			for _, item := range *checking_moves {
-				m = item.move
-				if !avoids_check(brd, m, false) {
-					continue
-				}
-				score, count = q_make(brd, m, alpha, beta, depth-1, ply+1, checks_remaining, reps)
-				sum += count
-				if score > best {
-					if score > alpha {
-						if score >= beta {
-							return score, sum
-						}
-						alpha = score
-					}
-					best = score
-				}
-			}
-		}
+		// if checks_remaining > 0 {
+		// 	checking_moves := get_checks(brd, &main_ktable[ply])
+		// 	for _, item := range *checking_moves {
+		// 		m = item.move
+		// 		if !avoids_check(brd, m, false) {
+		// 			continue
+		// 		}
+		// 		score, count = q_make(brd, m, alpha, beta, depth-1, ply+1, checks_remaining, reps)
+		// 		sum += count
+		// 		if score > best {
+		// 			if score > alpha {
+		// 				if score >= beta {
+		// 					return score, sum
+		// 				}
+		// 				alpha = score
+		// 			}
+		// 			best = score
+		// 		}
+		// 	}
+		// }
 
 	}
 

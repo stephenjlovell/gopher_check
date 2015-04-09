@@ -112,11 +112,8 @@ func is_pinned(brd *Board, sq int, c, e uint8) BB {
 		return BB(mask_of_length[64])
 	}
 	if threat > 0 && guarded_king > 0 {
-		// brd.Print()
-		// pin_area.Print()
 		return pin_area
 	}
-
 	return BB(mask_of_length[64])
 }
 
