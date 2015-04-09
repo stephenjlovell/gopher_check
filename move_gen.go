@@ -794,8 +794,8 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 		}
 		// Knights
 		for f := brd.pieces[c][KNIGHT]; f > 0; f.Clear(from) {
-			from = furthest_forward(c, f) // Locate each knight for the side to move.
-			if is_pinned(brd, from, c, e) == BB(mask_of_length[64]) { // knights can't move if pinned.
+			from = furthest_forward(c, f)                          // Locate each knight for the side to move.
+			if is_pinned(brd, from, c, e) == BB(ANY_SQUARE_MASK) { // knights can't move if pinned.
 				for t := (knight_masks[from] & defense_map); t > 0; t.Clear(to) { // generate to squares
 					to = furthest_forward(c, t)
 					if sq_mask_on[to]&enemy > 0 {
@@ -871,8 +871,8 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 		for f := brd.pieces[c][QUEEN]; f > 0; f.Clear(from) {
 			from = furthest_forward(c, f)
 			for t := (queen_attacks(occ, from) & defense_map); t > 0; t.Clear(to) { // generate to squares
+				to = furthest_forward(c, t)
 				if pinned_can_move(brd, from, to, c, e) {
-					to = furthest_forward(c, t)
 					if sq_mask_on[to]&enemy > 0 {
 						m = NewCapture(from, to, QUEEN, brd.squares[to])
 						see = get_see(brd, from, to, brd.squares[to])

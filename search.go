@@ -33,7 +33,7 @@ const (
 	MAX_DEPTH    = 12
 	MAX_EXT      = 12
 	SPLIT_MIN    = 13 // set > MAX_DEPTH to disable parallel search.
-	F_PRUNE_MAX  = 3 // should always be less than SPLIT_MIN
+	F_PRUNE_MAX  = 3  // should always be less than SPLIT_MIN
 	LMR_MIN      = 2
 	MAX_PLY      = MAX_DEPTH + MAX_EXT
 	IID_MIN      = 4
@@ -519,27 +519,26 @@ func quiescence(brd *Board, alpha, beta, depth, ply, checks_remaining int, old_r
 			}
 		}
 
-		// if checks_remaining > 0 {
-		// 	checking_moves := get_checks(brd, &main_ktable[ply])
-		// 	for _, item := range *checking_moves {
-		// 		m = item.move
-		// 		if !avoids_check(brd, m, false) {
-		// 			continue
-		// 		}
-		// 		score, count = q_make(brd, m, alpha, beta, depth-1, ply+1, checks_remaining, reps)
-		// 		sum += count
-		// 		if score > best {
-		// 			if score > alpha {
-		// 				if score >= beta {
-		// 					return score, sum
-		// 				}
-		// 				alpha = score
-		// 			}
-		// 			best = score
-		// 		}
-		// 	}
-		// }
-
+		if checks_remaining > 0 {
+			checking_moves := get_checks(brd, &main_ktable[ply])
+			for _, item := range *checking_moves {
+				m = item.move
+				if !avoids_check(brd, m, false) {
+					continue
+				}
+				score, count = q_make(brd, m, alpha, beta, depth-1, ply+1, checks_remaining, reps)
+				sum += count
+				if score > best {
+					if score > alpha {
+						if score >= beta {
+							return score, sum
+						}
+						alpha = score
+					}
+					best = score
+				}
+			}
+		}
 	}
 
 	return best, sum

@@ -109,12 +109,12 @@ func is_pinned(brd *Board, sq int, c, e uint8) BB {
 		threat = pin_area & (brd.pieces[e][ROOK] | brd.pieces[e][QUEEN])
 		guarded_king = pin_area & (brd.pieces[c][KING])
 	case DIR_INVALID: // can only be pinned along a valid ray to the king.
-		return BB(mask_of_length[64])
+		return BB(ANY_SQUARE_MASK)
 	}
 	if threat > 0 && guarded_king > 0 {
 		return pin_area
 	}
-	return BB(mask_of_length[64])
+	return BB(ANY_SQUARE_MASK)
 }
 
 // The Static Exchange Evaluation (SEE) heuristic provides a way to determine if a capture

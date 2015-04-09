@@ -24,9 +24,9 @@
 package main
 
 import (
-"fmt"
-"math"
-"testing"
+	"fmt"
+	"math"
+	"testing"
 )
 
 // // Do a fixed-depth search on a small number of positions.
@@ -55,13 +55,13 @@ import (
 func TestPlayingStrength(t *testing.T) {
 	setup()
 	print_info = false
-	depth := MAX_DEPTH - 8
+	depth := MAX_DEPTH - 4
 	test := load_epd_file("test_suites/wac_300.epd")
 	var move_str string
 	sum, score := 0, 0
 	for _, epd := range test {
 		ResetAll()
-		move, count := Search(epd.brd, &RepList{}, depth, 300)
+		move, count := Search(epd.brd, &RepList{}, depth, 30000)
 		move_str = ToSAN(epd.brd, move)
 		if correct_move(epd, move_str) {
 			score += 1

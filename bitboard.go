@@ -27,6 +27,10 @@ import (
 	"fmt"
 )
 
+const (
+	ANY_SQUARE_MASK = (1 << 64) - 1
+)
+
 type BB uint64
 
 func (b *BB) Clear(sq int) {
@@ -63,7 +67,6 @@ func setup_square_masks() {
 		sq_mask_off[i] = (^sq_mask_on[i])
 		mask_of_length[i] = uint64(sq_mask_on[i] - 1)
 	}
-	mask_of_length[64] = uint64((sq_mask_on[63] << 1) - 1)
 }
 
 func setup_pawn_masks() {
