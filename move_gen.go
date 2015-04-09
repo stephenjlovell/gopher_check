@@ -24,7 +24,7 @@
 package main
 
 import (
-// "fmt"
+	// "fmt"
 	"sync"
 )
 
@@ -48,76 +48,77 @@ const (
 
 func NewMG(brd *Board, stk *Stack, in_check bool, first_move Move) *MoveGenerator {
 	return &MoveGenerator{
-		brd: brd,
-		stk: stk,
-		in_check: in_check,
-		first_move: first_move,
+		brd:             brd,
+		stk:             stk,
+		in_check:        in_check,
+		first_move:      first_move,
+		moves:           MoveList{},
+		remaining_moves: MoveList{},
 	}
 }
 
 type MoveGenerator struct {
 	sync.Mutex
-	brd *Board
-	stk *Stack
-	stage int
+	brd      *Board
+	stk      *Stack
+	stage    int
+	index    int
 	in_check bool
 
-	first_move 			Move
-	best_moves 			MoveList
+	first_move      Move
+	moves           MoveList // append remaining moves here once good moves are consumed.
 	remaining_moves MoveList
-	ready 					chan Move // channel to store moves ready to be consumed by workers.
+	// ready 					chan Move // channel to store moves ready to be consumed by workers.
 }
 
 func (g *MoveGenerator) next() Move {
-
+	g.Lock()
 	for {
-		select {
-		case m := <-g.ready:
-			// check legality and avoid duplicating first_move
+		for g.index == len(g.moves) {
+			finished := g.next_batch()
+			if finished {
+				g.Unlock()
+				return NO_MOVE
+			}
+		}
+		m := g.moves[g.index].move
+		g.index++
+		if (g.stage != STAGE_FIRST && m == g.first_move) || !avoids_check(g.brd, m, g.in_check) {
+			continue
+		} else {
+			g.Unlock()
 			return m
-		default:
-			g.next_batch()
-		}		
+		}
 	}
-
 }
 
-func (g *MoveGenerator) next_batch() {
+func (g *MoveGenerator) next_batch() bool {
+	finished := false
 	switch g.stage {
 	case STAGE_FIRST:
-		g.ready <- g.first_move
-	
+		if g.first_move.IsValid(g.brd) && avoids_check(g.brd, g.first_move, g.in_check) {
+			g.moves.Push(&SortItem{g.first_move, SORT_FIRST})
+		}
 	case STAGE_WINNING:
-
 		if g.in_check {
-			get_evasions(g.brd, &g.best_moves, &g.remaining_moves, &g.stk.killers)
+			get_evasions(g.brd, &g.moves, &g.remaining_moves, &g.stk.killers)
 		} else {
-			get_captures(g.brd, &g.best_moves, &g.remaining_moves)
+			get_captures(g.brd, &g.moves, &g.remaining_moves)
 		}
-		g.best_moves.Sort()
-
-		for _, item := range g.best_moves {
-			g.ready <- item.move
-		}
-
+		g.moves.Sort()
 	case STAGE_REMAINING:
-
 		if !g.in_check {
 			get_non_captures(g.brd, &g.remaining_moves, &g.stk.killers)
 		}
 		g.remaining_moves.Sort()
-		for _, item := range g.remaining_moves {
-			g.ready <- item.move
-		}
+		g.moves = append(g.moves, g.remaining_moves...)
 
 	default:
-		close(g.ready)
+		finished = true
 	}
-
 	g.stage++
+	return finished
 }
-
-
 
 func get_best_moves(brd *Board, in_check bool, killers *KEntry) (*MoveList, *MoveList) {
 	var best_moves, remaining_moves MoveList
@@ -700,7 +701,7 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 		for ; promotion_captures_left > 0; promotion_captures_left.Clear(to) {
 			to = furthest_forward(c, promotion_captures_left)
 			from = to + pawn_from_offsets[c][OFF_LEFT]
-			if is_pinned(brd, from, c, e) == 0 {
+			if pinned_can_move(brd, from, to, c, e) {
 				m = NewMove(from, to, PAWN, brd.squares[to], QUEEN)
 				sort = SortPromotion(brd, m)
 				best_moves.Push(&SortItem{m, sort})
@@ -709,7 +710,7 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 		for ; promotion_captures_right > 0; promotion_captures_right.Clear(to) {
 			to = furthest_forward(c, promotion_captures_right)
 			from = to + pawn_from_offsets[c][OFF_RIGHT]
-			if is_pinned(brd, from, c, e) == 0 {
+			if pinned_can_move(brd, from, to, c, e) {
 				m = NewMove(from, to, PAWN, brd.squares[to], QUEEN)
 				sort = SortPromotion(brd, m)
 				best_moves.Push(&SortItem{m, sort})
@@ -719,7 +720,7 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 		for ; promotion_advances > 0; promotion_advances.Clear(to) {
 			to = furthest_forward(c, promotion_advances)
 			from = to + pawn_from_offsets[c][OFF_SINGLE]
-			if is_pinned(brd, from, c, e) == 0 {
+			if pinned_can_move(brd, from, to, c, e) {
 				m = NewPromotion(from, to, PAWN, QUEEN)
 				sort = SortPromotion(brd, m)
 				if sort >= SORT_WINNING {
@@ -733,7 +734,7 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 		for ; left_attacks > 0; left_attacks.Clear(to) {
 			to = furthest_forward(c, left_attacks)
 			from = to + pawn_from_offsets[c][OFF_LEFT]
-			if is_pinned(brd, from, c, e) == 0 {
+			if pinned_can_move(brd, from, to, c, e) {
 				m = NewCapture(from, to, PAWN, brd.squares[to])
 				see = get_see(brd, from, to, brd.squares[to])
 				best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], PAWN)})
@@ -742,7 +743,7 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 		for ; right_attacks > 0; right_attacks.Clear(to) {
 			to = furthest_forward(c, right_attacks)
 			from = to + pawn_from_offsets[c][OFF_RIGHT]
-			if is_pinned(brd, from, c, e) == 0 {
+			if pinned_can_move(brd, from, to, c, e) {
 				m = NewCapture(from, to, PAWN, brd.squares[to])
 				see = get_see(brd, from, to, brd.squares[to])
 				best_moves.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], PAWN)})
@@ -753,12 +754,12 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 			enp_target := brd.enp_target
 			for f := (brd.pieces[c][PAWN] & pawn_side_masks[enp_target] & defense_map); f > 0; f.Clear(from) {
 				from = furthest_forward(c, f)
-				if is_pinned(brd, from, c, e) == 0 {
-					if c == WHITE {
-						to = int(enp_target) + 8
-					} else {
-						to = int(enp_target) - 8
-					}
+				if c == WHITE {
+					to = int(enp_target) + 8
+				} else {
+					to = int(enp_target) - 8
+				}
+				if pinned_can_move(brd, from, to, c, e) {
 					m = NewCapture(from, to, PAWN, PAWN)
 					see = get_see(brd, from, to, PAWN)
 					best_moves.Push(&SortItem{m, SortWinningCapture(see, PAWN, PAWN)})
@@ -769,7 +770,7 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 		for ; double_advances > 0; double_advances.Clear(to) {
 			to = furthest_forward(c, double_advances)
 			from = to + pawn_from_offsets[c][OFF_DOUBLE]
-			if is_pinned(brd, from, c, e) == 0 {
+			if pinned_can_move(brd, from, to, c, e) {
 				m = NewRegularMove(from, to, PAWN)
 				if m == killers.first || m == killers.second {
 					remaining_moves.Push(&SortItem{m, SORT_KILLER})
@@ -782,7 +783,7 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 		for ; single_advances > 0; single_advances.Clear(to) {
 			to = furthest_forward(c, single_advances)
 			from = to + pawn_from_offsets[c][OFF_SINGLE]
-			if is_pinned(brd, from, c, e) == 0 {
+			if pinned_can_move(brd, from, to, c, e) {
 				m = NewRegularMove(from, to, PAWN)
 				if m == killers.first || m == killers.second {
 					remaining_moves.Push(&SortItem{m, SORT_KILLER})
@@ -794,7 +795,7 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 		// Knights
 		for f := brd.pieces[c][KNIGHT]; f > 0; f.Clear(from) {
 			from = furthest_forward(c, f) // Locate each knight for the side to move.
-			if is_pinned(brd, from, c, e) == 0 {
+			if is_pinned(brd, from, c, e) == BB(mask_of_length[64]) {
 				for t := (knight_masks[from] & defense_map); t > 0; t.Clear(to) { // generate to squares
 					to = furthest_forward(c, t)
 					if sq_mask_on[to]&enemy > 0 {
@@ -819,9 +820,9 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 		// Bishops
 		for f := brd.pieces[c][BISHOP]; f > 0; f.Clear(from) {
 			from = furthest_forward(c, f)
-			if is_pinned(brd, from, c, e) == 0 {
-				for t := (bishop_attacks(occ, from) & defense_map); t > 0; t.Clear(to) { // generate to squares
-					to = furthest_forward(c, t)
+			for t := (bishop_attacks(occ, from) & defense_map); t > 0; t.Clear(to) { // generate to squares
+				to = furthest_forward(c, t)
+				if pinned_can_move(brd, from, to, c, e) {
 					if sq_mask_on[to]&enemy > 0 {
 						m = NewCapture(from, to, BISHOP, brd.squares[to])
 						see = get_see(brd, from, to, brd.squares[to])
@@ -844,9 +845,9 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 		// Rooks
 		for f := brd.pieces[c][ROOK]; f > 0; f.Clear(from) {
 			from = furthest_forward(c, f)
-			if is_pinned(brd, from, c, e) == 0 {
-				for t := (rook_attacks(occ, from) & defense_map); t > 0; t.Clear(to) { // generate to squares
-					to = furthest_forward(c, t)
+			for t := (rook_attacks(occ, from) & defense_map); t > 0; t.Clear(to) { // generate to squares
+				to = furthest_forward(c, t)
+				if pinned_can_move(brd, from, to, c, e) {
 					if sq_mask_on[to]&enemy > 0 {
 						m = NewCapture(from, to, ROOK, brd.squares[to])
 						see = get_see(brd, from, to, brd.squares[to])
@@ -869,8 +870,8 @@ func get_evasions(brd *Board, best_moves, remaining_moves *MoveList, killers *KE
 		// Queens
 		for f := brd.pieces[c][QUEEN]; f > 0; f.Clear(from) {
 			from = furthest_forward(c, f)
-			if is_pinned(brd, from, c, e) == 0 {
-				for t := (queen_attacks(occ, from) & defense_map); t > 0; t.Clear(to) { // generate to squares
+			for t := (queen_attacks(occ, from) & defense_map); t > 0; t.Clear(to) { // generate to squares
+				if pinned_can_move(brd, from, to, c, e) {
 					to = furthest_forward(c, t)
 					if sq_mask_on[to]&enemy > 0 {
 						m = NewCapture(from, to, QUEEN, brd.squares[to])
@@ -1129,7 +1130,7 @@ func scan_down(occ BB, dir, sq int) BB {
 	ray := ray_masks[dir][sq]
 	blockers := (ray & occ)
 	if blockers > 0 {
-		ray ^= (ray_masks[dir][msb(blockers)])
+		ray ^= (ray_masks[dir][msb(blockers)]) // chop off end of ray after first blocking piece.
 	}
 	return ray
 }
@@ -1138,7 +1139,7 @@ func scan_up(occ BB, dir, sq int) BB {
 	ray := ray_masks[dir][sq]
 	blockers := (ray & occ)
 	if blockers > 0 {
-		ray ^= (ray_masks[dir][lsb(blockers)])
+		ray ^= (ray_masks[dir][lsb(blockers)]) // chop off end of ray after first blocking piece.
 	}
 	return ray
 }

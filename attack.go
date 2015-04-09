@@ -78,31 +78,46 @@ func is_attacked_by(brd *Board, sq int, attacker, defender uint8) bool {
 
 // Determines if a piece is blocking a ray attack to its king, and cannot move off this ray
 // without placing its king in check.
+// Returns the area to which the piece can move without leaving its king in check.
 // 1. Find the displacement vector between the piece at sq and its own king and determine if it
 //    lies along a valid ray attack.  If the vector is a valid ray attack:
 // 2. Scan toward the king to see if there are any other pieces blocking this route to the king.
 // 3. Scan in the opposite direction to see detect any potential threats along this ray.
+
+// NW NE SE SW NORTH EAST SOUTH WEST DIR_INVALID
+
 func is_pinned(brd *Board, sq int, c, e uint8) BB {
 	occ := brd.AllOccupied()
-	var threat, guarded_king BB
+	var threat, guarded_king, pin_area BB
 	dir := directions[sq][furthest_forward(c, brd.pieces[c][KING])] // get direction toward king
+	threat_dir := opposite_dir[dir]
 	switch dir {
 	case NW, NE:
-		threat = scan_down(occ, dir+2, sq) & (brd.pieces[e][BISHOP] | brd.pieces[e][QUEEN])
-		guarded_king = scan_up(occ, dir, sq) & (brd.pieces[c][KING])
+		pin_area = scan_down(occ, threat_dir, sq) | scan_up(occ, dir, sq)
+		threat = pin_area & (brd.pieces[e][BISHOP] | brd.pieces[e][QUEEN])
+		guarded_king = pin_area & (brd.pieces[c][KING])
 	case SE, SW:
-		threat = scan_up(occ, dir-2, sq) & (brd.pieces[e][BISHOP] | brd.pieces[e][QUEEN])
-		guarded_king = scan_down(occ, dir, sq) & (brd.pieces[c][KING])
+		pin_area = scan_up(occ, threat_dir, sq) | scan_down(occ, dir, sq)
+		threat = pin_area & (brd.pieces[e][BISHOP] | brd.pieces[e][QUEEN])
+		guarded_king = pin_area & (brd.pieces[c][KING])
 	case NORTH, EAST:
-		threat = scan_down(occ, dir+2, sq) & (brd.pieces[e][ROOK] | brd.pieces[e][QUEEN])
-		guarded_king = scan_up(occ, dir, sq) & (brd.pieces[c][KING])
+		pin_area = scan_down(occ, threat_dir, sq) | scan_up(occ, dir, sq)
+		threat = pin_area & (brd.pieces[e][ROOK] | brd.pieces[e][QUEEN])
+		guarded_king = pin_area & (brd.pieces[c][KING])
 	case SOUTH, WEST:
-		threat = scan_up(occ, dir-2, sq) & (brd.pieces[e][ROOK] | brd.pieces[e][QUEEN])
-		guarded_king = scan_down(occ, dir, sq) & (brd.pieces[c][KING])
-	case DIR_INVALID:
-		return 0
+		pin_area = scan_up(occ, threat_dir, sq) | scan_down(occ, dir, sq)
+		threat = pin_area & (brd.pieces[e][ROOK] | brd.pieces[e][QUEEN])
+		guarded_king = pin_area & (brd.pieces[c][KING])
+	case DIR_INVALID: // can only be pinned along a valid ray to the king.
+		return BB(mask_of_length[64])
 	}
-	return (threat & guarded_king)
+	if threat > 0 && guarded_king > 0 {
+		// brd.Print()
+		// pin_area.Print()
+		return pin_area
+	}
+
+	return BB(mask_of_length[64])
 }
 
 // The Static Exchange Evaluation (SEE) heuristic provides a way to determine if a capture
@@ -235,9 +250,12 @@ func pseudolegal_avoids_check(brd *Board, m Move) bool {
 	if m.Piece() == KING {
 		return !is_attacked_by(brd, m.To(), brd.Enemy(), brd.c)
 	} else {
-		pinned := is_pinned(brd, m.From(), brd.c, brd.Enemy())
-		return !((pinned > 0) && ((^pinned)&sq_mask_on[m.To()]) > 0)
+		return pinned_can_move(brd, m.From(), m.To(), brd.c, brd.Enemy())
 	}
+}
+
+func pinned_can_move(brd *Board, from, to int, c, e uint8) bool {
+	return is_pinned(brd, from, brd.c, brd.Enemy())&sq_mask_on[to] > 0
 }
 
 func is_checkmate(brd *Board, in_check bool) bool {

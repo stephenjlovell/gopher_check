@@ -32,40 +32,26 @@ import (
 // When a worker's search reaches a new SP node, it creates a new SP struct, (including the current
 // []Stack info) and adds the SP to its active SP list.
 
-// When workers are idle (they've finished searching and have no split points of their own), 
+// When workers are idle (they've finished searching and have no split points of their own),
 // they request more work from the load balancer. The load balancer selects the best
-// available SP and assigns the worker to the SP. 
+// available SP and assigns the worker to the SP.
 
-// The assigned worker begins a search rooted at the chosen SP node. Each worker searching the SP 
+// The assigned worker begins a search rooted at the chosen SP node. Each worker searching the SP
 // node requests moves from the SP node's move generator.
 
-type Request struct {}
+type Request struct{}
 
-type Balancer struct {}
+type Balancer struct{}
 
-func (b *Balancer) get_available() {} 
-
+func (b *Balancer) get_available() {}
 
 type Worker struct {
-  requests chan Request
-  sp_list SPList
+	requests chan Request
+	sp_list  SPList
 }
 
 func (w *Worker) split() {}
 
-// Wait for work to come in via the load balancer.  Execute the search, 
+// Wait for work to come in via the load balancer.  Execute the search,
 // then inform the load balancer once it's complete.
 func (w *Worker) work(done chan *Worker) {}
-
-
-
-
-
-
-
-
-
-
-
-
-

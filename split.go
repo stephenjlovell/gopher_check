@@ -32,34 +32,34 @@ type SPList []SplitPoint
 type SplitPoint struct {
 	sync.Mutex
 
-	parent *SplitPoint
-	master *Worker
-	brd    *Board
-	stack  Stack
+	parent    *SplitPoint
+	master    *Worker
+	brd       *Board
+	stack     Stack
 	depth     int
 	node_type int
 
-	alpha      int 	// shared
-	beta      int 	
-	best       int	// shared
+	alpha int // shared
+	beta  int
+	best  int // shared
 
-	slave_mask uint32	// shared
-	all_slaves_searching bool	// shared
-	node_count int	// shared
+	slave_mask           uint32 // shared
+	all_slaves_searching bool   // shared
+	node_count           int    // shared
 
-	best_move    Move	// shared
-	move_count   int	// shared. number of moves fully searched so far.
-	cutoff_found bool	// shared	
+	best_move    Move // shared
+	move_count   int  // shared. number of moves fully searched so far.
+	cutoff_found bool // shared
 }
 
 type Stack struct {
-	sp            *SplitPoint
-	value         int
-	pv_move       Move
-	current_move  Move
-	tt_move       Move
+	sp           *SplitPoint
+	value        int
+	pv_move      Move
+	current_move Move
+	tt_move      Move
 
-	killers       KEntry
+	killers KEntry
 
 	// add repetition list
 

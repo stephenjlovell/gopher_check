@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	QUIET = (Move(EMPTY) << 15) | (Move(EMPTY) << 18)
+	NO_MOVE = (Move(EMPTY) << 15) | (Move(EMPTY) << 18)
 )
 
 type Move uint32
@@ -41,7 +41,7 @@ type Move uint32
 // promoted to - next 3 bits
 
 func (m Move) IsValid(brd *Board) bool {
-	if m == 0 {
+	if m == 0 || m == NO_MOVE {
 		return false
 	}
 	// return true
@@ -198,6 +198,10 @@ func (m Move) IsPromotion() bool {
 }
 
 var piece_chars = [6]string{"p", "n", "b", "r", "q", "k"}
+
+func (m Move) Print() {
+	fmt.Println(m.ToString())
+}
 
 func (m Move) ToString() string { // string representation used for debugging only.
 	var str string

@@ -59,7 +59,9 @@ const ( // direction codes (0...8)
 	DIR_INVALID
 )
 
-var mask_of_length [64]uint64
+var opposite_dir = [16]int{SE, SW, NW, NE, SOUTH, WEST, NORTH, EAST, DIR_INVALID}
+
+var mask_of_length [65]uint64
 
 var row_masks [8]BB
 var column_masks [8]BB

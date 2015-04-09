@@ -203,12 +203,12 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 
 	if node_type != Y_PV {
 
-		if hash_result == CUTOFF_FOUND {  // Hash hit
+		if hash_result == CUTOFF_FOUND { // Hash hit
 			pv.m, pv.value = first_move, score
 			return score, sum, pv
 
-		} else if hash_result != AVOID_NULL {  // Null-Move Pruning
-			
+		} else if hash_result != AVOID_NULL { // Null-Move Pruning
+
 			if !in_check && can_null && depth > 2 && in_endgame(brd) == 0 &&
 				!pawns_only(brd, brd.c) && evaluate(brd, alpha, beta) >= beta {
 				score, count = null_make(brd, beta, null_depth-1, ply+1, extensions_left, can_split, reps)
@@ -221,10 +221,9 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		}
 	}
 
-
 	// IID
-	if hash_result == NO_MATCH && can_null && depth >= IID_MIN { //&& node_type != Y_ALL {
-	// No hash move available. If on the PV, use IID to get a decent first move to try.
+	if hash_result == NO_MATCH && can_null && depth >= IID_MIN && !in_check {
+		// No hash move available. If on the PV, use IID to get a decent first move to try.
 		var local_pv *PV
 		score, count, local_pv = young_brothers_wait(brd, alpha, beta, depth-2, ply, extensions_left, can_null, false, node_type, old_reps)
 		sum += count
@@ -232,8 +231,6 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 			first_move = local_pv.m
 		}
 	}
-
-
 
 	var child_type int
 	// If a hash move or IID move is available, try it first.
@@ -265,7 +262,6 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		}
 		legal_searched += 1
 	}
-
 
 	// Generate tactical (non-quiet) moves.  Good moves will be searched sequentially to establish good bounds
 	// before remaining nodes are searched in parallel.
@@ -329,16 +325,13 @@ func young_brothers_wait(brd *Board, alpha, beta, depth, ply, extensions_left in
 		}
 	}
 
-
-
-
 	// Delay the generation of remaining moves until all promotions, winning captures, and killer moves have been searched.
 	// if a cutoff occurs, this will reduce move generation effort substantially.
 	hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
 	castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
 	get_remaining_moves(brd, in_check, remaining_moves, &main_ktable[ply])
 
-	for _, item := range *remaining_moves { 
+	for _, item := range *remaining_moves {
 		m = item.move
 		if m == first_move || !avoids_check(brd, m, in_check) {
 			continue

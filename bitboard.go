@@ -63,6 +63,7 @@ func setup_square_masks() {
 		sq_mask_off[i] = (^sq_mask_on[i])
 		mask_of_length[i] = uint64(sq_mask_on[i] - 1)
 	}
+	mask_of_length[64] = uint64((sq_mask_on[63] << 1) - 1)
 }
 
 func setup_pawn_masks() {

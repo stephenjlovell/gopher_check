@@ -74,16 +74,17 @@ func (brd *Board) Placement(c uint8) BB { return brd.occupied[c] }
 
 func (brd *Board) Copy() *Board {
 	return &Board{
-		pieces:         brd.pieces,
-		squares:        brd.squares,
-		occupied:       brd.occupied,
-		material:       brd.material,
-		hash_key:       brd.hash_key,
-		pawn_hash_key:  brd.pawn_hash_key,
-		c:              brd.c,
-		castle:         brd.castle,
-		enp_target:     brd.enp_target,
-		halfmove_clock: brd.halfmove_clock,
+		pieces:          brd.pieces,
+		squares:         brd.squares,
+		occupied:        brd.occupied,
+		material:        brd.material,
+		hash_key:        brd.hash_key,
+		pawn_hash_key:   brd.pawn_hash_key,
+		c:               brd.c,
+		castle:          brd.castle,
+		enp_target:      brd.enp_target,
+		halfmove_clock:  brd.halfmove_clock,
+		endgame_counter: brd.endgame_counter,
 	}
 }
 
