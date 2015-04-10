@@ -59,9 +59,9 @@ type SplitPoint struct {
 type Stack []StackItem
 
 type StackItem struct {
-	sp           *SplitPoint
-	value        int
-	eval				 int
+	sp    *SplitPoint
+	value int
+	eval  int
 
 	pv_move      Move
 	current_move Move
@@ -71,9 +71,17 @@ type StackItem struct {
 
 	hash_key uint64 // use hash key to search for repetitions
 
-	ply   int
-	depth int
+	ply             int
+	depth           int
 	extensions_left int
 
 	skip_pruning bool
+}
+
+func (s *StackItem) StoreKiller(m Move) {
+	killers := s.killers
+	if m != killers.first {
+		killers.second = killers.first
+		killers.first = m
+	}
 }

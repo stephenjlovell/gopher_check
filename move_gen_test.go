@@ -25,51 +25,64 @@ package main
 
 import (
 	"fmt"
-	"strconv"
-	"testing"
-	"time"
+	// "strconv"
+	// "testing"
+	// "time"
 )
 
 var legal_max_tree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860, 84998978956, 2439530234167}
 
-func TestLegalMoveGen(t *testing.T) {
-	setup()
-	brd := StartPos()
-	copy := brd.Copy()
-	depth := 4
-	start := time.Now()
-	sum := Perft(brd, depth)
-	elapsed := time.Since(start)
-	nps := int64(float64(sum) / elapsed.Seconds())
-
-	fmt.Printf("%d nodes at depth %d. %d NPS\n", sum, depth, nps)
-
-	fmt.Printf("%d total nodes in check\n", check_count)
-	fmt.Printf("%d total capture nodes\n", capture_count)
-
-	CompareBoards(copy, brd)
-	Assert(*brd == *copy, "move generation did not return to initial board state.")
-	Assert(sum == legal_max_tree[depth], "Expected "+strconv.Itoa(legal_max_tree[depth])+
-		" nodes, got "+strconv.Itoa(sum))
-}
-
-// func TestMoveGen(t *testing.T) {
+// func TestLegalMoveGen(t *testing.T) {
 // 	setup()
 // 	brd := StartPos()
 // 	copy := brd.Copy()
-// 	depth := 5
+// 	depth := 4
 // 	start := time.Now()
-// 	sum := Perft(brd, depth)
+// 	stk := make(Stack, MAX_STACK, MAX_STACK)
+// 	sum := Perft(brd, stk, depth, 0)
 // 	elapsed := time.Since(start)
-// 	nps := int64(float64(sum)/elapsed.Seconds())
+// 	nps := int64(float64(sum) / elapsed.Seconds())
 
 // 	fmt.Printf("%d nodes at depth %d. %d NPS\n", sum, depth, nps)
 
 // 	fmt.Printf("%d total nodes in check\n", check_count)
 // 	fmt.Printf("%d total capture nodes\n", capture_count)
 
-// 	Assert(CompareBoards(copy, brd), "move generation did not return to initial board state.")
+// 	CompareBoards(copy, brd)
+// 	Assert(*brd == *copy, "move generation did not return to initial board state.")
+// 	Assert(sum == legal_max_tree[depth], "Expected "+strconv.Itoa(legal_max_tree[depth])+
+// 		" nodes, got "+strconv.Itoa(sum))
 // }
+
+var check_count int
+var capture_count int
+var parallel_count int
+
+func Perft(brd *Board, stk Stack, depth, ply int) int {
+	if depth == 0 {
+		return 1
+	}
+	sum := 0
+	in_check := is_in_check(brd)
+	if in_check {
+		check_count += 1
+	}
+
+	this_stk := stk[ply]
+
+	memento := brd.NewMemento()
+	generator := NewMoveSelector(brd, &this_stk, in_check, NO_MOVE)
+	for m := generator.next(); m != NO_MOVE; m = generator.next() {
+		if m.IsCapture() {
+			capture_count += 1
+		}
+		make_move(brd, m)
+		sum += Perft(brd, stk, depth-1, ply+1)
+		unmake_move(brd, m, &memento)
+	}
+
+	return sum
+}
 
 func CompareBoards(brd, other *Board) bool {
 	equal := true
@@ -135,58 +148,4 @@ func Assert(statement bool, failure_message string) {
 	if !statement {
 		panic("\nAssertion failed: " + failure_message + "\n")
 	}
-}
-
-var check_count int
-var capture_count int
-var parallel_count int
-var mock_killers KEntry
-
-func Perft(brd *Board, depth int) int {
-	if depth == 0 {
-		return 1
-	}
-	sum := 0
-	in_check := is_in_check(brd)
-	if in_check {
-		check_count += 1
-	}
-
-	// best_moves, remaining_moves := get_best_moves(brd, in_check, &mock_killers)
-	// for _, item := range *best_moves {
-	// 	if avoids_check(brd, item.move, in_check) {
-	// 	sum += Perft_make_unmake(brd, item.move, depth-1)
-	// 	}
-	// }
-	// get_remaining_moves(brd, in_check, remaining_moves, &mock_killers)
-	// for _, item := range *remaining_moves {
-	// 	if avoids_check(brd, item.move, in_check) {
-	// 	sum += Perft_make_unmake(brd, item.move, depth-1)
-	// 	}
-	// }
-
-	generator := NewMoveSelector(brd, &Stack{}, in_check, NO_MOVE)
-	for m := generator.next(); m != NO_MOVE; m = generator.next() {
-		sum += Perft_make_unmake(brd, m, depth-1)
-	}
-
-	return sum
-}
-
-func Perft_make_unmake(brd *Board, m Move, depth int) int {
-	Assert(m != 0, "invalid move generated.")
-	sum := 0
-	if m.IsCapture() {
-		capture_count += 1
-	}
-	hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
-	castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
-	make_move(brd, m) // to do: make move
-
-	sum = Perft(brd, depth)
-
-	unmake_move(brd, m, enp_target) // to do: unmake move
-	brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
-	brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
-	return sum
 }

@@ -48,20 +48,20 @@ type Board struct {
 	endgame_counter uint8     // 8 	bits
 }
 
-type BoardMemento struct {  // memento object used to store board state to unmake later. 
-	hash_key uint64
-	pawn_hash_key uint64
-	castle 	uint8
-	enp_target uint8
+type BoardMemento struct { // memento object used to store board state to unmake later.
+	hash_key       uint64
+	pawn_hash_key  uint64
+	castle         uint8
+	enp_target     uint8
 	halfmove_clock uint8
 }
 
 func (brd *Board) NewMemento() BoardMemento {
 	return BoardMemento{
-		hash_key: brd.hash_key,
-		pawn_hash_key: brd.pawn_hash_key,
-		castle: brd.castle,
-		enp_target: brd.enp_target,
+		hash_key:       brd.hash_key,
+		pawn_hash_key:  brd.pawn_hash_key,
+		castle:         brd.castle,
+		enp_target:     brd.enp_target,
 		halfmove_clock: brd.halfmove_clock,
 	}
 }
@@ -82,7 +82,7 @@ func (brd *Board) AllOccupied() BB { return brd.occupied[0] | brd.occupied[1] }
 
 func (brd *Board) Placement(c uint8) BB { return brd.occupied[c] }
 
-func (brd *Board) pawns_only() bool {  
+func (brd *Board) pawns_only() bool {
 	return brd.occupied[brd.c] == brd.pieces[brd.c][PAWN]|brd.pieces[brd.c][KING]
 }
 

@@ -38,6 +38,7 @@ const (
 	ORDERING_ONLY
 	AVOID_NULL
 	CUTOFF_FOUND
+	EXACT_FOUND
 )
 
 const (
@@ -119,7 +120,7 @@ func (tt *TT) probe(brd *Board, depth, null_depth int, alpha, beta, score *int) 
 		if hash_key == slot[i].HashKey() { // look for an entry uncorrupted by lockless access.
 			// fmt.Printf("Full Key match: %d", hash_key)
 
-			slot[i].data = (slot[i].data & mask_of_length[45])|(uint64(search_id)<<45)// update age (search id) of entry.
+			slot[i].data = (slot[i].data & mask_of_length[45]) | (uint64(search_id) << 45) // update age (search id) of entry.
 
 			entry_depth := slot[i].Depth()
 			if entry_depth >= depth {
@@ -142,11 +143,12 @@ func (tt *TT) probe(brd *Board, depth, null_depth int, alpha, beta, score *int) 
 					}
 				case EXACT: // score was inside bounds.  (at PV node)
 
-					// to do: if exact entry is valid for current bounds, save the PV.
-
 					if entry_value > *alpha {
 						if entry_value < *beta {
-							return slot[i].Move(), CUTOFF_FOUND
+
+							// to do: if exact entry is valid for current bounds, save the full PV.
+
+							return slot[i].Move(), EXACT_FOUND
 						} else {
 							// *beta = entry_value
 						}

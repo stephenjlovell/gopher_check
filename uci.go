@@ -58,7 +58,7 @@ func PrintInfo(score, depth, node_count int, time_elapsed time.Duration, stk Sta
 	nps := int64(float64(node_count) / (float64(ms) / float64(1000.0)))
 	fmt.Printf("info score cp %d depth %d nodes %d nps %d time %d", score, depth, node_count, nps, ms)
 	if stk[0].pv_move != 0 {
-		fmt.Printf(" pv %s\n", print_pv(stk))
+		fmt.Printf(" pv %s\n", stk.PVtoUCI())
 	}
 	fmt.Printf("NPS: %.4f m\n", float64(nps)/1000000)
 }
@@ -264,5 +264,4 @@ func StartPos() *Board {
 // move this application logic out of UCI file
 func ResetAll() {
 	main_htable.Clear()
-	main_ktable.Clear()
 }

@@ -100,32 +100,36 @@ const (
 func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 	var guess, count, sum int
 	c := brd.c
+	var stk Stack
 
 	id_alpha, id_beta = -INF, INF // first iteration is always full-width.
-	stk := make(Stack, MAX_STACK, MAX_STACK)
+	stk = make(Stack, MAX_STACK, MAX_STACK)
 
-	guess, count = ybw(brd, stk, id_alpha, id_beta, 1, 0, MAX_EXT, true, true, Y_PV)
+	guess, count = ybw(brd, stk, id_alpha, id_beta, 1, 0, MAX_EXT, true, Y_PV)
 	nodes_per_iteration[1] += count
 	sum += count
 
 	if stk[0].pv_move != 0 {
 		id_move[c], id_score[c] = stk[0].pv_move, guess
-		save_pv(brd, stk, 1) // install PV to transposition table prior to next iteration.
+		// stk.SavePV(brd, 1) // install PV to transposition table prior to next iteration.
+	} else {
+		fmt.Println("Nil PV returned to ID")
 	}
 
 	var d int
 	for d = 2; d <= depth; {
-
-		guess, count = ybw(brd, stk, id_alpha, id_beta, d, 0, MAX_EXT, true, true, Y_PV)
+		stk = make(Stack, MAX_STACK, MAX_STACK)
+		guess, count = ybw(brd, stk, id_alpha, id_beta, d, 0, MAX_EXT, true, Y_PV)
 		sum += count
 
 		if cancel_search {
 			return id_move[c], sum
 		} else if stk[0].pv_move != 0 {
 			id_move[c], id_score[c] = stk[0].pv_move, guess
-			save_pv(brd, stk, 1) // install PV to transposition table prior to next iteration.
+			// stk.SavePV(brd, d) // install PV to transposition table prior to next iteration.
 		} else {
 			fmt.Printf("Nil PV returned to ID\n")
+			// fmt.Println(print_pv(stk))
 		}
 
 		nodes_per_iteration[d] += count
@@ -136,14 +140,14 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 		d++
 	}
 
-	if print_info {
-		PrintInfo(guess, depth, sum, time.Since(start), stk)
-	}
+	// if print_info {
+	PrintInfo(guess, depth, sum, time.Since(start), stk)
+	// }
 
 	return id_move[c], sum
 }
 
-func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, can_null, can_split bool, node_type int) (int, int) {
+func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, can_null bool, node_type int) (int, int) {
 
 	// always extend 1-ply when at end of PV?
 
@@ -179,8 +183,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	score, best := -INF, -INF
 	old_alpha := alpha
 	sum, count, legal_searched := 1, 0, 0
-	this_stk := stk[ply]
-
+	this_stk := &stk[ply]
 
 	var best_move, first_move Move
 	var null_depth int
@@ -193,35 +196,32 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	first_move, hash_result = main_tt.probe(brd, depth, null_depth, &alpha, &beta, &score)
 
 	if node_type != Y_PV {
-
-		if hash_result == CUTOFF_FOUND { // Hash hit
-			// pv.m, pv.value = first_move, score
-			this_stk.pv_move, this_stk.value = first_move, score
-			return score, sum
-
-		} else if hash_result != AVOID_NULL { // Null-Move Pruning
-
-			if !in_check && can_null && depth > 2 && in_endgame(brd) == 0 &&
-				!brd.pawns_only() && evaluate(brd, alpha, beta) >= beta {
-				score, count = null_make(brd, stk, beta, null_depth-1, ply+1, extensions_left, can_split)
-				sum += count
-				if score >= beta {
-					main_tt.store(brd, 0, depth, LOWER_BOUND, score)
-					return score, sum
-				}
+		if hash_result >= CUTOFF_FOUND { // Hash hit
+			if hash_result == EXACT_FOUND { // only add to PV if cutoff is exact
+				this_stk.pv_move, this_stk.value = first_move, score
+				// fmt.Printf("exact entry off PV\n")
 			}
+			return score, sum
+		} else if hash_result != AVOID_NULL { // Null-Move Pruning
+			// if !in_check && can_null && depth > 2 && in_endgame(brd) == 0 &&
+			// 	!brd.pawns_only() && evaluate(brd, alpha, beta) >= beta {
+			// 	score, count = null_make(brd, stk, beta, null_depth-1, ply+1, extensions_left)
+			// 	sum += count
+			// 	if score >= beta {
+			// 		main_tt.store(brd, 0, depth, LOWER_BOUND, score)
+			// 		return score, sum
+			// 	}
+			// }
 		}
 	}
 
-	// IID
-	if hash_result == NO_MATCH && can_null && depth >= IID_MIN { // skip IID when in check?
-		// No hash move available. Use IID to get a decent first move to try.
-		score, count = ybw(brd, stk, alpha, beta, depth-2, ply, extensions_left, can_null, false, node_type)
-		sum += count
-		first_move = this_stk.pv_move
-	}
-
-
+	// // IID
+	// if hash_result == NO_MATCH && can_null && depth >= IID_MIN { // skip IID when in check?
+	// 	// No hash move available. Use IID to get a decent first move to try.
+	// 	score, count = ybw(brd, stk, alpha, beta, depth-2, ply, extensions_left, can_null, false, node_type)
+	// 	sum += count
+	// 	first_move = this_stk.pv_move
+	// }
 
 	var child_type, r_depth, r_extensions int
 	var m Move
@@ -239,13 +239,13 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	}
 
 	memento := brd.NewMemento()
-	generator := NewMoveSelector(brd, &this_stk, in_check, first_move)
+	selector := NewMoveSelector(brd, this_stk, in_check, first_move)
 
-	for m = generator.next(); m != NO_MOVE; m = generator.next() {
+	for m = selector.next(); m != NO_MOVE; m = selector.next() {
 
 		make_move(brd, m)
 
-		if f_prune && generator.stage >= STAGE_REMAINING && legal_searched > 0 && m.IsQuiet() &&
+		if f_prune && selector.stage > STAGE_REMAINING && legal_searched > 0 && m.IsQuiet() &&
 			!is_passed_pawn(brd, m) && !is_in_check(brd) {
 			unmake_move(brd, m, &memento)
 			continue
@@ -257,21 +257,21 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		if m.IsPromotion() && extensions_left > 0 {
 			r_depth = depth + 1
 			r_extensions = extensions_left - 1
-		} else if can_reduce && generator.stage >= STAGE_REMAINING && !is_passed_pawn(brd, m) && !is_in_check(brd) {
+		} else if can_reduce && selector.stage > STAGE_REMAINING && !is_passed_pawn(brd, m) && !is_in_check(brd) {
 			r_depth = depth - 1 // Late move reductions
 		}
 
 		if node_type == Y_PV && alpha > old_alpha {
-			score, count = ybw(brd, stk, -alpha-1, -alpha, r_depth-1, ply+1, r_extensions, can_null, can_split, child_type)
+			score, count = ybw(brd, stk, -alpha-1, -alpha, r_depth-1, ply+1, r_extensions, can_null, child_type)
 			score = -score
 			sum += count
 			if score > alpha {
-				score, count = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, can_split, Y_ALL)
+				score, count = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, Y_PV)
 				score = -score
 				sum += count
 			}
 		} else {
-			score, count = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, can_split, child_type)
+			score, count = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, child_type)
 			sum += count
 			score = -score
 		}
@@ -282,8 +282,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		if score > best {
 			if score > alpha {
 				if score >= beta {
-					this_stk.pv_move, this_stk.value = m, score
-					store_cutoff(brd, &this_stk, m, depth, ply, count) // what happens on refutation of main pv?
+					store_cutoff(brd, this_stk, m, depth, ply, count) // what happens on refutation of main pv?
 					main_tt.store(brd, m, depth, LOWER_BOUND, score)
 					return score, sum
 				}
@@ -299,20 +298,18 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	// at split nodes the legal_searched counter will need to be shared via the SP struct.
 
 	if legal_searched > 0 {
-		this_stk.pv_move, this_stk.value = best_move, best
 		if alpha > old_alpha {
+			this_stk.pv_move, this_stk.value = best_move, best
 			main_tt.store(brd, best_move, depth, EXACT, best) // local PV node found.
 			return best, sum
 		} else {
-			stk[ply+1].pv_move = 0
 			main_tt.store(brd, best_move, depth, UPPER_BOUND, best)
 			return best, sum
 		}
 	} else { // draw or checkmate detected.
-		// stk[ply+1].pv_move = 0  // <- is this needed?
 		if in_check {
 			main_tt.store(brd, 0, depth, EXACT, ply-MATE)
-			return ply-MATE, sum
+			return ply - MATE, sum
 		} else {
 			main_tt.store(brd, 0, depth, EXACT, 0)
 			return 0, sum
@@ -330,7 +327,7 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 	// if old_reps.Scan(brd.hash_key) {
 	// 	return 0, 1
 	// }
-	this_stk := stk[ply]
+	this_stk := &stk[ply]
 
 	in_check := is_in_check(brd)
 	if brd.halfmove_clock >= 100 {
@@ -359,7 +356,6 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 			if score > best {
 				if score > alpha {
 					if score >= beta {
-						this_stk.pv_move, this_stk.value = m, score
 						return score, sum
 					}
 					alpha = score
@@ -376,7 +372,6 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 			if score > best {
 				if score > alpha {
 					if score >= beta {
-						this_stk.pv_move, this_stk.value = m, score
 						return score, sum
 					}
 					alpha = score
@@ -385,7 +380,7 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 			}
 		}
 		if !legal_moves {
-			return ply-MATE, 1 // detect checkmate.
+			return ply - MATE, 1 // detect checkmate.
 		}
 	} else {
 		score = evaluate(brd, alpha, beta) // stand pat
@@ -394,15 +389,12 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 		if score > best {
 			if score > alpha {
 				if score >= beta {
-					// stk[ply+1].pv_move = 0
 					return score, sum
 				}
 				alpha = score
 			}
 			best = score
 		}
-
-
 
 		best_moves := get_winning_captures(brd)
 		for _, item := range *best_moves { // search the best moves sequentially.
@@ -426,7 +418,6 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 			if score > best {
 				if score > alpha {
 					if score >= beta {
-						this_stk.pv_move, this_stk.value = m, score
 						return score, sum
 					}
 					alpha = score
@@ -447,7 +438,6 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 				if score > best {
 					if score > alpha {
 						if score >= beta {
-							this_stk.pv_move, this_stk.value = m, score
 							return score, sum
 						}
 						alpha = score
@@ -483,8 +473,6 @@ func determine_child_type(node_type, legal_searched int) int {
 	}
 }
 
-
-
 func q_make(brd *Board, stk Stack, m Move, alpha, beta, depth, ply, checks_remaining int, memento *BoardMemento) (int, int) {
 	make_move(brd, m) // to do: make move
 	score, sum := quiescence(brd, stk, -beta, -alpha, depth, ply, checks_remaining)
@@ -492,14 +480,14 @@ func q_make(brd *Board, stk Stack, m Move, alpha, beta, depth, ply, checks_remai
 	return -score, sum
 }
 
-func null_make(brd *Board, stk Stack, beta, depth, ply, extensions_left int, can_split bool) (int, int) {
+func null_make(brd *Board, stk Stack, beta, depth, ply, extensions_left int) (int, int) {
 	hash_key, enp_target := brd.hash_key, brd.enp_target
 	brd.c ^= 1
 	brd.hash_key ^= side_key
 	brd.hash_key ^= enp_zobrist(enp_target)
 	brd.enp_target = SQ_INVALID
 
-	score, sum := ybw(brd, stk, -beta, -beta+1, depth, ply, extensions_left, false, can_split, Y_CUT)
+	score, sum := ybw(brd, stk, -beta, -beta+1, depth, ply, extensions_left, false, Y_CUT)
 
 	brd.c ^= 1
 	brd.hash_key = hash_key
@@ -511,13 +499,7 @@ func store_cutoff(brd *Board, this_stk *StackItem, m Move, depth, ply, count int
 	if !m.IsCapture() {
 		main_htable.Store(m, brd.c, count)
 		if !m.IsPromotion() { // By the time killer moves are tried, any promotions will already have been searched.
-			
-			store_killers(this_stk, m) // store killer moves in stack for this Goroutine.
+			this_stk.StoreKiller(m) // store killer moves in stack for this Goroutine.
 		}
 	}
 }
-
-
-
-
-

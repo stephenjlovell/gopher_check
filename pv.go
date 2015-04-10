@@ -23,36 +23,29 @@
 
 package main
 
-type PV struct {
-	m     Move
-	value int
-	next  *PV
-}
+import (
+// "fmt"
+)
 
-func print_pv(stk Stack) string {
+func (stk Stack) PVtoUCI() string {
 	var m Move
-	str := stk[0].pv_move.ToUCI()
-	for _, this_stk := range stk[1:] { 
+	str := ""
+	m = stk[0].pv_move
+	if m == 0 || m == NO_MOVE {
+		return str
+	}
+	str = stk[0].pv_move.ToUCI()
+	for _, this_stk := range stk[1:] {
 		m = this_stk.pv_move
+		if m == 0 || m == NO_MOVE {
+			break
+		}
 		str += " " + m.ToUCI()
 	}
 	return str
 }
 
-func (pv *PV) ToUCI() string {
-	str := ""
-	remaining := pv
-	if remaining != nil {
-		str = remaining.m.ToUCI()
-		for remaining.next != nil {
-			remaining = remaining.next
-			str += " " + remaining.m.ToUCI()
-		}
-	}
-	return str
-}
-
-func save_pv(brd *Board, stk Stack, depth int) {
+func (stk Stack) SavePV(brd *Board, depth int) {
 	copy := brd.Copy() // create a local copy of the board to avoid having to unmake moves.
 	extensions_left := MAX_EXT
 	var m Move
@@ -80,40 +73,6 @@ func save_pv(brd *Board, stk Stack, depth int) {
 		} else {
 			break
 		}
-	}
-}
-
-// Save the PV entries to the main transposition table.
-func (pv *PV) Save(brd *Board, depth int) {
-	copy := brd.Copy() // create a local copy of the board to avoid having to unmake moves.
-	remaining := pv
-	extensions_left := MAX_EXT
-	var m Move
-
-	for remaining != nil {
-		m = remaining.m
-		if !m.IsValid(copy) {
-			break
-		}
-
-		if is_in_check(copy) && extensions_left > 0 {
-			if MAX_EXT > extensions_left { // only extend after the first check.
-				depth += 1
-			}
-			extensions_left -= 1
-		}
-
-		main_tt.store(copy, m, depth, EXACT, remaining.value)
-
-		make_move(copy, m)
-
-		if m.IsPromotion() {
-			extensions_left -= 1
-		} else {
-			depth -= 1
-		}
-
-		remaining = remaining.next
 	}
 }
 

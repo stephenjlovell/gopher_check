@@ -478,6 +478,3 @@ func in_endgame(brd *Board) int {
 		return 0
 	}
 }
-
-
-

@@ -24,41 +24,31 @@
 package main
 
 import (
-	"fmt"
+// "fmt"
 )
 
-var main_ktable KTable
-
-type KTable [128]KEntry
+// type KTable [128]KEntry
 
 type KEntry struct {
 	first  Move
 	second Move
 }
 
-func store_killers(this_stk *StackItem, m Move) {
-	killers := this_stk.killers
-	if m != killers.first {
-		killers.second = killers.first
-		killers.first = m
-	}
-}
+// func (k *KTable) Store(m Move, ply int) {
+// 	if m != k[ply].first {
+// 		k[ply].second = k[ply].first
+// 		k[ply].first = m
+// 	}
+// }
 
-func (k *KTable) Store(m Move, ply int) {
-	if m != k[ply].first {
-		k[ply].second = k[ply].first
-		k[ply].first = m
-	}
-}
+// func (k *KTable) Clear() {
+// 	for _, entry := range k {
+// 		entry.first, entry.second = 0, 0
+// 	}
+// }
 
-func (k *KTable) Clear() {
-	for _, entry := range k {
-		entry.first, entry.second = 0, 0
-	}
-}
-
-func (k *KTable) Print() {
-	for ply := 0; ply < 64; ply++ {
-		fmt.Printf("Ply %d, K1: %s, K2: %s\n", ply, k[ply].first.ToUCI(), k[ply].second.ToUCI())
-	}
-}
+// func (k *KTable) Print() {
+// 	for ply := 0; ply < 64; ply++ {
+// 		fmt.Printf("Ply %d, K1: %s, K2: %s\n", ply, k[ply].first.ToUCI(), k[ply].second.ToUCI())
+// 	}
+// }
