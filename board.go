@@ -48,12 +48,22 @@ type Board struct {
 	endgame_counter uint8     // 8 	bits
 }
 
-func EmptyBoard() *Board {
-	brd := &Board{enp_target: SQ_INVALID}
-	for sq := 0; sq < 64; sq++ {
-		brd.squares[sq] = EMPTY
+type BoardMemento struct {  // memento object used to store board state to unmake later. 
+	hash_key uint64
+	pawn_hash_key uint64
+	castle 	uint8
+	enp_target uint8
+	halfmove_clock uint8
+}
+
+func (brd *Board) NewMemento() BoardMemento {
+	return BoardMemento{
+		hash_key: brd.hash_key,
+		pawn_hash_key: brd.pawn_hash_key,
+		castle: brd.castle,
+		enp_target: brd.enp_target,
+		halfmove_clock: brd.halfmove_clock,
 	}
-	return brd
 }
 
 func (brd *Board) ValueAt(sq int) int {
@@ -71,6 +81,10 @@ func (brd *Board) Enemy() uint8 {
 func (brd *Board) AllOccupied() BB { return brd.occupied[0] | brd.occupied[1] }
 
 func (brd *Board) Placement(c uint8) BB { return brd.occupied[c] }
+
+func (brd *Board) pawns_only() bool {  
+	return brd.occupied[brd.c] == brd.pieces[brd.c][PAWN]|brd.pieces[brd.c][KING]
+}
 
 func (brd *Board) Copy() *Board {
 	return &Board{
@@ -133,32 +147,18 @@ func (brd *Board) print_row(start int, row []Piece) {
 	fmt.Printf("\n  ---------------------------------\n")
 }
 
+func EmptyBoard() *Board {
+	brd := &Board{enp_target: SQ_INVALID}
+	for sq := 0; sq < 64; sq++ {
+		brd.squares[sq] = EMPTY
+	}
+	return brd
+}
+
 var piece_graphics = [2][6]string{
 	{"\u265F", "\u265E", "\u265D", "\u265C", "\u265B", "\u265A"},
 	{"\u2659", "\u2658", "\u2657", "\u2656", "\u2655", "\u2654"},
 }
-
-// Parse a FEN string and return a pointer to a new Board object
-// func NewBoard(fen string) *Board {
-
-// }
-
-// func (brd *Board) Equal(other *Board) bool {
-// 	if brd.pieces == other.pieces &&
-// 		 brd.squares == other.squares &&
-// 		 brd.occupied == other.occupied &&
-// 		 brd.material == other.material &&
-// 		 brd.hash_key == other.hash_key &&
-// 		 brd.pawn_hash_key == other.pawn_hash_key &&
-// 		 brd.c == other.c &&
-// 		 brd.castle == other.castle &&
-// 		 brd.enp_target == other.enp_target &&
-// 		 brd.halfmove_clock == other.halfmove_clock {
-// 	 	 return true
-// 	 } else {
-// 	 	 return false
-// 	 }
-// }
 
 const (
 	A1 = iota

@@ -27,6 +27,10 @@ import (
 	"sync"
 )
 
+const (
+	MAX_STACK = 128
+)
+
 type SPList []SplitPoint
 
 type SplitPoint struct {
@@ -35,7 +39,7 @@ type SplitPoint struct {
 	parent    *SplitPoint
 	master    *Worker
 	brd       *Board
-	stack     Stack
+	stack     StackItem
 	depth     int
 	node_type int
 
@@ -52,19 +56,24 @@ type SplitPoint struct {
 	cutoff_found bool // shared
 }
 
-type Stack struct {
+type Stack []StackItem
+
+type StackItem struct {
 	sp           *SplitPoint
 	value        int
+	eval				 int
+
 	pv_move      Move
 	current_move Move
-	tt_move      Move
+	first_move   Move
 
 	killers KEntry
 
-	// add repetition list
+	hash_key uint64 // use hash key to search for repetitions
 
 	ply   int
 	depth int
+	extensions_left int
 
 	skip_pruning bool
 }

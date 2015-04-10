@@ -63,7 +63,7 @@ Debugging:
 
 Search refactoring:
 
-  -Create MoveGenerator type to coordinate batched move generation across workers. 
+  -Create MoveSelector type to coordinate batched move generation across workers. 
   Send ordered moves via channel.
 
   -Move shared memory into SplitPoint struct to reduce communication costs.

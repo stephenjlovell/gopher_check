@@ -187,13 +187,10 @@ func PawnSAN(brd *Board, m Move, san string) string {
 }
 
 func GivesCheck(brd *Board, m Move) bool {
-	hash_key, pawn_hash_key := brd.hash_key, brd.pawn_hash_key
-	castle, enp_target, halfmove_clock := brd.castle, brd.enp_target, brd.halfmove_clock
+	memento := brd.NewMemento()
 	make_move(brd, m)
 	in_check := is_in_check(brd)
-	unmake_move(brd, m, enp_target)
-	brd.hash_key, brd.pawn_hash_key = hash_key, pawn_hash_key
-	brd.castle, brd.enp_target, brd.halfmove_clock = castle, enp_target, halfmove_clock
+	unmake_move(brd, m, &memento)
 	return in_check
 }
 

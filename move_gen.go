@@ -29,16 +29,14 @@ import (
 )
 
 // Current search stages:
-
-// 1. Hash move if available
-// 2. IID move if no hash move available.
-// 3. Evasions or Winning captures/promotions via get_best_moves(). No pruning - extensions only.
-// 4. All other moves via get_remaining_moves().  Futility pruning and Late-move reductions applied.
+	// 1. Hash move if available
+	// 2. IID move if no hash move available.
+	// 3. Evasions or Winning captures/promotions via get_best_moves(). No pruning - extensions only.
+	// 4. All other moves via get_remaining_moves().  Futility pruning and Late-move reductions applied.
 
 // Q-search stages
-
-// 1. Evasions or winning captures/promotions get_best_moves(). Specialized futility pruning.
-// 2. Non-captures that give check via get_checks().
+	// 1. Evasions or winning captures/promotions get_best_moves(). Specialized futility pruning.
+	// 2. Non-captures that give check via get_checks().
 
 const (
 	STAGE_FIRST = iota
@@ -46,8 +44,8 @@ const (
 	STAGE_REMAINING
 )
 
-func NewMG(brd *Board, stk *Stack, in_check bool, first_move Move) *MoveGenerator {
-	return &MoveGenerator{
+func NewMoveSelector(brd *Board, stk *StackItem, in_check bool, first_move Move) *MoveSelector {
+	return &MoveSelector{
 		brd:             brd,
 		stk:             stk,
 		in_check:        in_check,
@@ -57,27 +55,30 @@ func NewMG(brd *Board, stk *Stack, in_check bool, first_move Move) *MoveGenerato
 	}
 }
 
-type MoveGenerator struct {
+type MoveSelector struct {
 	sync.Mutex
 	brd      *Board
-	stk      *Stack
+	stk      *StackItem
 	stage    int
 	index    int
 	in_check bool
-
 	first_move      Move
 	moves           MoveList // append remaining moves here once good moves are consumed.
 	remaining_moves MoveList
-	// ready 					chan Move // channel to store moves ready to be consumed by workers.
 }
 
-func (g *MoveGenerator) next() Move {
+func (g *MoveSelector) next_shared() Move {
 	g.Lock()
+	m := g.next()
+	g.Unlock()
+	return m
+}
+
+func (g *MoveSelector) next() Move {
 	for {
 		for g.index == len(g.moves) {
 			finished := g.next_batch()
 			if finished {
-				g.Unlock()
 				return NO_MOVE
 			}
 		}
@@ -86,13 +87,18 @@ func (g *MoveGenerator) next() Move {
 		if (g.stage != STAGE_FIRST && m == g.first_move) || !avoids_check(g.brd, m, g.in_check) {
 			continue
 		} else {
-			g.Unlock()
 			return m
 		}
 	}
 }
 
-func (g *MoveGenerator) next_batch() bool {
+// Killers will be at front of remaining_moves. Ideally they should be used immediately after 
+// winning moves, and before generation of remaining_moves:
+// Remove killer sort checking from get_captures(), get_checks(), and get_evasions.
+// Test killers for validity and pass directly to search.  
+// Will speed up movegen and will occasionally save from running get_non_captures() on killer cutoff.
+
+func (g *MoveSelector) next_batch() bool {
 	finished := false
 	switch g.stage {
 	case STAGE_FIRST:
@@ -119,6 +125,8 @@ func (g *MoveGenerator) next_batch() bool {
 	g.stage++
 	return finished
 }
+
+
 
 func get_best_moves(brd *Board, in_check bool, killers *KEntry) (*MoveList, *MoveList) {
 	var best_moves, remaining_moves MoveList

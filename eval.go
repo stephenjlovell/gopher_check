@@ -479,6 +479,5 @@ func in_endgame(brd *Board) int {
 	}
 }
 
-func pawns_only(brd *Board, c uint8) bool {
-	return brd.occupied[c] == brd.pieces[c][PAWN]|brd.pieces[c][KING]
-}
+
+

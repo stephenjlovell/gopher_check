@@ -105,7 +105,8 @@ func (tt *TT) get_slot(hash_key uint64) *Slot {
 	return tt[hash_key&TT_MASK]
 }
 
-// https://cis.uab.edu/hyatt/hashing.html
+// Use Hyatt's lockless hashing approach to avoid having to lock/unlock shared TT memory
+// during parallel search:  https://cis.uab.edu/hyatt/hashing.html
 
 func (tt *TT) probe(brd *Board, depth, null_depth int, alpha, beta, score *int) (Move, int) {
 
@@ -118,8 +119,7 @@ func (tt *TT) probe(brd *Board, depth, null_depth int, alpha, beta, score *int) 
 		if hash_key == slot[i].HashKey() { // look for an entry uncorrupted by lockless access.
 			// fmt.Printf("Full Key match: %d", hash_key)
 
-			// to do: update age (search id) of entry.
-			slot[i].data = (slot[i].data & mask_of_length[45]) | (uint64(search_id) << 45)
+			slot[i].data = (slot[i].data & mask_of_length[45])|(uint64(search_id)<<45)// update age (search id) of entry.
 
 			entry_depth := slot[i].Depth()
 			if entry_depth >= depth {

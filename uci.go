@@ -45,7 +45,6 @@ var uci_ponder bool = false
 var uci_debug bool = false
 
 var current_board *Board = EmptyBoard()
-var current_repetitions = &RepList{}
 
 func Milliseconds(d time.Duration) int64 {
 	return int64(d.Seconds() * float64(time.Second/time.Millisecond))
@@ -54,12 +53,12 @@ func Milliseconds(d time.Duration) int64 {
 // Printed to standard output at end of each iterative deepening pass. Score given in centipawns.
 // Time given in milliseconds. PV given as list of moves.
 // Example: info score cp 13  depth 1 nodes 13 time 15 pv f1b5 h1h2
-func PrintInfo(score, depth, node_count int, time_elapsed time.Duration, pv *PV) {
+func PrintInfo(score, depth, node_count int, time_elapsed time.Duration, stk Stack) {
 	ms := Milliseconds(time_elapsed)
 	nps := int64(float64(node_count) / (float64(ms) / float64(1000.0)))
 	fmt.Printf("info score cp %d depth %d nodes %d nps %d time %d", score, depth, node_count, nps, ms)
-	if pv != nil {
-		fmt.Printf(" pv %s\n", pv.ToUCI())
+	if stk[0].pv_move != 0 {
+		fmt.Printf(" pv %s\n", print_pv(stk))
 	}
 	fmt.Printf("NPS: %.4f m\n", float64(nps)/1000000)
 }
@@ -220,7 +219,7 @@ func UCIGo(uci_fields []string, wg *sync.WaitGroup) {
 			uci_fields = uci_fields[:1]
 		}
 	}
-	move, _ := Search(current_board, current_repetitions, int(depth), int(time))
+	move, _ := Search(current_board, int(depth), int(time))
 	fmt.Printf("bestmove %s\n", move.ToUCI())
 	wg.Done()
 }
@@ -231,12 +230,12 @@ func UCIPosition(uci_fields []string) *Board {
 	if len(uci_fields) == 0 || uci_fields[0] == "startpos" {
 		brd = ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 		if len(uci_fields) > 2 {
-			current_repetitions = PlayMoveSequence(brd, uci_fields[2:])
+			PlayMoveSequence(brd, uci_fields[2:])
 		}
 	} else if uci_fields[0] == "fen" {
 		brd = ParseFENSlice(uci_fields[1:])
 		if len(uci_fields) > 7 {
-			current_repetitions = PlayMoveSequence(brd, uci_fields[7:])
+			PlayMoveSequence(brd, uci_fields[7:])
 		}
 	} else {
 		fmt.Println("Empty board created.")
@@ -245,9 +244,8 @@ func UCIPosition(uci_fields []string) *Board {
 	return brd
 }
 
-func PlayMoveSequence(brd *Board, uci_fields []string) *RepList {
+func PlayMoveSequence(brd *Board, uci_fields []string) {
 	var move Move
-	var reps *RepList
 	if uci_fields[0] == "moves" {
 		uci_fields = uci_fields[1:]
 	} else if uci_fields[1] == "moves" {
@@ -256,9 +254,7 @@ func PlayMoveSequence(brd *Board, uci_fields []string) *RepList {
 	for _, move_str := range uci_fields {
 		move = ParseMove(brd, move_str)
 		make_move(brd, move)
-		reps = &RepList{uint32(brd.hash_key), reps}
 	}
-	return reps
 }
 
 func StartPos() *Board {

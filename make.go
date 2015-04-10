@@ -142,7 +142,7 @@ func make_move(brd *Board, move Move) {
 }
 
 // Castle flag, enp target, hash key, pawn hash key, and halfmove clock are all restored during search
-func unmake_move(brd *Board, move Move, enp_target uint8) {
+func unmake_move(brd *Board, move Move, memento *BoardMemento) {
 	brd.c ^= 1 // flip the current side to move.
 
 	c := brd.c
@@ -150,6 +150,7 @@ func unmake_move(brd *Board, move Move, enp_target uint8) {
 	from := move.From()
 	to := move.To()
 	captured_piece := move.CapturedPiece()
+	enp_target := memento.enp_target
 
 	switch piece {
 	case PAWN:
@@ -215,6 +216,8 @@ func unmake_move(brd *Board, move Move, enp_target uint8) {
 		}
 	}
 
+	brd.hash_key, brd.pawn_hash_key = memento.hash_key, memento.pawn_hash_key
+	brd.castle, brd.enp_target, brd.halfmove_clock = memento.castle, enp_target, memento.halfmove_clock
 }
 
 // Whenever a king or rook moves off its initial square or is captured,

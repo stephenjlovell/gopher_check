@@ -165,7 +165,7 @@ func Perft(brd *Board, depth int) int {
 	// 	}
 	// }
 
-	generator := NewMG(brd, &Stack{}, in_check, NO_MOVE)
+	generator := NewMoveSelector(brd, &Stack{}, in_check, NO_MOVE)
 	for m := generator.next(); m != NO_MOVE; m = generator.next() {
 		sum += Perft_make_unmake(brd, m, depth-1)
 	}

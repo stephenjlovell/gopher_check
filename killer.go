@@ -36,6 +36,14 @@ type KEntry struct {
 	second Move
 }
 
+func store_killers(this_stk *StackItem, m Move) {
+	killers := this_stk.killers
+	if m != killers.first {
+		killers.second = killers.first
+		killers.first = m
+	}
+}
+
 func (k *KTable) Store(m Move, ply int) {
 	if m != k[ply].first {
 		k[ply].second = k[ply].first
