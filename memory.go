@@ -38,7 +38,6 @@ const (
 	ORDERING_ONLY
 	AVOID_NULL
 	CUTOFF_FOUND
-	EXACT_FOUND
 )
 
 const (
@@ -145,9 +144,7 @@ func (tt *TT) probe(brd *Board, depth, null_depth int, alpha, beta, score *int) 
 
 					if entry_value > *alpha {
 						if entry_value < *beta {
-
 							// to do: if exact entry is valid for current bounds, save the full PV.
-
 							return slot[i].Move(), CUTOFF_FOUND
 						} else {
 							// *beta = entry_value

@@ -116,10 +116,13 @@ func  (s *MoveSelector) next() Move {
 		}
 		m := s.moves[s.index].move
 		s.index++
-		if (s.stage != STAGE_FIRST && m == s.first_move) || !avoids_check(s.brd, m, s.in_check) {
-			continue
-		} else {
+		switch s.stage-1 {
+		case STAGE_FIRST:  // First stage resulted in a valid move
 			return m
+		default:
+			if m != s.first_move && avoids_check(s.brd, m, s.in_check) {
+				return m
+			}
 		}
 	}
 }

@@ -151,7 +151,6 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	// always extend 1-ply when at end of PV?
 
 	if depth <= 0 {
-		// return evaluate(brd, alpha, beta), 1
 		score, sum := quiescence(brd, stk, alpha, beta, depth, ply, MAX_Q_CHECKS) // q-search is always sequential.
 		return score, sum
 	}
@@ -176,7 +175,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 
 	if brd.halfmove_clock >= 100 {
 		if is_checkmate(brd, in_check) {
-			return ply - MATE, 1
+			return ply-MATE, 1
 		} else {
 			return 0, 1
 		}
@@ -199,14 +198,6 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 
 	if node_type != Y_PV {
 		if hash_result == CUTOFF_FOUND { // Hash hit
-			// if hash_result == EXACT_FOUND { // only add to PV if cutoff is exact
-			// 	this_stk.pv_move, this_stk.value = first_move, score
-			// }
-			if !first_move.IsValid(brd) {
-				brd.Print()
-				first_move.Print()
-				fmt.Println(score)
-			}
 			return score, sum
 		} else if hash_result != AVOID_NULL { // Null-Move Pruning
 			if !in_check && can_null && depth > 2 && in_endgame(brd) == 0 &&
@@ -214,7 +205,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 				score, count = null_make(brd, stk, beta, null_depth-1, ply+1, extensions_left)
 				sum += count
 				if score >= beta {
-					// main_tt.store(brd, 0, depth, LOWER_BOUND, score)
+					main_tt.store(brd, 0, depth, LOWER_BOUND, score)
 					return score, sum
 				}
 			}
@@ -274,7 +265,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 			score = -score
 			sum += count
 			if score > alpha {
-				score, count = ybw(brd, stk, -beta, -old_alpha, r_depth-1, ply+1, r_extensions, can_null, Y_PV)
+				score, count = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, Y_PV)
 				score = -score
 				sum += count
 			}
@@ -286,7 +277,6 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 
 		unmake_move(brd, m, memento) // to do: unmake move
 
-		legal_searched += 1
 		if score > best {
 			if score > alpha {
 				if score >= beta {
@@ -299,6 +289,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 			best_move = m
 			best = score
 		}
+		legal_searched += 1
 	}
 
 	// may want to look at how depth is being stored: is it accounting for non-check extensions/reductions?
@@ -310,18 +301,18 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 			if can_null {
 				this_stk.pv_move, this_stk.value = best_move, best				
 			}
-			// main_tt.store(brd, best_move, depth, EXACT, best) // local PV node found.
+			main_tt.store(brd, best_move, depth, EXACT, best) // local PV node found.
 			return best, sum
 		} else {
-			// main_tt.store(brd, best_move, depth, UPPER_BOUND, best)
+			main_tt.store(brd, best_move, depth, UPPER_BOUND, best)
 			return best, sum
 		}
-	} else { // draw or checkmate detected.
-		if in_check {
-			// main_tt.store(brd, 0, depth, EXACT, ply-MATE)
+	} else { 
+		if in_check { // Checkmate.
+			main_tt.store(brd, 0, depth, EXACT, ply-MATE)
 			return ply-MATE, sum
-		} else {
-			// main_tt.store(brd, 0, depth, EXACT, 0)
+		} else {  // Draw.
+			main_tt.store(brd, 0, depth, EXACT, 0)
 			return 0, sum
 		}
 	}
