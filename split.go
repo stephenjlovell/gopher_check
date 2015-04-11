@@ -78,10 +78,3 @@ type StackItem struct {
 	skip_pruning bool
 }
 
-func (s *StackItem) StoreKiller(m Move) {
-	killers := s.killers
-	if m != killers.first {
-		killers.second = killers.first
-		killers.first = m
-	}
-}

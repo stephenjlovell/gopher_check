@@ -111,7 +111,7 @@ func (tt *TT) get_slot(hash_key uint64) *Slot {
 
 func (tt *TT) probe(brd *Board, depth, null_depth int, alpha, beta, score *int) (Move, int) {
 
-	// return Move(0), NO_MATCH
+	return Move(0), NO_MATCH
 
 	hash_key := brd.hash_key
 	slot := tt.get_slot(hash_key)

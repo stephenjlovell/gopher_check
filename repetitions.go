@@ -27,40 +27,18 @@ import (
 // "fmt"
 )
 
-type RepList struct {
-	key    uint32
-	parent *RepList
-}
-
-func (l *RepList) Scan(big_key uint64) bool {
-	p := l.parent
-	key := uint32(big_key)
+func (stk Stack) IsRepetition(ply int) bool {
+	hash_key := stk[ply].hash_key
 	repetition_count := 0
-	for p != nil {
-		if p.key == key {
+	for ; ply > 0; ply-- {
+		if stk[ply-1].hash_key == hash_key {
 			repetition_count += 1
 			if repetition_count == 2 {
-				// fmt.Println("Repetition found.")
+				// fmt.Printf("repetition found ")
 				return true
 			}
 		}
-		if p.parent == nil {
-			break
-		}
-		p = p.parent.parent
 	}
 	return false
 }
 
-func (l *RepList) Len() int {
-	if l == nil {
-		return 0
-	}
-	sum := 0
-	p := l.parent
-	for p != nil {
-		sum += 1
-		p = p.parent
-	}
-	return sum
-}

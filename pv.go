@@ -76,16 +76,6 @@ func (stk Stack) SavePV(brd *Board, depth int) {
 	}
 }
 
-// Creation:
-
-// At each node:
-// Create a new PV struct.
-// Each search returns a pointer to the finalized local pv on completion.
-// When a move is > alpha and < beta, copy the move to the local struct and append its PV to the local.
-// When no move is a PV move, any local PVs beneath are discarded. If there is a best move, it should still be returned as the last item in the pv list
-
-// Root returns a pointer to final PV for current iteration to ID.
-
 // Node criteria as defined by Onno Garms:
 // http://www.talkchess.com/forum/viewtopic.php?t=38408&postdays=0&postorder=asc&topic_view=flat&start=10
 
