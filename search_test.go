@@ -72,7 +72,6 @@ func correct_move(epd *EPD, move_str string) bool {
 	return false
 }
 
-
 // // Do a fixed-depth search on a small number of positions.
 // func TestSearch(t *testing.T) {
 // 	setup()

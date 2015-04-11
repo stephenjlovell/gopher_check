@@ -27,22 +27,12 @@ import (
 // "fmt"
 )
 
-type KEntry struct {
-	first  Move
-	second Move
-}
+type KEntry [2]Move
 
 func (s *StackItem) StoreKiller(m Move) {
-  killers := s.killers
-  if m != killers.first {
-    killers.second = killers.first
-    killers.first = m
-  }
+	killers := s.killers
+	if m != killers[0] {
+		killers[1] = killers[0]
+		killers[0] = m
+	}
 }
-
-
-
-
-
-
-

@@ -175,7 +175,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 
 	if brd.halfmove_clock >= 100 {
 		if is_checkmate(brd, in_check) {
-			return ply-MATE, 1
+			return ply - MATE, 1
 		} else {
 			return 0, 1
 		}
@@ -299,7 +299,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	if legal_searched > 0 {
 		if alpha > old_alpha {
 			if can_null {
-				this_stk.pv_move, this_stk.value = best_move, best				
+				this_stk.pv_move, this_stk.value = best_move, best
 			}
 			main_tt.store(brd, best_move, depth, EXACT, best) // local PV node found.
 			return best, sum
@@ -307,11 +307,11 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 			main_tt.store(brd, best_move, depth, UPPER_BOUND, best)
 			return best, sum
 		}
-	} else { 
+	} else {
 		if in_check { // Checkmate.
 			main_tt.store(brd, 0, depth, EXACT, ply-MATE)
-			return ply-MATE, sum
-		} else {  // Draw.
+			return ply - MATE, sum
+		} else { // Draw.
 			main_tt.store(brd, 0, depth, EXACT, 0)
 			return 0, sum
 		}
@@ -334,7 +334,7 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 	in_check := is_in_check(brd)
 	if brd.halfmove_clock >= 100 {
 		if is_checkmate(brd, in_check) {
-			return ply-MATE, 1
+			return ply - MATE, 1
 		} else {
 			return 0, 1
 		}
@@ -371,13 +371,13 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 		// if !in_check && alpha > 100-MATE &&
 		// 	best+m.CapturedPiece().Value()+m.PromotedTo().PromoteValue()+piece_values[ROOK] < alpha &&
 		// 	!is_in_check(brd) {
-		// 	unmake_move(brd, m, &memento) 
+		// 	unmake_move(brd, m, &memento)
 		// 	continue
 		// }
 		score, count = quiescence(brd, stk, -beta, -alpha, depth-1, ply+1, r_checks_remaining)
 		score = -score
 		sum += count
-		unmake_move(brd, m, memento) 
+		unmake_move(brd, m, memento)
 
 		if score > best {
 			if score > alpha {
@@ -391,11 +391,10 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 	}
 
 	if in_check && !legal_moves {
-		return ply-MATE, 1 // detect checkmate.
+		return ply - MATE, 1 // detect checkmate.
 	}
 	return best, sum
 }
-
 
 func determine_child_type(node_type, legal_searched int) int {
 	switch node_type {

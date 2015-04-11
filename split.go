@@ -77,4 +77,3 @@ type StackItem struct {
 
 	skip_pruning bool
 }
-
