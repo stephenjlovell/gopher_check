@@ -217,7 +217,8 @@ func unmake_move(brd *Board, move Move, memento *BoardMemento) {
 	}
 
 	brd.hash_key, brd.pawn_hash_key = memento.hash_key, memento.pawn_hash_key
-	brd.castle, brd.enp_target, brd.halfmove_clock = memento.castle, enp_target, memento.halfmove_clock
+	brd.castle, brd.enp_target = memento.castle, memento.enp_target
+	brd.halfmove_clock = memento.halfmove_clock
 }
 
 // Whenever a king or rook moves off its initial square or is captured,

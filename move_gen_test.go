@@ -25,34 +25,34 @@ package main
 
 import (
 	"fmt"
-	// "strconv"
-	// "testing"
-	// "time"
+	"strconv"
+	"testing"
+	"time"
 )
 
 var legal_max_tree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860, 84998978956, 2439530234167}
 
-// func TestLegalMoveGen(t *testing.T) {
-// 	setup()
-// 	brd := StartPos()
-// 	copy := brd.Copy()
-// 	depth := 4
-// 	start := time.Now()
-// 	stk := make(Stack, MAX_STACK, MAX_STACK)
-// 	sum := Perft(brd, stk, depth, 0)
-// 	elapsed := time.Since(start)
-// 	nps := int64(float64(sum) / elapsed.Seconds())
+func TestLegalMoveGen(t *testing.T) {
+	setup()
+	brd := StartPos()
+	copy := brd.Copy()
+	depth := 4
+	start := time.Now()
+	stk := make(Stack, MAX_STACK, MAX_STACK)
+	sum := Perft(brd, stk, depth, 0)
+	elapsed := time.Since(start)
+	nps := int64(float64(sum) / elapsed.Seconds())
 
-// 	fmt.Printf("%d nodes at depth %d. %d NPS\n", sum, depth, nps)
+	fmt.Printf("%d nodes at depth %d. %d NPS\n", sum, depth, nps)
 
-// 	fmt.Printf("%d total nodes in check\n", check_count)
-// 	fmt.Printf("%d total capture nodes\n", capture_count)
+	fmt.Printf("%d total nodes in check\n", check_count)
+	fmt.Printf("%d total capture nodes\n", capture_count)
 
-// 	CompareBoards(copy, brd)
-// 	Assert(*brd == *copy, "move generation did not return to initial board state.")
-// 	Assert(sum == legal_max_tree[depth], "Expected "+strconv.Itoa(legal_max_tree[depth])+
-// 		" nodes, got "+strconv.Itoa(sum))
-// }
+	CompareBoards(copy, brd)
+	Assert(*brd == *copy, "move generation did not return to initial board state.")
+	Assert(sum == legal_max_tree[depth], "Expected "+strconv.Itoa(legal_max_tree[depth])+
+		" nodes, got "+strconv.Itoa(sum))
+}
 
 var check_count int
 var capture_count int
@@ -78,7 +78,7 @@ func Perft(brd *Board, stk Stack, depth, ply int) int {
 		}
 		make_move(brd, m)
 		sum += Perft(brd, stk, depth-1, ply+1)
-		unmake_move(brd, m, &memento)
+		unmake_move(brd, m, memento)
 	}
 
 	return sum

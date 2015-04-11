@@ -190,7 +190,7 @@ func GivesCheck(brd *Board, m Move) bool {
 	memento := brd.NewMemento()
 	make_move(brd, m)
 	in_check := is_in_check(brd)
-	unmake_move(brd, m, &memento)
+	unmake_move(brd, m, memento)
 	return in_check
 }
 

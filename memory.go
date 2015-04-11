@@ -111,7 +111,7 @@ func (tt *TT) get_slot(hash_key uint64) *Slot {
 
 func (tt *TT) probe(brd *Board, depth, null_depth int, alpha, beta, score *int) (Move, int) {
 
-	return Move(0), NO_MATCH
+	// return Move(0), NO_MATCH
 
 	hash_key := brd.hash_key
 	slot := tt.get_slot(hash_key)
@@ -148,7 +148,7 @@ func (tt *TT) probe(brd *Board, depth, null_depth int, alpha, beta, score *int) 
 
 							// to do: if exact entry is valid for current bounds, save the full PV.
 
-							return slot[i].Move(), EXACT_FOUND
+							return slot[i].Move(), CUTOFF_FOUND
 						} else {
 							// *beta = entry_value
 						}

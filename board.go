@@ -56,8 +56,8 @@ type BoardMemento struct { // memento object used to store board state to unmake
 	halfmove_clock uint8
 }
 
-func (brd *Board) NewMemento() BoardMemento {
-	return BoardMemento{
+func (brd *Board) NewMemento() *BoardMemento {
+	return &BoardMemento{
 		hash_key:       brd.hash_key,
 		pawn_hash_key:  brd.pawn_hash_key,
 		castle:         brd.castle,

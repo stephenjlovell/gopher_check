@@ -37,7 +37,7 @@ const (
 	LMR_MIN      = 2
 	MAX_PLY      = MAX_DEPTH + MAX_EXT
 	IID_MIN      = 4
-	MAX_Q_CHECKS = 0
+	MAX_Q_CHECKS = 1
 	COMMS_MIN    = 6 // minimum depth at which to send info to GUI.
 )
 
@@ -111,7 +111,7 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 
 	if stk[0].pv_move != 0 {
 		id_move[c], id_score[c] = stk[0].pv_move, guess
-		stk.SavePV(brd, 1) // install PV to transposition table prior to next iteration.
+		// stk.SavePV(brd, 1) // install PV to transposition table prior to next iteration.
 	} else {
 		fmt.Println("Nil PV returned to ID")
 	}
@@ -126,7 +126,7 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 			return id_move[c], sum
 		} else if stk[0].pv_move != 0 {
 			id_move[c], id_score[c] = stk[0].pv_move, guess
-			stk.SavePV(brd, d) // install PV to transposition table prior to next iteration.
+			// stk.SavePV(brd, d) // install PV to transposition table prior to next iteration.
 		} else {
 			fmt.Printf("Nil PV returned to ID\n")
 		}
@@ -139,9 +139,9 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 		d++
 	}
 
-	// if print_info {
-	// PrintInfo(guess, depth, sum, time.Since(start), stk)
-	// }
+	if print_info {
+		PrintInfo(guess, depth, sum, time.Since(start), stk)
+	}
 
 	return id_move[c], sum
 }
@@ -198,9 +198,14 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	first_move, hash_result = main_tt.probe(brd, depth, null_depth, &alpha, &beta, &score)
 
 	if node_type != Y_PV {
-		if hash_result >= CUTOFF_FOUND { // Hash hit
-			if hash_result == EXACT_FOUND { // only add to PV if cutoff is exact
-				this_stk.pv_move, this_stk.value = first_move, score
+		if hash_result == CUTOFF_FOUND { // Hash hit
+			// if hash_result == EXACT_FOUND { // only add to PV if cutoff is exact
+			// 	this_stk.pv_move, this_stk.value = first_move, score
+			// }
+			if !first_move.IsValid(brd) {
+				brd.Print()
+				first_move.Print()
+				fmt.Println(score)
 			}
 			return score, sum
 		} else if hash_result != AVOID_NULL { // Null-Move Pruning
@@ -209,7 +214,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 				score, count = null_make(brd, stk, beta, null_depth-1, ply+1, extensions_left)
 				sum += count
 				if score >= beta {
-					main_tt.store(brd, 0, depth, LOWER_BOUND, score)
+					// main_tt.store(brd, 0, depth, LOWER_BOUND, score)
 					return score, sum
 				}
 			}
@@ -275,13 +280,13 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 			}
 		} else {
 			score, count = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, child_type)
-			sum += count
 			score = -score
+			sum += count
 		}
+
+		unmake_move(brd, m, memento) // to do: unmake move
+
 		legal_searched += 1
-
-		unmake_move(brd, m, &memento) // to do: unmake move
-
 		if score > best {
 			if score > alpha {
 				if score >= beta {
@@ -305,18 +310,18 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 			if can_null {
 				this_stk.pv_move, this_stk.value = best_move, best				
 			}
-			main_tt.store(brd, best_move, depth, EXACT, best) // local PV node found.
+			// main_tt.store(brd, best_move, depth, EXACT, best) // local PV node found.
 			return best, sum
 		} else {
-			main_tt.store(brd, best_move, depth, UPPER_BOUND, best)
+			// main_tt.store(brd, best_move, depth, UPPER_BOUND, best)
 			return best, sum
 		}
 	} else { // draw or checkmate detected.
 		if in_check {
-			main_tt.store(brd, 0, depth, EXACT, ply-MATE)
+			// main_tt.store(brd, 0, depth, EXACT, ply-MATE)
 			return ply-MATE, sum
 		} else {
-			main_tt.store(brd, 0, depth, EXACT, 0)
+			// main_tt.store(brd, 0, depth, EXACT, 0)
 			return 0, sum
 		}
 	}
@@ -381,7 +386,7 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 		score, count = quiescence(brd, stk, -beta, -alpha, depth-1, ply+1, r_checks_remaining)
 		score = -score
 		sum += count
-		unmake_move(brd, m, &memento) 
+		unmake_move(brd, m, memento) 
 
 		if score > best {
 			if score > alpha {

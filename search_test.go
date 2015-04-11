@@ -24,9 +24,9 @@
 package main
 
 import (
-	"fmt"
-	"math"
-	"testing"
+	// "fmt"
+	// "math"
+	// "testing"
 )
 
 // // Do a fixed-depth search on a small number of positions.
@@ -52,34 +52,34 @@ import (
 // 	}
 // }
 
-func TestPlayingStrength(t *testing.T) {
-	setup()
-	print_info = false
-	depth := MAX_DEPTH - 6
-	test := load_epd_file("test_suites/wac_300.epd")
-	var move_str string
-	sum, score := 0, 0
-	for _, epd := range test {
-		ResetAll()
-		move, count := Search(epd.brd, depth, 30000)
-		move_str = ToSAN(epd.brd, move)
-		if correct_move(epd, move_str) {
-			score += 1
-			fmt.Printf("-")
-		} else {
-			fmt.Printf("X")
-		}
-		sum += count
-	}
-	fmt.Printf("\nTotal nodes searched: %.4f m\n", float64(sum)/1000000.0)
-	fmt.Printf("Total score: %d/%d\n", score, len(test))
-	fmt.Printf("Average Branching factor by iteration:\n")
-	var branching float64
-	for d := 2; d <= depth; d++ {
-		branching = math.Pow(float64(nodes_per_iteration[d])/float64(nodes_per_iteration[1]), float64(1)/float64(d-1))
-		fmt.Printf("%d ABF: %.4f\n", d, branching)
-	}
-}
+// func TestPlayingStrength(t *testing.T) {
+// 	setup()
+// 	print_info = false
+// 	depth := MAX_DEPTH - 7
+// 	test := load_epd_file("test_suites/wac_300.epd")
+// 	var move_str string
+// 	sum, score := 0, 0
+// 	for _, epd := range test {
+// 		ResetAll()
+// 		move, count := Search(epd.brd, depth, 30000)
+// 		move_str = ToSAN(epd.brd, move)
+// 		if correct_move(epd, move_str) {
+// 			score += 1
+// 			fmt.Printf("-")
+// 		} else {
+// 			fmt.Printf("X")
+// 		}
+// 		sum += count
+// 	}
+// 	fmt.Printf("\nTotal nodes searched: %.4f m\n", float64(sum)/1000000.0)
+// 	fmt.Printf("Total score: %d/%d\n", score, len(test))
+// 	fmt.Printf("Average Branching factor by iteration:\n")
+// 	var branching float64
+// 	for d := 2; d <= depth; d++ {
+// 		branching = math.Pow(float64(nodes_per_iteration[d])/float64(nodes_per_iteration[1]), float64(1)/float64(d-1))
+// 		fmt.Printf("%d ABF: %.4f\n", d, branching)
+// 	}
+// }
 
 func correct_move(epd *EPD, move_str string) bool {
 	for _, a := range epd.avoid_moves {
