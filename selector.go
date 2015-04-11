@@ -56,9 +56,10 @@ type SelectorInterface interface { // concrete Selector types must implement thi
 type AbstractSelector struct {
 	sync.Mutex
 	brd             *Board
-	stk             *StackItem
+	this_stk        *StackItem
 	stage           int
 	index           int
+	finished				int
 	in_check        bool
 	moves           MoveList 
 	remaining_moves MoveList
@@ -74,11 +75,11 @@ type QMoveSelector struct {
 	can_check				bool
 }
 
-func NewMoveSelector(brd *Board, stk *StackItem, in_check bool, first_move Move) SelectorInterface {
+func NewMoveSelector(brd *Board, this_stk *StackItem, in_check bool, first_move Move) SelectorInterface {
 	return &MoveSelector{
 		AbstractSelector: AbstractSelector{
 			brd:             brd,
-			stk:             stk,
+			this_stk:        this_stk,
 			in_check:        in_check,
 			moves:           MoveList{},
 			remaining_moves: MoveList{},
@@ -87,11 +88,11 @@ func NewMoveSelector(brd *Board, stk *StackItem, in_check bool, first_move Move)
 	}
 }
 
-func NewQMoveSelector(brd *Board, stk *StackItem, in_check, can_check bool) SelectorInterface {
+func NewQMoveSelector(brd *Board, this_stk *StackItem, in_check, can_check bool) SelectorInterface {
 	return &QMoveSelector{
 		AbstractSelector: AbstractSelector{
 			brd:             brd,
-			stk:             stk,
+			this_stk:        this_stk,
 			in_check:        in_check,
 			moves:           MoveList{},
 			remaining_moves: MoveList{},			
@@ -109,94 +110,113 @@ func (s *MoveSelector) next_shared() Move {
 
 func  (s *MoveSelector) next() Move {
 	for {
-		for s.index == len(s.moves) {
+		for s.index == s.finished {
 			if s.next_batch() {
 				return NO_MOVE
 			}
 		}
-		m := s.moves[s.index].move
-		s.index++
-		switch s.stage-1 {
+		switch s.stage-1 { 
 		case STAGE_FIRST:  // First stage resulted in a valid move
-			return m
-		default:
+			s.index++
+			if s.first_move.IsValid(s.brd) && avoids_check(s.brd, s.first_move, s.in_check) {
+				return s.first_move
+			}
+		case STAGE_WINNING:
+			m := s.moves[s.index].move
+			s.index++
 			if m != s.first_move && avoids_check(s.brd, m, s.in_check) {
 				return m
 			}
+		case STAGE_REMAINING:
+			m := s.remaining_moves[s.index].move
+			s.index++
+			if m != s.first_move && avoids_check(s.brd, m, s.in_check) {
+				return m
+			}
+		default:
+
 		}
 	}
 }
 
 func (s *MoveSelector) next_batch() bool {
-	finished := false
+	done := false
 	switch s.stage {
 	case STAGE_FIRST:
-		if s.first_move.IsValid(s.brd) && avoids_check(s.brd, s.first_move, s.in_check) {
-			s.moves.Push(&SortItem{s.first_move, SORT_FIRST})
-		}
+		s.finished = 1
 	case STAGE_WINNING:
+		s.index = 0
 		if s.in_check {
-			get_evasions(s.brd, &s.moves, &s.remaining_moves, &s.stk.killers)
+			get_evasions(s.brd, &s.moves, &s.remaining_moves, &s.this_stk.killers)
 		} else {
 			get_captures(s.brd, &s.moves, &s.remaining_moves)
 		}
 		s.moves.Sort()
+		s.finished = len(s.moves)
 	case STAGE_REMAINING:
+		s.index = 0
 		if !s.in_check {
-			get_non_captures(s.brd, &s.remaining_moves, &s.stk.killers)
+			get_non_captures(s.brd, &s.remaining_moves, &s.this_stk.killers)
 		}
 		s.remaining_moves.Sort()
-		s.moves = append(s.moves, s.remaining_moves...)
+		s.finished = len(s.remaining_moves)
 	default:
-		finished = true
+		done = true
 	}
 	s.stage++
-	return finished
+	return done
 }
 
 func (s *QMoveSelector) next() Move {
 	for {
-		for s.index == len(s.moves) {
+		for s.index == s.finished {
 			if s.next_batch() {
 				return NO_MOVE
 			}
 		}
-		m := s.moves[s.index].move
-		s.index++
-		if avoids_check(s.brd, m, s.in_check) {
-			return m
-		} else {
-			continue
+		switch s.stage-1 { 
+		case Q_STAGE_WINNING:
+			m := s.moves[s.index].move
+			s.index++
+			if avoids_check(s.brd, m, s.in_check) {
+				return m
+			}
+		case Q_STAGE_REMAINING:
+			m := s.remaining_moves[s.index].move
+			s.index++
+			if avoids_check(s.brd, m, s.in_check) {
+				return m
+			}
+		default:
+
 		}
 	}
 }
 
 func (s *QMoveSelector) next_batch() bool {
-	finished := false
+	done := false
 	switch s.stage {
 	case Q_STAGE_WINNING:
+		s.index = 0
 		if s.in_check {
-			get_evasions(s.brd, &s.moves, &s.remaining_moves, &s.stk.killers)
+			get_evasions(s.brd, &s.moves, &s.remaining_moves, &s.this_stk.killers)
 		} else {
 			get_captures(s.brd, &s.moves, &s.remaining_moves)
 		}
 		s.moves.Sort()
+		s.finished = len(s.moves)
 	case Q_STAGE_REMAINING:
-		if s.in_check {
-			if len(s.remaining_moves) > 0 {
-				s.remaining_moves.Sort()
-				s.moves = append(s.moves, s.remaining_moves...)
-			}			
-		} else if s.can_check {
-			get_checks(s.brd, &s.remaining_moves, &s.stk.killers)
-			s.remaining_moves.Sort()
-			s.moves = append(s.moves, s.remaining_moves...)
+		s.index = 0	
+		if !s.in_check && s.can_check {
+			get_checks(s.brd, &s.remaining_moves, &s.this_stk.killers)
 		}
+		s.remaining_moves.Sort()
+		s.finished = len(s.remaining_moves)
 	default:
-		finished = true
+		done = true
 	}
 	s.stage++
-	return finished
+	return done
 }
 
 
