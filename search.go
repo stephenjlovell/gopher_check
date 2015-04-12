@@ -37,7 +37,7 @@ const (
 	LMR_MIN      = 2
 	MAX_PLY      = MAX_DEPTH + MAX_EXT
 	IID_MIN      = 4
-	MAX_Q_CHECKS = 1
+	MAX_Q_CHECKS = 2
 	COMMS_MIN    = 6 // minimum depth at which to send info to GUI.
 )
 
@@ -244,11 +244,11 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	memento := brd.NewMemento()
 	selector := NewMoveSelector(brd, this_stk, in_check, first_move)
 
-	for m := selector.next(); m != NO_MOVE; m = selector.next() {
+	for m := selector.Next(); m != NO_MOVE; m = selector.Next() {
 
 		make_move(brd, m)
 
-		if f_prune && selector.stage > STAGE_REMAINING && legal_searched > 0 && m.IsQuiet() &&
+		if f_prune && selector.CurrentStage() == STAGE_REMAINING && legal_searched > 0 && m.IsQuiet() &&
 			!is_passed_pawn(brd, m) && !is_in_check(brd) {
 			unmake_move(brd, m, memento)
 			continue
@@ -260,7 +260,8 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		if m.IsPromotion() && extensions_left > 0 {
 			r_depth = depth + 1
 			r_extensions = extensions_left - 1
-		} else if can_reduce && selector.stage > STAGE_REMAINING && !is_passed_pawn(brd, m) && !is_in_check(brd) {
+		} else if can_reduce && selector.CurrentStage() == STAGE_REMAINING && legal_searched > 5 &&
+		!is_passed_pawn(brd, m) && !is_in_check(brd) {
 			r_depth = depth - 1 // Late move reductions
 		}
 
@@ -279,10 +280,13 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 			sum += count
 		}
 
-		unmake_move(brd, m, memento) // to do: unmake move
+		unmake_move(brd, m, memento) 
 
 		if score > best {
 			if score > alpha {
+				if node_type == Y_PV {
+					this_stk.pv_move, this_stk.value = m, score
+				}
 				if score >= beta {
 					store_cutoff(brd, this_stk, m, count) // what happens on refutation of main pv?
 					main_tt.store(brd, m, depth, LOWER_BOUND, score)
@@ -301,11 +305,11 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	// at split nodes the legal_searched counter will need to be shared via the SP struct.
 
 	if legal_searched > 0 {
+		if node_type == Y_PV {
+			this_stk.pv_move, this_stk.value = best_move, best
+		}
 		if alpha > old_alpha {
-			if can_null {
-				this_stk.pv_move, this_stk.value = best_move, best
-			}
-			main_tt.store(brd, best_move, depth, EXACT, best) // local PV node found.
+			main_tt.store(brd, best_move, depth, EXACT, best) 
 			return best, sum
 		} else {
 			main_tt.store(brd, best_move, depth, UPPER_BOUND, best)
@@ -346,7 +350,6 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 
 	this_stk := &stk[ply]
 	score, best, sum, count := -INF, -INF, 1, 0
-	legal_moves := false
 	r_checks_remaining := checks_remaining
 
 	if in_check {
@@ -365,11 +368,11 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 		}
 	}
 
+	legal_moves := false
 	memento := brd.NewMemento()
 	selector := NewQMoveSelector(brd, this_stk, in_check, checks_remaining > 0)
 
-	for m := selector.next(); m != NO_MOVE; m = selector.next() {
-		legal_moves = true
+	for m := selector.Next(); m != NO_MOVE; m = selector.Next() {
 
 		make_move(brd, m)
 
@@ -393,6 +396,7 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 			}
 			best = score
 		}
+		legal_moves = true
 	}
 
 	if in_check && !legal_moves {
@@ -442,7 +446,7 @@ func store_cutoff(brd *Board, this_stk *StackItem, m Move, count int) {
 	if !m.IsCapture() {
 		main_htable.Store(m, brd.c, count)
 		if !m.IsPromotion() { // By the time killer moves are tried, any promotions will already have been searched.
-			this_stk.StoreKiller(m) // store killer moves in stack for this Goroutine.
+			// this_stk.StoreKiller(m) // store killer moves in stack for this Goroutine.
 		}
 	}
 }

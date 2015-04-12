@@ -52,8 +52,9 @@ const (
 )
 
 type SelectorInterface interface { // concrete Selector types must implement this interface
-	next() Move
-	next_batch() bool
+	Next() Move
+	NextBatch() bool
+	CurrentStage() int
 }
 
 type AbstractSelector struct {
@@ -69,6 +70,10 @@ type AbstractSelector struct {
 	remaining_moves MoveList
 }
 
+func (s *AbstractSelector) CurrentStage() int {
+	return s.stage-1
+}
+
 type MoveSelector struct {
 	AbstractSelector
 	first_move Move
@@ -80,7 +85,7 @@ type QMoveSelector struct {
 	can_check 				bool
 }
 
-func NewMoveSelector(brd *Board, this_stk *StackItem, in_check bool, first_move Move) *MoveSelector {
+func NewMoveSelector(brd *Board, this_stk *StackItem, in_check bool, first_move Move) SelectorInterface {
 	return &MoveSelector{
 		AbstractSelector: AbstractSelector{
 			brd:             brd,
@@ -109,17 +114,17 @@ func NewQMoveSelector(brd *Board, this_stk *StackItem, in_check, can_check bool)
 	}
 }
 
-func (s *MoveSelector) next_shared() Move {
+func (s *MoveSelector) NextShared() Move {
 	s.Lock()
-	m := s.next()
+	m := s.Next()
 	s.Unlock()
 	return m
 }
 
-func (s *MoveSelector) next() Move {
+func (s *MoveSelector) Next() Move {
 	for {
 		for s.index == s.finished {
-			if s.next_batch() {
+			if s.NextBatch() {
 				return NO_MOVE
 			}
 		}
@@ -161,7 +166,7 @@ func (s *MoveSelector) next() Move {
 	}
 }
 
-func (s *MoveSelector) next_batch() bool {
+func (s *MoveSelector) NextBatch() bool {
 	done := false
 	s.index = 0
 	switch s.stage {
@@ -193,10 +198,10 @@ func (s *MoveSelector) next_batch() bool {
 	return done
 }
 
-func (s *QMoveSelector) next() Move {
+func (s *QMoveSelector) Next() Move {
 	for {
 		for s.index == s.finished {
-			if s.next_batch() {
+			if s.NextBatch() {
 				return NO_MOVE
 			}
 		}
@@ -231,7 +236,7 @@ func (s *QMoveSelector) next() Move {
 	}
 }
 
-func (s *QMoveSelector) next_batch() bool {
+func (s *QMoveSelector) NextBatch() bool {
 	done := false
 	s.index = 0
 	switch s.stage {
@@ -251,7 +256,7 @@ func (s *QMoveSelector) next_batch() bool {
 		s.finished = len(s.remaining_moves)
 	case Q_STAGE_CHECKS:
 		if !s.in_check && s.can_check {
-			get_checks(s.brd, &s.remaining_moves)
+			get_checks(s.brd, &s.checks)
 			s.checks.Sort()
 		}
 		s.finished = len(s.checks)

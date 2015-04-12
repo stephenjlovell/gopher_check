@@ -72,7 +72,7 @@ func Perft(brd *Board, stk Stack, depth, ply int) int {
 
 	memento := brd.NewMemento()
 	generator := NewMoveSelector(brd, &this_stk, in_check, NO_MOVE)
-	for m := generator.next(); m != NO_MOVE; m = generator.next() {
+	for m := generator.Next(); m != NO_MOVE; m = generator.Next() {
 		if m.IsCapture() {
 			capture_count += 1
 		}

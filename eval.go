@@ -247,7 +247,7 @@ func evaluate(brd *Board, alpha, beta int) int {
 	c, e := brd.c, brd.Enemy()
 	material := int(brd.material[c] - brd.material[e])
 	if brd.pieces[c][KING] == 0 {
-		fmt.Println("The king is dead. Long live the king.")
+		fmt.Println("King missing at eval.")
 		return -MATE
 	}
 	// lazy evaluation: if material balance is already outside the search window by an amount that outweighs
