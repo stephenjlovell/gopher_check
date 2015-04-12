@@ -595,7 +595,12 @@ func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 				} else {
 					to = int(enp_target) - 8
 				}
-				if (sq_mask_on[to] & defense_map) > 0 && pinned_can_move(brd, from, to, c, e) {
+				// In addition to making sure this capture will get the king out of check and that
+				// the piece is not pinned, verify that removing the enemy pawn does not leave the
+				// king in check.
+				if (sq_mask_on[to] & defense_map) > 0 && pinned_can_move(brd, from, to, c, e) && 
+				is_pinned(brd, int(enp_target), c, e) & sq_mask_on[to] > 0  {
+
 					m = NewCapture(from, to, PAWN, PAWN)
 					see = get_see(brd, from, to, PAWN)
 					winning.Push(&SortItem{m, SortWinningCapture(see, PAWN, PAWN)})

@@ -239,18 +239,6 @@ func enemy_in_check(brd *Board) bool { // determines if other side is in check
 	return side_in_check(brd, brd.Enemy(), brd.c)
 }
 
-func avoids_check(brd *Board, m Move, in_check bool) bool {
-	return in_check || pseudolegal_avoids_check(brd, m)
-}
-
-func pseudolegal_avoids_check(brd *Board, m Move) bool {
-	if m.Piece() == KING {
-		return !is_attacked_by(brd, m.To(), brd.Enemy(), brd.c)
-	} else {
-		return pinned_can_move(brd, m.From(), m.To(), brd.c, brd.Enemy())
-	}
-}
-
 func pinned_can_move(brd *Board, from, to int, c, e uint8) bool {
 	return is_pinned(brd, from, brd.c, brd.Enemy())&sq_mask_on[to] > 0
 }

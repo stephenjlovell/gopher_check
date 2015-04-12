@@ -129,39 +129,36 @@ func (s *MoveSelector) Next() Move {
 			}
 		}
 		switch s.stage - 1 {
-		case STAGE_FIRST: // First stage resulted in a valid move
+		case STAGE_FIRST: 
 			s.index++
-			if s.first_move.IsValid(s.brd) && avoids_check(s.brd, s.first_move, s.in_check) {
+			if s.brd.ValidMove(s.first_move) && s.brd.LegalMove(s.first_move, s.in_check) {
 				return s.first_move
 			}
 		case STAGE_WINNING:
 			m := s.winning[s.index].move
 			s.index++
-			if m != s.first_move && avoids_check(s.brd, m, s.in_check) {
+			if m != s.first_move && s.brd.AvoidsCheck(m, s.in_check) {
 				return m
 			}
 		case STAGE_KILLER:
 			m := s.this_stk.killers[s.index]
 			s.index++
-			if m != s.first_move && m.IsValid(s.brd) && avoids_check(s.brd, m, s.in_check) {
+			if m != s.first_move && s.brd.ValidMove(m) && s.brd.LegalMove(m, s.in_check) {
 				return m
 			}
 		case STAGE_LOSING:
 			m := s.losing[s.index].move
 			s.index++
-			if m != s.first_move && avoids_check(s.brd, m, s.in_check) {
+			if m != s.first_move && s.brd.AvoidsCheck(m, s.in_check) {
 				return m
 			}
 		case STAGE_REMAINING:
 			m := s.remaining_moves[s.index].move
 			s.index++
-			killers := s.this_stk.killers
-			if m != s.first_move && m != killers[0] && m != killers[1] &&
-				avoids_check(s.brd, m, s.in_check) {
+			if m != s.first_move && !s.this_stk.IsKiller(m) && s.brd.AvoidsCheck(m, s.in_check) {
 				return m
 			}
 		default:
-
 		}
 	}
 }
@@ -181,7 +178,7 @@ func (s *MoveSelector) NextBatch() bool {
 		s.winning.Sort()
 		s.finished = len(s.winning)
 	case STAGE_KILLER:
-		s.finished = 2
+		s.finished = 3
 	case STAGE_LOSING:
 		s.losing.Sort()
 		s.finished = len(s.losing)
@@ -209,29 +206,28 @@ func (s *QMoveSelector) Next() Move {
 		case Q_STAGE_WINNING:
 			m := s.winning[s.index].move
 			s.index++
-			if avoids_check(s.brd, m, s.in_check) {
+			if s.brd.AvoidsCheck(m, s.in_check) {
 				return m
 			}
 		case Q_STAGE_LOSING:
 			m := s.losing[s.index].move
 			s.index++
-			if avoids_check(s.brd, m, s.in_check) {
+			if s.brd.AvoidsCheck(m, s.in_check) {
 				return m
 			}
 		case Q_STAGE_REMAINING:
 			m := s.remaining_moves[s.index].move
 			s.index++
-			if avoids_check(s.brd, m, s.in_check) {
+			if s.brd.AvoidsCheck(m, s.in_check) {
 				return m
 			}
 		case Q_STAGE_CHECKS:
 			m := s.checks[s.index].move
 			s.index++
-			if avoids_check(s.brd, m, s.in_check) {
+			if s.brd.AvoidsCheck(m, s.in_check) {
 				return m
 			}
 		default:
-
 		}
 	}
 }

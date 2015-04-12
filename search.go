@@ -212,13 +212,13 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		}
 	} 
 	
-	// skip IID when in check?
-	if !in_check && node_type == Y_PV && hash_result == NO_MATCH && can_null && depth >= IID_MIN { 
-		// No hash move available. Use IID to get a decent first move to try.
-		score, count = ybw(brd, stk, alpha, beta, depth-2, ply, extensions_left, can_null, node_type)
-		sum += count
-		first_move = this_stk.pv_move
-	}
+	// // skip IID when in check?
+	// if !in_check && node_type == Y_PV && hash_result == NO_MATCH && can_null && depth >= IID_MIN { 
+	// 	// No hash move available. Use IID to get a decent first move to try.
+	// 	score, count = ybw(brd, stk, alpha, beta, depth-2, ply, extensions_left, can_null, node_type)
+	// 	sum += count
+	// 	first_move = this_stk.pv_move
+	// }
 
 	var child_type, r_depth, r_extensions int
 

@@ -61,6 +61,24 @@ func (b BB) Print() {
 	fmt.Printf("\n")
 }
 
+func major_piece_mask(piece Piece, sq int) BB {
+	switch piece {
+	case KNIGHT:
+		return knight_masks[sq]
+	case BISHOP:
+		return bishop_masks[sq]
+	case ROOK:
+		return rook_masks[sq]
+	case QUEEN:
+		return queen_masks[sq]
+	case KING:
+		return king_masks[sq]
+	default:
+		fmt.Println("Invalid major piece type.")
+		return BB(0)
+	}
+}
+
 func setup_square_masks() {
 	for i := 0; i < 64; i++ {
 		sq_mask_on[i] = BB(1 << uint(i))

@@ -66,6 +66,179 @@ func (brd *Board) NewMemento() *BoardMemento {
 	}
 }
 
+// Used to verify that a killer or hash move is legal. 
+func (brd *Board) LegalMove(m Move, in_check bool) bool {
+	if in_check {
+		return brd.EvadesCheck(m)
+	} else {
+		return brd.PseudolegalAvoidsCheck(m)
+	}
+}
+
+// moves generated while in check should already be legal.
+func (brd *Board) AvoidsCheck(m Move, in_check bool) bool {
+	return in_check || brd.PseudolegalAvoidsCheck(m)
+}
+
+func (brd *Board) PseudolegalAvoidsCheck(m Move) bool {
+	switch m.Piece() {
+	case PAWN:
+		if m.CapturedPiece() == PAWN && brd.TypeAt(m.To()) == EMPTY { // En-passant capture
+			return pinned_can_move(brd, m.From(), m.To(), brd.c, brd.Enemy()) &&
+				is_pinned(brd, int(brd.enp_target), brd.c, brd.Enemy()) & sq_mask_on[m.To()] > 0 
+		} else {
+			return pinned_can_move(brd, m.From(), m.To(), brd.c, brd.Enemy())
+		}
+	case KING:
+		return !is_attacked_by(brd, m.To(), brd.Enemy(), brd.c)
+	default:
+		return pinned_can_move(brd, m.From(), m.To(), brd.c, brd.Enemy())
+	}
+}
+
+func (brd *Board) EvadesCheck(m Move) bool {
+	piece, from, to := m.Piece(), m.From(), m.To()
+	c, e := brd.c, brd.Enemy()
+	if piece == KING {
+		return !is_attacked_by(brd, m.To(), brd.Enemy(), brd.c)
+	}
+	king_sq := furthest_forward(c, brd.pieces[c][KING])
+	threats := color_attack_map(brd, king_sq, e, c) // find any enemy pieces that attack the king.
+	threat_count := pop_count(threats)
+	if threat_count > 1 {
+		return false // only king moves can evade check when there are more than 1 attacker.
+	}
+	threat_sq_1 := lsb(threats)
+	defense_map := intervening[threat_sq_1][king_sq] | threats
+
+	if sq_mask_on[to] & defense_map > 0 && pinned_can_move(brd, from, to, c, e) {
+		if piece == PAWN && m.CapturedPiece() == PAWN && brd.TypeAt(to) == EMPTY { // En-passant capture
+			return is_pinned(brd, int(brd.enp_target), c, e) & sq_mask_on[to] > 0 
+		}
+		return true
+	}
+	return false
+}
+
+
+func (brd *Board) ValidMove(m Move) bool {
+	if m == 0 || m == NO_MOVE {
+		return false
+	}
+
+	c, e := brd.c, brd.Enemy()
+	piece, from, to, captured_piece := m.Piece(), m.From(), m.To(), m.CapturedPiece()
+
+	if piece >= EMPTY {
+		fmt.Printf("Cannot move an empty piece!{%s}", m.ToString())
+		return false
+	}
+	if brd.pieces[c][piece]&sq_mask_on[from] == 0 {
+		fmt.Printf("No piece of this type available at from square!{%s}", m.ToString())
+		return false
+	}
+
+	if sq_mask_on[to]&brd.occupied[c] > 0 {
+		fmt.Printf("To square occupied by own piece!{%s}", m.ToString())
+		return false
+	}
+
+	if captured_piece != EMPTY && piece != PAWN && 
+	brd.pieces[e][captured_piece]&sq_mask_on[to] == 0 {
+		fmt.Printf("Captured piece not on target square!{%s}", m.ToString())
+		return false
+	}
+	if captured_piece == KING {
+		fmt.Printf("King capture detected!{%s}", m.ToString())
+		return false
+	}
+
+	switch piece {
+	case PAWN:
+		var diff int
+		if c == WHITE {
+			diff = to - from
+		} else {
+			diff = from - to
+		}
+		if diff < 0 {
+			fmt.Printf("Invalid pawn movement direction!{%s}", m.ToString())
+			return false
+		} else if diff == 8 {
+			if brd.TypeAt(to) == EMPTY {
+				return true
+			} else {
+				fmt.Printf("Pawn forward movement blocked!{%s}", m.ToString())
+				return false
+			}
+		} else if diff == 16 {
+			if brd.TypeAt(to) == EMPTY && brd.TypeAt(get_offset(c, from, 8)) == EMPTY {
+				return true
+			} else {
+				fmt.Printf("Pawn forward movement blocked!{%s}", m.ToString())
+				return false
+			}
+		} else if captured_piece == EMPTY {
+			fmt.Printf("Invalid pawn move!{%s}", m.ToString())
+			return false
+		} else if captured_piece == PAWN && brd.TypeAt(to) == EMPTY {
+			if brd.enp_target != SQ_INVALID && get_offset(c, to, -8) == int(brd.enp_target) {
+				return true
+			} else {
+				return false
+			}
+		}
+		return true // verify this.
+	case KING:
+		if abs(to-from) == 2 { // validate castle moves
+			if c == WHITE && (brd.castle&12) > 0 {
+				switch to {
+				case C1:
+					if !((brd.castle&C_WQ > uint8(0)) && castle_queenside_intervening[WHITE]&brd.AllOccupied() == 0 &&
+						!is_attacked_by(brd, B1, e, c) && !is_attacked_by(brd, C1, e, c) && !is_attacked_by(brd, D1, e, c)) {
+						return true
+					}
+				case G1:
+					if !((brd.castle&C_WK > uint8(0)) && castle_kingside_intervening[WHITE]&brd.AllOccupied() == 0 &&
+						!is_attacked_by(brd, F1, e, c) && !is_attacked_by(brd, G1, e, c)) {
+						return true
+					}
+				}
+			} else if c == BLACK && (brd.castle&3) > 0 {
+				switch to {
+				case C8:
+					if !((brd.castle&C_BQ > uint8(0)) && castle_queenside_intervening[BLACK]&brd.AllOccupied() == 0 &&
+						!is_attacked_by(brd, B8, e, c) && !is_attacked_by(brd, C8, e, c) && !is_attacked_by(brd, D8, e, c)) {
+						return true
+					}
+				case G8:
+					if !((brd.castle&C_BK > uint8(0)) && castle_kingside_intervening[BLACK]&brd.AllOccupied() == 0 &&
+						!is_attacked_by(brd, F8, e, c) && !is_attacked_by(brd, G8, e, c)) {
+						return true
+					}
+				}
+			}
+			// fmt.Printf("Invalid castle move!{%s}. Castle rights: %d", m.ToString(), brd.castle)
+			return false
+		}
+	case KNIGHT: // no special treatment needed for knights.
+
+	default: // sliding pieces
+		// check intervening squares are empty for sliding attacks.
+		if intervening[from][to]&brd.AllOccupied() > 0 { 
+			fmt.Printf("Sliding piece blocked by intervening pieces!{%s}", m.ToString())
+			return false
+		}
+	}
+
+	if major_piece_mask(piece, from) & sq_mask_on[to] == 0 {
+		return false
+	}
+
+	return true
+}
+
+
 func (brd *Board) ValueAt(sq int) int {
 	return brd.squares[sq].Value()
 }

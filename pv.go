@@ -51,7 +51,7 @@ func (stk Stack) SavePV(brd *Board, depth int) {
 	var m Move
 	for _, this_stk := range stk {
 		m = this_stk.pv_move
-		if m.IsValid(copy) { // going to need more exhaustive validation of moves before saving pv...
+		if copy.ValidMove(m) { // going to need more exhaustive validation of moves before saving pv...
 
 			if is_in_check(copy) && extensions_left > 0 {
 				if MAX_EXT > extensions_left { // only extend after the first check.
