@@ -32,7 +32,7 @@ import (
 func TestPlayingStrength(t *testing.T) {
 	setup()
 	print_info = false
-	depth := MAX_DEPTH - 6
+	depth := MAX_DEPTH - 4
 	test := load_epd_file("test_suites/wac_300.epd")
 	var move_str string
 	sum, score := 0, 0

@@ -76,10 +76,11 @@ type MoveSelector struct {
 
 type QMoveSelector struct {
 	AbstractSelector
-	can_check bool
+	checks 						MoveList
+	can_check 				bool
 }
 
-func NewMoveSelector(brd *Board, this_stk *StackItem, in_check bool, first_move Move) SelectorInterface {
+func NewMoveSelector(brd *Board, this_stk *StackItem, in_check bool, first_move Move) *MoveSelector {
 	return &MoveSelector{
 		AbstractSelector: AbstractSelector{
 			brd:             brd,
@@ -103,6 +104,7 @@ func NewQMoveSelector(brd *Board, this_stk *StackItem, in_check, can_check bool)
 			losing:          MoveList{},
 			remaining_moves: MoveList{},
 		},
+		checks:						 MoveList{},
 		can_check: can_check,
 	}
 }
@@ -161,11 +163,11 @@ func (s *MoveSelector) next() Move {
 
 func (s *MoveSelector) next_batch() bool {
 	done := false
+	s.index = 0
 	switch s.stage {
 	case STAGE_FIRST:
 		s.finished = 1
 	case STAGE_WINNING:
-		s.index = 0
 		if s.in_check {
 			get_evasions(s.brd, &s.winning, &s.losing, &s.remaining_moves)
 		} else {
@@ -174,14 +176,11 @@ func (s *MoveSelector) next_batch() bool {
 		s.winning.Sort()
 		s.finished = len(s.winning)
 	case STAGE_KILLER:
-		s.index = 0
 		s.finished = 2
 	case STAGE_LOSING:
-		s.index = 0
 		s.losing.Sort()
 		s.finished = len(s.losing)
 	case STAGE_REMAINING:
-		s.index = 0
 		if !s.in_check {
 			get_non_captures(s.brd, &s.remaining_moves)
 		}
@@ -220,6 +219,12 @@ func (s *QMoveSelector) next() Move {
 			if avoids_check(s.brd, m, s.in_check) {
 				return m
 			}
+		case Q_STAGE_CHECKS:
+			m := s.checks[s.index].move
+			s.index++
+			if avoids_check(s.brd, m, s.in_check) {
+				return m
+			}
 		default:
 
 		}
@@ -228,9 +233,9 @@ func (s *QMoveSelector) next() Move {
 
 func (s *QMoveSelector) next_batch() bool {
 	done := false
+	s.index = 0
 	switch s.stage {
 	case Q_STAGE_WINNING:
-		s.index = 0
 		if s.in_check {
 			get_evasions(s.brd, &s.winning, &s.losing, &s.remaining_moves)
 		} else {
@@ -239,19 +244,31 @@ func (s *QMoveSelector) next_batch() bool {
 		s.winning.Sort()
 		s.finished = len(s.winning)
 	case Q_STAGE_LOSING:
-		s.index = 0
 		s.losing.Sort()
 		s.finished = len(s.losing)
 	case Q_STAGE_REMAINING:
-		s.index = 0
-		if !s.in_check && s.can_check {
-			get_checks(s.brd, &s.remaining_moves)
-		}
 		s.remaining_moves.Sort()
 		s.finished = len(s.remaining_moves)
+	case Q_STAGE_CHECKS:
+		if !s.in_check && s.can_check {
+			get_checks(s.brd, &s.remaining_moves)
+			s.checks.Sort()
+		}
+		s.finished = len(s.checks)
 	default:
 		done = true
 	}
 	s.stage++
 	return done
 }
+
+
+
+
+
+
+
+
+
+
+

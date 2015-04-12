@@ -111,7 +111,7 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 
 	if stk[0].pv_move != 0 {
 		id_move[c], id_score[c] = stk[0].pv_move, guess
-		// stk.SavePV(brd, 1) // install PV to transposition table prior to next iteration.
+		stk.SavePV(brd, 1) // install PV to transposition table prior to next iteration.
 	} else {
 		fmt.Println("Nil PV returned to ID")
 	}
@@ -126,7 +126,7 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 			return id_move[c], sum
 		} else if stk[0].pv_move != 0 {
 			id_move[c], id_score[c] = stk[0].pv_move, guess
-			// stk.SavePV(brd, d) // install PV to transposition table prior to next iteration.
+			stk.SavePV(brd, d) // install PV to transposition table prior to next iteration.
 		} else {
 			fmt.Printf("Nil PV returned to ID\n")
 		}
@@ -210,32 +210,36 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 				}
 			}
 		}
+	} 
+	
+	// skip IID when in check?
+	if !in_check && node_type == Y_PV && hash_result == NO_MATCH && can_null && depth >= IID_MIN { 
+		// No hash move available. Use IID to get a decent first move to try.
+		score, count = ybw(brd, stk, alpha, beta, depth-2, ply, extensions_left, can_null, node_type)
+		sum += count
+		first_move = this_stk.pv_move
 	}
-
-	// // IID
-	// if hash_result == NO_MATCH && can_null && depth >= IID_MIN { // skip IID when in check?
-	// 	// No hash move available. Use IID to get a decent first move to try.
-	// 	score, count = ybw(brd, stk, alpha, beta, depth-2, ply, extensions_left, can_null, node_type)
-	// 	sum += count
-	// 	first_move = this_stk.pv_move
-	// }
 
 	var child_type, r_depth, r_extensions int
 
 	eval := evaluate(brd, alpha, beta)
 	this_stk.eval = eval
-	// eval_gain := ply > 1 ? eval-stk[ply-2].eval : 0
+	
+	// var eval_gain int 
+	// if ply > 1 {
+	// 	eval_gain = eval-stk[ply-2].eval
+	// } 
 
 	// Restrict pruning to STAGE_REMAINING
-	// f_prune, can_reduce := false, false
-	// if !in_check && ply > 0 && node_type != Y_PV && alpha > 100-MATE {
-	// 	if depth <= F_PRUNE_MAX && eval+piece_values[BISHOP] < alpha {
-	// 		f_prune = true
-	// 	}
-	// 	if depth >= LMR_MIN {
-	// 		can_reduce = true
-	// 	}
-	// }
+	f_prune, can_reduce := false, false
+	if !in_check && ply > 0 && node_type != Y_PV && alpha > 100-MATE {
+		if depth <= F_PRUNE_MAX && eval+piece_values[BISHOP] < alpha {
+			f_prune = true
+		}
+		if depth >= LMR_MIN {
+			can_reduce = true
+		}
+	}
 
 	memento := brd.NewMemento()
 	selector := NewMoveSelector(brd, this_stk, in_check, first_move)
@@ -244,21 +248,21 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 
 		make_move(brd, m)
 
-		// if f_prune && selector.stage > STAGE_REMAINING && legal_searched > 0 && m.IsQuiet() &&
-		// 	!is_passed_pawn(brd, m) && !is_in_check(brd) {
-		// 	unmake_move(brd, m, &memento)
-		// 	continue
-		// }
+		if f_prune && selector.stage > STAGE_REMAINING && legal_searched > 0 && m.IsQuiet() &&
+			!is_passed_pawn(brd, m) && !is_in_check(brd) {
+			unmake_move(brd, m, memento)
+			continue
+		}
 
 		child_type = determine_child_type(node_type, legal_searched)
 
 		r_depth, r_extensions = depth, extensions_left
-		// if m.IsPromotion() && extensions_left > 0 {
-		// 	r_depth = depth + 1
-		// 	r_extensions = extensions_left - 1
-		// } else if can_reduce && selector.stage > STAGE_REMAINING && !is_passed_pawn(brd, m) && !is_in_check(brd) {
-		// 	r_depth = depth - 1 // Late move reductions
-		// }
+		if m.IsPromotion() && extensions_left > 0 {
+			r_depth = depth + 1
+			r_extensions = extensions_left - 1
+		} else if can_reduce && selector.stage > STAGE_REMAINING && !is_passed_pawn(brd, m) && !is_in_check(brd) {
+			r_depth = depth - 1 // Late move reductions
+		}
 
 		if node_type == Y_PV && alpha > old_alpha {
 			score, count = ybw(brd, stk, -alpha-1, -alpha, r_depth-1, ply+1, r_extensions, can_null, child_type)
@@ -368,12 +372,13 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 		legal_moves = true
 
 		make_move(brd, m)
-		// if !in_check && alpha > 100-MATE &&
-		// 	best+m.CapturedPiece().Value()+m.PromotedTo().PromoteValue()+piece_values[ROOK] < alpha &&
-		// 	!is_in_check(brd) {
-		// 	unmake_move(brd, m, &memento)
-		// 	continue
-		// }
+
+		if !in_check && alpha > 100-MATE &&
+			best+m.CapturedPiece().Value()+m.PromotedTo().PromoteValue()+piece_values[ROOK] < alpha &&
+			!is_in_check(brd) {
+			unmake_move(brd, m, memento)
+			continue
+		}
 		score, count = quiescence(brd, stk, -beta, -alpha, depth-1, ply+1, r_checks_remaining)
 		score = -score
 		sum += count

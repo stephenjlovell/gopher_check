@@ -458,12 +458,13 @@ func get_winning_captures(brd *Board, winning *MoveList) {
 	}
 }
 
+
 func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 	c, e := brd.c, brd.Enemy()
 
-	// if brd.pieces[c][KING] == 0 {
-	// 	return
-	// }
+	if brd.pieces[c][KING] == 0 {
+		return
+	}
 
 	var defense_map BB
 	var from, to, threat_sq_1, threat_sq_2 int
@@ -484,8 +485,6 @@ func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 			threat_dir_1 = directions[threat_sq_1][king_sq]
 		}
 		defense_map |= (intervening[threat_sq_1][king_sq] | threats)
-		// allow capturing of enemy king to detect illegal checking move by king capture.
-		defense_map |= brd.pieces[e][KING]
 	} else {
 		threat_sq_1 = lsb(threats)
 		if brd.TypeAt(threat_sq_1) != PAWN {
@@ -495,8 +494,6 @@ func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 		if brd.TypeAt(threat_sq_2) != PAWN {
 			threat_dir_2 = directions[threat_sq_2][king_sq]
 		}
-		// allow capturing of enemy king to detect illegal checking move by king capture.
-		defense_map |= brd.pieces[e][KING]
 	}
 
 	var m Move
@@ -591,14 +588,14 @@ func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 		// en-passant captures
 		if brd.enp_target != SQ_INVALID {
 			enp_target := brd.enp_target
-			for f := (brd.pieces[c][PAWN] & pawn_side_masks[enp_target] & defense_map); f > 0; f.Clear(from) {
+			for f := (brd.pieces[c][PAWN] & pawn_side_masks[enp_target]); f > 0; f.Clear(from) {
 				from = furthest_forward(c, f)
 				if c == WHITE {
 					to = int(enp_target) + 8
 				} else {
 					to = int(enp_target) - 8
 				}
-				if pinned_can_move(brd, from, to, c, e) {
+				if (sq_mask_on[to] & defense_map) > 0 && pinned_can_move(brd, from, to, c, e) {
 					m = NewCapture(from, to, PAWN, PAWN)
 					see = get_see(brd, from, to, PAWN)
 					winning.Push(&SortItem{m, SortWinningCapture(see, PAWN, PAWN)})
@@ -718,9 +715,9 @@ func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 			threat_dir_2 != directions[king_sq][to] {
 			m = NewCapture(king_sq, to, KING, brd.squares[to])
 			see = get_see(brd, king_sq, to, brd.squares[to])
-			if see >= 0 {
+			// if see >= 0 {
 				winning.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], KING)})
-			}
+			// }
 		}
 	}
 	// King moves
