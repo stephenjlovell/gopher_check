@@ -60,16 +60,16 @@ func (m Move) PromotedTo() Piece {
 	return Piece((uint32(m) >> 18) & uint32(7))
 }
 
-func (m Move) IsQuiet() bool {
-	return m.IsCapture() || m.IsPromotion()
-}
-
 func (m Move) IsCapture() bool {
 	return m.CapturedPiece() != EMPTY
 }
 
 func (m Move) IsPromotion() bool {
 	return m.PromotedTo() != EMPTY
+}
+
+func (m Move) IsQuiet() bool {
+	return !(m.IsCapture() || m.IsPromotion())
 }
 
 var piece_chars = [6]string{"p", "n", "b", "r", "q", "k"}

@@ -32,7 +32,7 @@ import (
 func TestPlayingStrength(t *testing.T) {
 	setup()
 	print_info = false
-	depth := MAX_DEPTH - 4
+	depth := MAX_DEPTH - 2
 	test := load_epd_file("test_suites/wac_300.epd")
 	var move_str string
 	sum, score := 0, 0
@@ -80,9 +80,11 @@ func correct_move(epd *EPD, move_str string) bool {
 // 	for i, pos := range test_positions {
 // 		ResetAll() // reset all shared data structures and prepare to start a new game.
 // 		current_board = ParseFENString(pos)
+// 		copy := current_board.Copy()
 // 		fmt.Printf("%d. ", i+1)
-// 		_, count := Search(current_board, &RepList{}, depth, MAX_TIME)
+// 		_, count := Search(current_board, depth, MAX_TIME)
 // 		sum += count
+// 		Assert(*current_board == *copy, "Search did not return to original board state.")
 // 	}
 // 	fmt.Printf("Total nodes searched: %.4f m\n", float64(sum)/1000000.0)
 // 	fmt.Printf("Average Branching factor by iteration:\n")
@@ -94,7 +96,7 @@ func correct_move(epd *EPD, move_str string) bool {
 // 		fmt.Printf("D: %d, N: %d, EBF: %.4f\n", d, nodes_per_iteration[d], branching)
 // 	}
 // }
-//
+
 // var test_positions = [...]string{
 // 	"3qrbk1/ppp1r2n/3pP2p/3P4/2P4P/1P3Q2/PB6/R4R1K w - -",
 // 	"2k5/pppr4/4R3/4Q3/2pp2q1/8/PPP2PPP/6K1 w - -",

@@ -178,7 +178,11 @@ func (s *MoveSelector) NextBatch() bool {
 		s.winning.Sort()
 		s.finished = len(s.winning)
 	case STAGE_KILLER:
-		s.finished = 3
+		if s.in_check {
+			s.finished = 0
+		} else {
+			s.finished = 3			
+		}
 	case STAGE_LOSING:
 		s.losing.Sort()
 		s.finished = len(s.losing)

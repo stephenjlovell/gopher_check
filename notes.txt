@@ -42,7 +42,6 @@ Total nodes searched: 102.2577 m
 Total score: 285/300
 8 ABF: 2.4326
 
-
 11/10/14
 
 Total nodes searched: 100.8826 m
@@ -58,6 +57,16 @@ Total score: 285/300
 Total nodes searched: 95.4267 m
 Total score: 287/300
 8 ABF: 2.4381
+
+4/13/15
+
+Total nodes searched: 60.3921 m
+Total score: 275/300
+8 ABF: 2.2674
+
+Total nodes searched: 267.3736 m
+Total score: 290/300
+10 ABF: 2.2310
 
 Debugging:
 

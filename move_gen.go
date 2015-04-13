@@ -23,11 +23,6 @@
 
 package main
 
-// Killers will be at front of remaining_moves. Ideally they should be used immediately after
-// winning moves, and before generation of remaining_moves:
-// Remove killer sort checking from get_captures(), get_checks(), and get_evasions.
-// Test killers for validity and pass directly to search.
-// Will speed up movegen and will occasionally save from running get_non_captures() on killer cutoff.
 
 func get_non_captures(brd *Board, remaining_moves *MoveList) {
 	var from, to int
@@ -885,6 +880,19 @@ func get_checks(brd *Board, remaining_moves *MoveList) {
 
 	// what about queens?
 
+}
+
+func sliding_attacks(piece Piece, occ BB, sq int) BB {
+	switch piece {
+	case BISHOP:
+		return bishop_attacks(occ, sq)
+	case ROOK:
+		return rook_attacks(occ, sq)
+	case QUEEN:
+		return queen_attacks(occ, sq)
+	default:
+		return BB(0)
+	}
 }
 
 func queen_attacks(occ BB, sq int) BB {

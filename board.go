@@ -99,19 +99,41 @@ func (brd *Board) PseudolegalAvoidsCheck(m Move) bool {
 func (brd *Board) EvadesCheck(m Move) bool {
 	piece, from, to := m.Piece(), m.From(), m.To()
 	c, e := brd.c, brd.Enemy()
-	if piece == KING {
-		return !is_attacked_by(brd, m.To(), brd.Enemy(), brd.c)
+
+	if brd.pieces[c][KING] == 0 {
+		return false
 	}
+
 	king_sq := furthest_forward(c, brd.pieces[c][KING])
 	threats := color_attack_map(brd, king_sq, e, c) // find any enemy pieces that attack the king.
 	threat_count := pop_count(threats)
-	if threat_count > 1 {
-		return false // only king moves can evade check when there are more than 1 attacker.
-	}
-	threat_sq_1 := lsb(threats)
-	defense_map := intervening[threat_sq_1][king_sq] | threats
+	var threat_sq_1, threat_sq_2 int
+	threat_dir_1, threat_dir_2 := DIR_INVALID, DIR_INVALID
+	var defense_map BB
 
-	if sq_mask_on[to] & defense_map > 0 && pinned_can_move(brd, from, to, c, e) {
+	if threat_count == 1 {
+		threat_sq_1 = lsb(threats)
+		if brd.TypeAt(threat_sq_1) != PAWN {
+			threat_dir_1 = directions[threat_sq_1][king_sq]
+		}
+		defense_map |= (intervening[threat_sq_1][king_sq] | threats)
+	} else {
+		threat_sq_1 = lsb(threats)
+		if brd.TypeAt(threat_sq_1) != PAWN {
+			threat_dir_1 = directions[threat_sq_1][king_sq]
+		}
+		threat_sq_2 = msb(threats)
+		if brd.TypeAt(threat_sq_2) != PAWN {
+			threat_dir_2 = directions[threat_sq_2][king_sq]
+		}
+	}
+
+	if piece == KING {
+		return !is_attacked_by(brd, m.To(), brd.Enemy(), brd.c) && 
+			threat_dir_1 != directions[king_sq][to] && threat_dir_2 != directions[king_sq][to]
+	} 
+	if threat_count == 1 && sq_mask_on[to] & defense_map > 0 && 
+		pinned_can_move(brd, from, to, c, e) {
 		if piece == PAWN && m.CapturedPiece() == PAWN && brd.TypeAt(to) == EMPTY { // En-passant capture
 			return is_pinned(brd, int(brd.enp_target), c, e) & sq_mask_on[to] > 0 
 		}
@@ -129,27 +151,16 @@ func (brd *Board) ValidMove(m Move) bool {
 	c, e := brd.c, brd.Enemy()
 	piece, from, to, captured_piece := m.Piece(), m.From(), m.To(), m.CapturedPiece()
 
-	if piece >= EMPTY {
-		fmt.Printf("Cannot move an empty piece!{%s}", m.ToString())
+	if piece >= EMPTY || brd.pieces[c][piece]&sq_mask_on[from] == 0 {
+		// fmt.Printf("No piece of this type available at from square!{%s}", m.ToString())
 		return false
 	}
-	if brd.pieces[c][piece]&sq_mask_on[from] == 0 {
-		fmt.Printf("No piece of this type available at from square!{%s}", m.ToString())
-		return false
-	}
-
 	if sq_mask_on[to]&brd.occupied[c] > 0 {
-		fmt.Printf("To square occupied by own piece!{%s}", m.ToString())
+		// fmt.Printf("To square occupied by own piece!{%s}", m.ToString())
 		return false
 	}
-
-	if captured_piece != EMPTY && piece != PAWN && 
-	brd.pieces[e][captured_piece]&sq_mask_on[to] == 0 {
-		fmt.Printf("Captured piece not on target square!{%s}", m.ToString())
-		return false
-	}
-	if captured_piece == KING {
-		fmt.Printf("King capture detected!{%s}", m.ToString())
+	if captured_piece == KING || brd.pieces[c][KING] == 0 {
+		// fmt.Printf("King capture detected!{%s}", m.ToString())
 		return false
 	}
 
@@ -162,33 +173,26 @@ func (brd *Board) ValidMove(m Move) bool {
 			diff = from - to
 		}
 		if diff < 0 {
-			fmt.Printf("Invalid pawn movement direction!{%s}", m.ToString())
+			// fmt.Printf("Invalid pawn movement direction!{%s}", m.ToString())
 			return false
 		} else if diff == 8 {
-			if brd.TypeAt(to) == EMPTY {
-				return true
-			} else {
-				fmt.Printf("Pawn forward movement blocked!{%s}", m.ToString())
-				return false
-			}
+			return brd.TypeAt(to) == EMPTY
 		} else if diff == 16 {
-			if brd.TypeAt(to) == EMPTY && brd.TypeAt(get_offset(c, from, 8)) == EMPTY {
-				return true
-			} else {
-				fmt.Printf("Pawn forward movement blocked!{%s}", m.ToString())
-				return false
-			}
+			return brd.TypeAt(to) == EMPTY && brd.TypeAt(get_offset(c, from, 8)) == EMPTY 
 		} else if captured_piece == EMPTY {
-			fmt.Printf("Invalid pawn move!{%s}", m.ToString())
+			// fmt.Printf("Invalid pawn move!{%s}", m.ToString())
 			return false
-		} else if captured_piece == PAWN && brd.TypeAt(to) == EMPTY {
-			if brd.enp_target != SQ_INVALID && get_offset(c, to, -8) == int(brd.enp_target) {
-				return true
+		} else { 
+			if captured_piece == PAWN && brd.TypeAt(to) == EMPTY {
+				if brd.enp_target != SQ_INVALID && get_offset(c, to, -8) == int(brd.enp_target) {
+					return true
+				} else {
+					return false
+				}
 			} else {
-				return false
+				return brd.TypeAt(to) == captured_piece
 			}
 		}
-		return true // verify this.
 	case KING:
 		if abs(to-from) == 2 { // validate castle moves
 			if c == WHITE && (brd.castle&12) > 0 {
@@ -223,15 +227,15 @@ func (brd *Board) ValidMove(m Move) bool {
 		}
 	case KNIGHT: // no special treatment needed for knights.
 
-	default: // sliding pieces
-		// check intervening squares are empty for sliding attacks.
-		if intervening[from][to]&brd.AllOccupied() > 0 { 
-			fmt.Printf("Sliding piece blocked by intervening pieces!{%s}", m.ToString())
+	default:
+		if sliding_attacks(piece, brd.AllOccupied(), from) & sq_mask_on[to] == 0 {
+			// fmt.Printf("Invalid sliding attack!{%s}", m.ToString())
 			return false
 		}
 	}
 
-	if major_piece_mask(piece, from) & sq_mask_on[to] == 0 {
+	if brd.TypeAt(to) != captured_piece {
+		// fmt.Printf("Captured piece not found on to square!{%s}", m.ToString())
 		return false
 	}
 

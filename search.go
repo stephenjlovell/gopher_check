@@ -37,7 +37,7 @@ const (
 	LMR_MIN      = 2
 	MAX_PLY      = MAX_DEPTH + MAX_EXT
 	IID_MIN      = 4
-	MAX_Q_CHECKS = 2
+	MAX_Q_CHECKS = 2 
 	COMMS_MIN    = 6 // minimum depth at which to send info to GUI.
 )
 
@@ -197,7 +197,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	first_move, hash_result = main_tt.probe(brd, depth, null_depth, &alpha, &beta, &score)
 
 	if node_type != Y_PV {
-		if hash_result == CUTOFF_FOUND { // Hash hit
+		if hash_result == CUTOFF_FOUND { // Hash hit valid for current bounds.
 			return score, sum
 		} else if hash_result != AVOID_NULL { // Null-Move Pruning
 			if !in_check && can_null && depth > 2 && in_endgame(brd) == 0 &&
@@ -288,7 +288,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 					this_stk.pv_move, this_stk.value = m, score
 				}
 				if score >= beta {
-					store_cutoff(brd, this_stk, m, count) // what happens on refutation of main pv?
+					store_cutoff(this_stk, m, brd.c, count) // what happens on refutation of main pv?
 					main_tt.store(brd, m, depth, LOWER_BOUND, score)
 					return score, sum
 				}
@@ -442,11 +442,9 @@ func null_make(brd *Board, stk Stack, beta, depth, ply, extensions_left int) (in
 	return -score, sum
 }
 
-func store_cutoff(brd *Board, this_stk *StackItem, m Move, count int) {
-	if !m.IsCapture() {
-		main_htable.Store(m, brd.c, count)
-		if !m.IsPromotion() { // By the time killer moves are tried, any promotions will already have been searched.
-			// this_stk.StoreKiller(m) // store killer moves in stack for this Goroutine.
-		}
+func store_cutoff(this_stk *StackItem, m Move, c uint8, count int) {
+	if m.IsQuiet() {
+		main_htable.Store(m, c, count)
+		// this_stk.StoreKiller(m) // store killer moves in stack for this Goroutine.
 	}
 }

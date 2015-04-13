@@ -30,7 +30,7 @@ import (
 type KEntry [3]Move
 
 func (s *StackItem) StoreKiller(m Move) {
-	killers := s.killers
+	killers := &s.killers
   switch m {
   case killers[0]:
     // no update needed.
@@ -42,7 +42,7 @@ func (s *StackItem) StoreKiller(m Move) {
 }
 
 func (s *StackItem) IsKiller(m Move) bool {
-  killers := s.killers
+  killers := &s.killers
   return m == killers[0] || m == killers[1] || m == killers[2]
 }
 

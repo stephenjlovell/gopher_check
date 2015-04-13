@@ -25,34 +25,42 @@ package main
 
 import (
 	"fmt"
-	// "strconv"
-	// "testing"
-	// "time"
+	"strconv"
+	"testing"
+	"time"
 )
 
 var legal_max_tree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860, 84998978956, 2439530234167}
 
 // func TestLegalMoveGen(t *testing.T) {
-// 	setup()
-// 	brd := StartPos()
-// 	copy := brd.Copy()
-// 	depth := 4
-// 	start := time.Now()
-// 	stk := make(Stack, MAX_STACK, MAX_STACK)
-// 	sum := Perft(brd, stk, depth, 0)
-// 	elapsed := time.Since(start)
-// 	nps := int64(float64(sum) / elapsed.Seconds())
-
-// 	fmt.Printf("%d nodes at depth %d. %d NPS\n", sum, depth, nps)
-
-// 	fmt.Printf("%d total nodes in check\n", check_count)
-// 	fmt.Printf("%d total capture nodes\n", capture_count)
-
-// 	CompareBoards(copy, brd)
-// 	Assert(*brd == *copy, "move generation did not return to initial board state.")
-// 	Assert(sum == legal_max_tree[depth], "Expected "+strconv.Itoa(legal_max_tree[depth])+
-// 		" nodes, got "+strconv.Itoa(sum))
+// 	legal_movegen(Perft)
 // }
+
+// func TestMoveValidation(t *testing.T) {
+// 	legal_movegen(PerftValidation)
+// }
+
+func legal_movegen(fn func(brd *Board, stk Stack, depth, ply int) (int)) {
+	setup()
+	brd := StartPos()
+	copy := brd.Copy()
+	depth := 6
+	start := time.Now()
+	stk := make(Stack, MAX_STACK, MAX_STACK)
+	sum := Perft(brd, stk, depth, 0)
+	elapsed := time.Since(start)
+	nps := int64(float64(sum) / elapsed.Seconds())
+
+	fmt.Printf("%d nodes at depth %d. %d NPS\n", sum, depth, nps)
+
+	fmt.Printf("%d total nodes in check\n", check_count)
+	fmt.Printf("%d total capture nodes\n", capture_count)
+
+	CompareBoards(copy, brd)
+	Assert(*brd == *copy, "move generation did not return to initial board state.")
+	Assert(sum == legal_max_tree[depth], "Expected "+strconv.Itoa(legal_max_tree[depth])+
+		" nodes, got "+strconv.Itoa(sum))
+}
 
 var check_count int
 var capture_count int
@@ -67,9 +75,7 @@ func Perft(brd *Board, stk Stack, depth, ply int) int {
 	if in_check {
 		check_count += 1
 	}
-
 	this_stk := stk[ply]
-
 	memento := brd.NewMemento()
 	generator := NewMoveSelector(brd, &this_stk, in_check, NO_MOVE)
 	for m := generator.Next(); m != NO_MOVE; m = generator.Next() {
@@ -80,7 +86,27 @@ func Perft(brd *Board, stk Stack, depth, ply int) int {
 		sum += Perft(brd, stk, depth-1, ply+1)
 		unmake_move(brd, m, memento)
 	}
+	return sum
+}
 
+
+func PerftValidation(brd *Board, stk Stack, depth, ply int) int {
+	if depth == 0 {
+		return 1
+	}
+	sum := 0
+	this_stk := stk[ply]
+	memento := brd.NewMemento()
+	// intentionally disregard whether king is in check while generating moves.
+	generator := NewMoveSelector(brd, &this_stk, false, NO_MOVE)
+	for m := generator.Next(); m != NO_MOVE; m = generator.Next() {
+		if !brd.ValidMove(m) || !brd.LegalMove(m, is_in_check(brd)) {
+			continue // rely on validation to prevent illegal moves...
+		}
+		make_move(brd, m)
+		sum += PerftValidation(brd, stk, depth-1, ply+1)
+		unmake_move(brd, m, memento)
+	}
 	return sum
 }
 
