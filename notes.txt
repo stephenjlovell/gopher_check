@@ -74,37 +74,29 @@ Total nodes searched: 50.0627 m
 Total score: 283/300
 8 ABF: 2.2072
 
+Total nodes searched: 219.2822 m
+Total score: 291/300
+10 ABF: 2.1838
 
+Total nodes searched: 1158.1233 m
+Total score: 289/300                    << some search pathology starting to show up...
+12 ABF: 2.2250
 
 Debugging:
 
 Search refactoring:
 
-  -Create MoveSelector type to coordinate batched move generation across workers. 
-  Send ordered moves via channel.
-
   -Move shared memory into SplitPoint struct to reduce communication costs.
-  -Move responsibility for repetition list, pv into explicit stack.
 
 
 
 To Do:
-
-Improve Selectivity:
-  -Track static evaluation in main tree.  Use LMR and Futility Pruning only when static eval 
-  for side to move is decreasing.
 
 Implement Pondering.
 
 Improve Pawn Evaluation - 
   Separate out hashable elements of pawn evaluation (elements that depend only on other pawns).
   Implement Pawn Hashtable.  Update Make/Unmake.
-
-
-Ideas:
-
-Disable boundary checking on compile?  Could improve execution speed significantly given the amount of 
-array access.  Only do this once engine is finalized and thoroughly debugged.
 
 
 

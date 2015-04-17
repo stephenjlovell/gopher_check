@@ -203,24 +203,22 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	// 		eval = score
 	// 	}
 	// }
-	// this_stk.eval = eval
+	this_stk.eval = eval
 
 	if node_type != Y_PV {
 		if (hash_result & CUTOFF_FOUND) > 0 { // Hash hit valid for current bounds.
 			return score, sum
-		} else if hash_result != AVOID_NULL { // Null-Move Pruning
-			if !in_check && can_null && depth > 2 && in_endgame(brd) == 0 &&
-				!brd.pawns_only() && eval >= beta {
-				score, count = null_make(brd, stk, beta, null_depth, ply, extensions_left)
-				sum += count
-				if score >= beta {
-					main_tt.store(brd, 0, depth, LOWER_BOUND, score)
-					return score, sum
-				}
+		} else if !in_check && can_null && hash_result != AVOID_NULL && depth > 2 && in_endgame(brd) == 0 &&
+		!brd.pawns_only() && eval >= beta {
+			score, count = null_make(brd, stk, beta, null_depth, ply, extensions_left)
+			sum += count
+			if score >= beta {
+				main_tt.store(brd, 0, depth, LOWER_BOUND, score)
+				return score, sum
 			}
 		}
-	} 
-	
+	}
+
 	// skip IID when in check?
 	if !in_check && node_type == Y_PV && hash_result == NO_MATCH && can_null && depth >= IID_MIN { 
 		// No hash move available. Use IID to get a decent first move to try.
@@ -252,8 +250,9 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		gives_check := is_in_check(brd)
 
 		if f_prune && selector.CurrentStage() == STAGE_REMAINING && legal_searched > 0 && m.IsQuiet() &&
-			!is_passed_pawn(brd, m) && !gives_check {
+			!is_passed_pawn(brd, m) && !brd.pawns_only() && !gives_check {
 			unmake_move(brd, m, memento)
+			// legal_searched += 1
 			continue
 		}
 
