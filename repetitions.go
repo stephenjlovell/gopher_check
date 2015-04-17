@@ -30,8 +30,8 @@ import (
 func (stk Stack) IsRepetition(ply int) bool {
 	hash_key := stk[ply].hash_key
 	repetition_count := 0
-	for ; ply > 0; ply-- {
-		if stk[ply-1].hash_key == hash_key {
+	for ; ply >= 2; ply -= 2 {
+		if stk[ply-2].hash_key == hash_key {
 			repetition_count += 1
 			if repetition_count == 2 {
 				// fmt.Printf("repetition found ")
@@ -41,3 +41,6 @@ func (stk Stack) IsRepetition(ply int) bool {
 	}
 	return false
 }
+
+
+
