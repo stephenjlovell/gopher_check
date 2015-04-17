@@ -31,7 +31,7 @@ func (stk Stack) PVtoUCI() string {
 	var m Move
 	str := ""
 	m = stk[0].pv_move
-	if m == 0 || m == NO_MOVE {
+	if !m.IsMove() {
 		return str
 	}
 	str = stk[0].pv_move.ToUCI()
@@ -47,34 +47,22 @@ func (stk Stack) PVtoUCI() string {
 
 func (stk Stack) SavePV(brd *Board, depth int) {
 	copy := brd.Copy() // create a local copy of the board to avoid having to unmake moves.
-	extensions_left := MAX_EXT
-	var m Move
 	for _, this_stk := range stk {
-		m = this_stk.pv_move
+		m := this_stk.pv_move
 		in_check := is_in_check(copy)
+		// if !m.IsMove() {
+		// 	break
+		// }
 
-		if copy.ValidMove(m, in_check) { // going to need more exhaustive validation of moves before saving pv...
-
-			if in_check && extensions_left > 0 {
-				if MAX_EXT > extensions_left { // only extend after the first check.
-					depth += 1
-				}
-				extensions_left -= 1
-			}
-
-			main_tt.store(copy, m, depth, EXACT, this_stk.value)
-
-			make_move(copy, m)
-
-			if m.IsPromotion() {
-				extensions_left -= 1
-			} else {
-				depth -= 1
-			}
-
-		} else {
+		if !copy.ValidMove(m, in_check) || !copy.LegalMove(m, in_check) { 
+			// fmt.Printf("!")
 			break
 		}
+
+		main_tt.store(copy, m, this_stk.depth, EXACT, this_stk.value)
+
+		make_move(copy, m)
+
 	}
 }
 

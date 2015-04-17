@@ -71,9 +71,10 @@ type StackItem struct {
 
 	hash_key uint64 // use hash key to search for repetitions
 
-	ply             int
+	// ply             int
 	depth           int
 	extensions_left int
 
-	skip_pruning bool
+	// skip_pruning bool
+	in_check bool
 }

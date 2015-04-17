@@ -31,7 +31,8 @@ import (
 
 const (
 	INF  = 10000 // an arbitrarily large score used to signal checkmate.
-	MATE = INF - 1
+	NO_SCORE = INF - 1 // score used to signal
+	MATE = NO_SCORE - 1 // maximum checkmate score (i.e. mate in 0)
 ) // total value of all starting pieces for one side: 9006
 
 const ( // color

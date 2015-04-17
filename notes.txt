@@ -68,6 +68,14 @@ Total nodes searched: 267.3736 m
 Total score: 290/300
 10 ABF: 2.2310
 
+4/17/15
+
+Total nodes searched: 50.0627 m
+Total score: 283/300
+8 ABF: 2.2072
+
+
+
 Debugging:
 
 Search refactoring:

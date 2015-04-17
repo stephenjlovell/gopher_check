@@ -34,9 +34,12 @@ const (
 )
 
 const (
-	NO_MATCH = iota
+	NO_MATCH = 1<<iota
 	ORDERING_ONLY
 	AVOID_NULL
+	ALPHA_FOUND 
+	BETA_FOUND
+	EXACT_FOUND
 	CUTOFF_FOUND
 )
 
@@ -50,7 +53,12 @@ var main_tt TT
 
 func setup_main_tt() {
 	for i, _ := range main_tt {
-		main_tt[i] = &Slot{Bucket{}, Bucket{}, Bucket{}, Bucket{}}
+		main_tt[i] = &Slot{
+			NewBucket(0, NO_MOVE, 0, 0, NO_SCORE), 
+			NewBucket(0, NO_MOVE, 0, 0, NO_SCORE),
+			NewBucket(0, NO_MOVE, 0, 0, NO_SCORE),
+			NewBucket(0, NO_MOVE, 0, 0, NO_SCORE),
+		}
 	}
 }
 
@@ -110,62 +118,57 @@ func (tt *TT) get_slot(hash_key uint64) *Slot {
 
 func (tt *TT) probe(brd *Board, depth, null_depth int, alpha, beta, score *int) (Move, int) {
 
-	// return Move(0), NO_MATCH
-
+	// return NO_MOVE, NO_MATCH
+	var bucket *Bucket
 	hash_key := brd.hash_key
 	slot := tt.get_slot(hash_key)
 
 	for i := 0; i < 4; i++ {
-		if hash_key == slot[i].HashKey() { // look for an entry uncorrupted by lockless access.
+		bucket = &slot[i]
+		if hash_key == bucket.HashKey() { // look for an entry uncorrupted by lockless access.
 			// fmt.Printf("Full Key match: %d", hash_key)
 
-			slot[i].data = (slot[i].data & mask_of_length[45]) | (uint64(search_id) << 45) // update age (search id) of entry.
+			bucket.data = (bucket.data & mask_of_length[45]) | (uint64(search_id) << 45) // update age (search id) of entry.
+			entry_value := bucket.Value()
+			*score = entry_value // set the current search score
 
-			entry_depth := slot[i].Depth()
+			entry_depth := bucket.Depth()
 			if entry_depth >= depth {
-				entry_type := slot[i].Type()
-				entry_value := slot[i].Value()
-				*score = entry_value // set the current search score
+				entry_type := bucket.Type()
 
 				switch entry_type {
 				case LOWER_BOUND: // failed high last time (at CUT node)
 					if entry_value >= *beta {
-						return slot[i].Move(), CUTOFF_FOUND
-					} else {
-						// *beta = entry_value
-					}
+						return bucket.Move(), (CUTOFF_FOUND | BETA_FOUND)
+					} 
+					return bucket.Move(), BETA_FOUND
 				case UPPER_BOUND: // failed low last time. (at ALL node)
 					if entry_value <= *alpha {
-						return slot[i].Move(), CUTOFF_FOUND
-					} else {
-						// *alpha = entry_value
-					}
+						return bucket.Move(), (CUTOFF_FOUND | ALPHA_FOUND)
+					} 
+					return bucket.Move(), ALPHA_FOUND
 				case EXACT: // score was inside bounds.  (at PV node)
-
-					if entry_value > *alpha {
-						if entry_value < *beta {
-							// to do: if exact entry is valid for current bounds, save the full PV.
-							return slot[i].Move(), CUTOFF_FOUND
-						} else {
-							// *beta = entry_value
-						}
-						// *alpha = entry_value
-					}
+					if entry_value > *alpha && entry_value < *beta {
+						// to do: if exact entry is valid for current bounds, save the full PV.
+						return bucket.Move(), (CUTOFF_FOUND | EXACT_FOUND)
+					} 
+					return bucket.Move(), EXACT_FOUND
 				}
 
 			} else if entry_depth >= null_depth {
-				entry_type := slot[i].Type()
-				entry_value := slot[i].Value()
+				entry_type := bucket.Type()
+				entry_value := bucket.Value()
 				// if the entry is too shallow for an immediate cutoff but at least as deep as a potential
 				// null-move search, check if a null move search would have any chance of causing a beta cutoff.
 				if entry_type == UPPER_BOUND && entry_value < *beta {
-					return slot[i].Move(), AVOID_NULL
+					return bucket.Move(), AVOID_NULL
 				}
 			}
-			return slot[i].Move(), ORDERING_ONLY
+			return bucket.Move(), ORDERING_ONLY
 		}
+
 	}
-	return Move(0), NO_MATCH
+	return NO_MOVE, NO_MATCH
 }
 
 // use lockless storing to avoid concurrent write issues without incurring locking overhead.

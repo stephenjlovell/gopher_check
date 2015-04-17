@@ -60,10 +60,12 @@ func make_move(brd *Board, move Move) {
 			} else {
 				remove_piece(brd, PAWN, to, brd.Enemy())
 			}
-		default: // any non-pawn piece is captured
+		case ROOK:
 			if brd.castle > 0 {
-				update_castle_rights(brd, to) //
+				update_castle_rights(brd, to)
 			}
+			remove_piece(brd, captured_piece, to, brd.Enemy())	
+		default: // any non-pawn piece is captured
 			remove_piece(brd, captured_piece, to, brd.Enemy())
 		}
 
@@ -76,7 +78,9 @@ func make_move(brd *Board, move Move) {
 			relocate_piece(brd, PAWN, from, to, c)
 		}
 
-		// update the pawn hash key.
+		// update the pawn hash key...
+
+	// update piece-specific logic to reduce frequency of checks for castle rights...
 
 	case KING:
 		if captured_piece != EMPTY {
@@ -224,7 +228,7 @@ func unmake_move(brd *Board, move Move, memento *BoardMemento) {
 // Whenever a king or rook moves off its initial square or is captured,
 // update castle rights via the procedure associated with that square.
 func update_castle_rights(brd *Board, sq int) {
-	switch sq {
+	switch sq { // if brd.castle remains unchanged, hash key will be unchanged.
 	case A1:
 		brd.hash_key ^= castle_zobrist(brd.castle)
 		brd.castle &= (^C_WQ)
