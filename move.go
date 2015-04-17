@@ -72,6 +72,10 @@ func (m Move) IsQuiet() bool {
 	return !(m.IsCapture() || m.IsPromotion())
 }
 
+func (m Move) IsMove() bool {
+	return m != 0 && m != NO_MOVE
+}
+
 var piece_chars = [6]string{"p", "n", "b", "r", "q", "k"}
 
 func (m Move) Print() {
@@ -80,6 +84,9 @@ func (m Move) Print() {
 
 func (m Move) ToString() string { // string representation used for debugging only.
 	var str string
+	if m == 0 || m == NO_MOVE {
+		return "NO_MOVE"
+	}
 	str += piece_chars[m.Piece()] + " "
 	str += ParseCoordinates(row(m.From()), column(m.From()))
 	str += ParseCoordinates(row(m.To()), column(m.To()))

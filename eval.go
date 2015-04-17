@@ -247,7 +247,7 @@ func evaluate(brd *Board, alpha, beta int) int {
 	c, e := brd.c, brd.Enemy()
 	material := int(brd.material[c] - brd.material[e])
 	if brd.pieces[c][KING] == 0 {
-		fmt.Println("King missing at eval.")
+		fmt.Printf(" King missing at eval.")
 		return -MATE
 	}
 	// lazy evaluation: if material balance is already outside the search window by an amount that outweighs
@@ -390,7 +390,7 @@ func pawn_structure(brd *Board, c, e uint8, endgame, enemy_king_sq int) int {
 	var structure, sq int
 	own_pawns := brd.pieces[c][PAWN]
 	enemy_pawns := brd.pieces[e][PAWN]
-
+	occ := brd.AllOccupied()
 	for b := own_pawns; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
 
@@ -408,7 +408,7 @@ func pawn_structure(brd *Board, c, e uint8, endgame, enemy_king_sq int) int {
 			// passed pawns that are blocked by a friendly rook can't promote and can immobilize the
 			// friendly rook if the pawn is attacked.
 			if pawn_blocked_masks[c][sq]&brd.pieces[c][ROOK] > 0 {
-				if is_attacked_by(brd, sq, e, c) {
+				if is_attacked_by(brd, occ, sq, e, c) {
 					structure -= base_bonus >> 1
 				} else {
 					structure -= minor_bonus
@@ -427,15 +427,16 @@ func pawn_structure(brd *Board, c, e uint8, endgame, enemy_king_sq int) int {
 
 			next := get_offset(c, sq, 8)
 			if brd.squares[next] == EMPTY {
-				if !is_attacked_by(brd, next, e, c) { // next square undefended.
+				temp_occ := occ & sq_mask_off[sq]
+				if !is_attacked_by(brd, temp_occ, next, e, c) { // next square undefended.
 					structure += minor_bonus
 					next = get_offset(c, next, 8)
 					if next >= 0 && next < 64 && brd.squares[next] == EMPTY {
-						if !is_attacked_by(brd, next, e, c) { // next square undefended.
+						if !is_attacked_by(brd, temp_occ, next, e, c) { // next square undefended.
 							structure += minor_bonus
 							next = get_offset(c, next, 8)
 							if next >= 0 && next < 64 && brd.squares[next] == EMPTY {
-								if !is_attacked_by(brd, next, e, c) { // next square undefended.
+								if !is_attacked_by(brd, temp_occ, next, e, c) { // next square undefended.
 									structure += minor_bonus
 								}
 							}
@@ -464,7 +465,7 @@ func pawn_structure(brd *Board, c, e uint8, endgame, enemy_king_sq int) int {
 }
 
 func get_offset(c uint8, sq, off int) int {
-	if c > 0 {
+	if c == WHITE {
 		return sq + off
 	} else {
 		return sq - off

@@ -26,7 +26,7 @@ package main
 import (
 	"fmt"
 	"strconv"
-	"testing"
+	// "testing"
 	"time"
 )
 
@@ -100,7 +100,8 @@ func PerftValidation(brd *Board, stk Stack, depth, ply int) int {
 	// intentionally disregard whether king is in check while generating moves.
 	generator := NewMoveSelector(brd, &this_stk, false, NO_MOVE)
 	for m := generator.Next(); m != NO_MOVE; m = generator.Next() {
-		if !brd.ValidMove(m) || !brd.LegalMove(m, is_in_check(brd)) {
+		in_check := is_in_check(brd)
+		if !brd.ValidMove(m, in_check) || !brd.LegalMove(m, in_check) {
 			continue // rely on validation to prevent illegal moves...
 		}
 		make_move(brd, m)

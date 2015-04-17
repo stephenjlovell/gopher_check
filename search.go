@@ -445,6 +445,6 @@ func null_make(brd *Board, stk Stack, beta, depth, ply, extensions_left int) (in
 func store_cutoff(this_stk *StackItem, m Move, c uint8, count int) {
 	if m.IsQuiet() {
 		main_htable.Store(m, c, count)
-		// this_stk.StoreKiller(m) // store killer moves in stack for this Goroutine.
+		this_stk.StoreKiller(m) // store killer moves in stack for this Goroutine.
 	}
 }

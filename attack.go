@@ -27,9 +27,8 @@ import (
 // "fmt"
 )
 
-func attack_map(brd *Board, sq int) BB {
+func attack_map(brd *Board, occ BB, sq int) BB {
 	var attacks, b_attackers, r_attackers BB
-	occ := brd.AllOccupied()
 	attacks |= (pawn_attack_masks[BLACK][sq] & brd.pieces[WHITE][PAWN]) | // Pawns
 		(pawn_attack_masks[WHITE][sq] & brd.pieces[BLACK][PAWN])
 	attacks |= (knight_masks[sq] & (brd.pieces[WHITE][KNIGHT] | brd.pieces[BLACK][KNIGHT])) // Knights
@@ -43,9 +42,8 @@ func attack_map(brd *Board, sq int) BB {
 	return attacks
 }
 
-func color_attack_map(brd *Board, sq int, c, e uint8) BB {
+func color_attack_map(brd *Board, occ BB, sq int, c, e uint8) BB {
 	var attacks, b_attackers, r_attackers BB
-	occ := brd.AllOccupied()
 	attacks |= pawn_attack_masks[e][sq] & brd.pieces[c][PAWN]  // Pawns
 	attacks |= knight_masks[sq] & brd.pieces[c][KNIGHT]        // Knights
 	b_attackers = brd.pieces[c][BISHOP] | brd.pieces[c][QUEEN] // Bishops and Queens
@@ -56,8 +54,20 @@ func color_attack_map(brd *Board, sq int, c, e uint8) BB {
 	return attacks
 }
 
-func is_attacked_by(brd *Board, sq int, attacker, defender uint8) bool {
-	occ := brd.AllOccupied()
+func attacks_after_move(brd *Board, occ, enemy_occ BB, sq int, c, e uint8) BB { 
+	var attacks, b_attackers, r_attackers BB
+	attacks |= pawn_attack_masks[e][sq] & brd.pieces[c][PAWN] & enemy_occ  // Pawns
+	attacks |= knight_masks[sq] & brd.pieces[c][KNIGHT] & enemy_occ       // Knights
+	b_attackers = brd.pieces[c][BISHOP] | brd.pieces[c][QUEEN] & enemy_occ // Bishops and Queens
+	attacks |= bishop_attacks(occ, sq) & b_attackers
+	r_attackers = brd.pieces[c][ROOK] | brd.pieces[c][QUEEN] & enemy_occ // Rooks and Queens
+	attacks |= rook_attacks(occ, sq) & r_attackers
+	attacks |= king_masks[sq] & brd.pieces[c][KING] // Kings
+	return attacks
+}
+
+
+func is_attacked_by(brd *Board, occ BB, sq int, attacker, defender uint8) bool {
 	if pawn_attack_masks[defender][sq]&brd.pieces[attacker][PAWN] > 0 { // Pawns
 		return true
 	}
@@ -140,8 +150,9 @@ func get_see(brd *Board, from, to int, captured_piece Piece) int {
 	r_attackers := brd.pieces[WHITE][ROOK] | brd.pieces[BLACK][ROOK] |
 		brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]
 
-	temp_map := attack_map(brd, to)
 	temp_occ := brd.AllOccupied()
+	temp_map := attack_map(brd, temp_occ, to)
+
 	var temp_pieces BB
 
 	var piece_list [20]int
@@ -227,7 +238,7 @@ func side_in_check(brd *Board, c, e uint8) bool { // determines if specified sid
 	if brd.pieces[c][KING] == 0 {
 		return true
 	} else {
-		return is_attacked_by(brd, furthest_forward(c, brd.pieces[c][KING]), e, c)
+		return is_attacked_by(brd, brd.AllOccupied(), furthest_forward(c, brd.pieces[c][KING]), e, c)
 	}
 }
 
@@ -248,17 +259,27 @@ func is_checkmate(brd *Board, in_check bool) bool {
 		return false
 	}
 	c := brd.c
-	if brd.pieces[c][KING] > 0 {
-		var to int
-		e := brd.Enemy()
-		from := furthest_forward(c, brd.pieces[c][KING])
-		target := ^brd.occupied[c]
-		for t := king_masks[from] & target; t > 0; t.Clear(to) { // generate to squares
-			to = furthest_forward(c, t)
-			if !is_attacked_by(brd, to, e, c) {
-				return false
-			}
+	if brd.pieces[c][KING] == 0 {
+		return true
+	}
+	var to int
+	e := brd.Enemy()
+	from := furthest_forward(c, brd.pieces[c][KING])
+	target := ^brd.occupied[c]
+	occ := brd.AllOccupied()
+	for t := king_masks[from] & target; t > 0; t.Clear(to) { // generate to squares
+		to = furthest_forward(c, t)
+		if !is_attacked_by(brd, occ_after_move(occ, from, to), to, e, c) {
+			return false
 		}
 	}
 	return true
 }
+
+func occ_after_move(occ BB, from, to int) BB {
+	return (occ|sq_mask_on[to])&sq_mask_off[from]
+}
+
+
+
+

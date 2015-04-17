@@ -70,7 +70,7 @@ func mvv_lva(victim, attacker Piece) uint64 { // returns value between 0 and 64
 // If defended, gain is SEE score where captured_piece == EMPTY
 func SortPromotion(brd *Board, m Move) uint64 {
 	var val int
-	if is_attacked_by(brd, m.To(), brd.Enemy(), brd.c) {
+	if is_attacked_by(brd, brd.AllOccupied()&sq_mask_off[m.From()], m.To(), brd.Enemy(), brd.c) {
 		val = get_see(brd, m.From(), m.To(), m.CapturedPiece())
 	} else {
 		val = promote_values[m.PromotedTo()] + m.CapturedPiece().Value()

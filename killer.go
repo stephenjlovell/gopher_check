@@ -27,10 +27,14 @@ import (
 // "fmt"
 )
 
-type KEntry [3]Move
+const (
+  KILLER_COUNT = 3
+)
+
+type KEntry [KILLER_COUNT]Move
 
 func (s *StackItem) StoreKiller(m Move) {
-	killers := &s.killers
+  killers := &s.killers
   switch m {
   case killers[0]:
     // no update needed.

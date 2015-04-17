@@ -83,75 +83,60 @@ func (brd *Board) AvoidsCheck(m Move, in_check bool) bool {
 func (brd *Board) PseudolegalAvoidsCheck(m Move) bool {
 	switch m.Piece() {
 	case PAWN:
-		if m.CapturedPiece() == PAWN && brd.TypeAt(m.To()) == EMPTY { // En-passant capture
+		if m.CapturedPiece() == PAWN && brd.TypeAt(m.To()) == EMPTY { // En-passant
 			return pinned_can_move(brd, m.From(), m.To(), brd.c, brd.Enemy()) &&
 				is_pinned(brd, int(brd.enp_target), brd.c, brd.Enemy()) & sq_mask_on[m.To()] > 0 
 		} else {
 			return pinned_can_move(brd, m.From(), m.To(), brd.c, brd.Enemy())
 		}
 	case KING:
-		return !is_attacked_by(brd, m.To(), brd.Enemy(), brd.c)
+		return !is_attacked_by(brd, brd.AllOccupied(), m.To(), brd.Enemy(), brd.c)
 	default:
 		return pinned_can_move(brd, m.From(), m.To(), brd.c, brd.Enemy())
 	}
 }
 
+// Only called when in check
 func (brd *Board) EvadesCheck(m Move) bool {
 	piece, from, to := m.Piece(), m.From(), m.To()
 	c, e := brd.c, brd.Enemy()
-
 	if brd.pieces[c][KING] == 0 {
 		return false
 	}
-
-	king_sq := furthest_forward(c, brd.pieces[c][KING])
-	threats := color_attack_map(brd, king_sq, e, c) // find any enemy pieces that attack the king.
-	threat_count := pop_count(threats)
-	var threat_sq_1, threat_sq_2 int
-	threat_dir_1, threat_dir_2 := DIR_INVALID, DIR_INVALID
-	var defense_map BB
-
-	if threat_count == 1 {
-		threat_sq_1 = lsb(threats)
-		if brd.TypeAt(threat_sq_1) != PAWN {
-			threat_dir_1 = directions[threat_sq_1][king_sq]
-		}
-		defense_map |= (intervening[threat_sq_1][king_sq] | threats)
-	} else {
-		threat_sq_1 = lsb(threats)
-		if brd.TypeAt(threat_sq_1) != PAWN {
-			threat_dir_1 = directions[threat_sq_1][king_sq]
-		}
-		threat_sq_2 = msb(threats)
-		if brd.TypeAt(threat_sq_2) != PAWN {
-			threat_dir_2 = directions[threat_sq_2][king_sq]
-		}
-	}
-
+	occ := brd.AllOccupied()
 	if piece == KING {
-		return !is_attacked_by(brd, m.To(), brd.Enemy(), brd.c) && 
-			threat_dir_1 != directions[king_sq][to] && threat_dir_2 != directions[king_sq][to]
-	} 
-	if threat_count == 1 && sq_mask_on[to] & defense_map > 0 && 
-		pinned_can_move(brd, from, to, c, e) {
-		if piece == PAWN && m.CapturedPiece() == PAWN && brd.TypeAt(to) == EMPTY { // En-passant capture
-			return is_pinned(brd, int(brd.enp_target), c, e) & sq_mask_on[to] > 0 
+		return !is_attacked_by(brd, occ_after_move(brd.AllOccupied(), from, to), to, e, c)
+	} else {
+		king_sq := furthest_forward(c, brd.pieces[c][KING])
+		threats := color_attack_map(brd, occ, king_sq, e, c)
+		if pop_count(threats) > 1 {
+			return false // only king moves can escape from double check.
 		}
-		return true
+		if (threats|intervening[furthest_forward(e, threats)][king_sq]) & sq_mask_on[to] == 0 {
+			return false // the moving piece must kill or block the attacking piece.
+		}
+		if !pinned_can_move(brd, from, to, c, e) {
+			return false // the moving piece can't be pinned to the king.
+		}
+		if brd.enp_target != SQ_INVALID && piece == PAWN && m.CapturedPiece() == PAWN && // En-passant
+			brd.TypeAt(to) == EMPTY {
+			occ = occ_after_move(brd.AllOccupied(), from, to)&sq_mask_off[brd.enp_target]
+			return attacks_after_move(brd, occ, occ&brd.occupied[e], king_sq, e, c) == 0
+		}
 	}
-	return false
+	return true
 }
 
 
-func (brd *Board) ValidMove(m Move) bool {
-	if m == 0 || m == NO_MOVE {
+func (brd *Board) ValidMove(m Move, in_check bool) bool {
+	if !m.IsMove() {
 		return false
 	}
 
 	c, e := brd.c, brd.Enemy()
 	piece, from, to, captured_piece := m.Piece(), m.From(), m.To(), m.CapturedPiece()
 
-	if piece >= EMPTY || brd.pieces[c][piece]&sq_mask_on[from] == 0 {
+	if brd.TypeAt(from) != piece || brd.pieces[c][piece]&sq_mask_on[from] == 0 {
 		// fmt.Printf("No piece of this type available at from square!{%s}", m.ToString())
 		return false
 	}
@@ -187,6 +172,7 @@ func (brd *Board) ValidMove(m Move) bool {
 				if brd.enp_target != SQ_INVALID && get_offset(c, to, -8) == int(brd.enp_target) {
 					return true
 				} else {
+					// fmt.Printf("Invalid En-passant move!{%s}", m.ToString())
 					return false
 				}
 			} else {
@@ -195,29 +181,30 @@ func (brd *Board) ValidMove(m Move) bool {
 		}
 	case KING:
 		if abs(to-from) == 2 { // validate castle moves
+			occ := brd.AllOccupied()
 			if c == WHITE && (brd.castle&12) > 0 {
 				switch to {
 				case C1:
-					if !((brd.castle&C_WQ > uint8(0)) && castle_queenside_intervening[WHITE]&brd.AllOccupied() == 0 &&
-						!is_attacked_by(brd, B1, e, c) && !is_attacked_by(brd, C1, e, c) && !is_attacked_by(brd, D1, e, c)) {
+					if !in_check && (brd.castle&C_WQ > uint8(0)) && castle_queenside_intervening[WHITE]&brd.AllOccupied() == 0 &&
+						!is_attacked_by(brd, occ, B1, e, c) && !is_attacked_by(brd, occ, C1, e, c) && !is_attacked_by(brd, occ, D1, e, c) {
 						return true
 					}
 				case G1:
-					if !((brd.castle&C_WK > uint8(0)) && castle_kingside_intervening[WHITE]&brd.AllOccupied() == 0 &&
-						!is_attacked_by(brd, F1, e, c) && !is_attacked_by(brd, G1, e, c)) {
+					if !in_check && (brd.castle&C_WK > uint8(0)) && castle_kingside_intervening[WHITE]&brd.AllOccupied() == 0 &&
+						!is_attacked_by(brd, occ, F1, e, c) && !is_attacked_by(brd, occ, G1, e, c) {
 						return true
 					}
 				}
 			} else if c == BLACK && (brd.castle&3) > 0 {
 				switch to {
 				case C8:
-					if !((brd.castle&C_BQ > uint8(0)) && castle_queenside_intervening[BLACK]&brd.AllOccupied() == 0 &&
-						!is_attacked_by(brd, B8, e, c) && !is_attacked_by(brd, C8, e, c) && !is_attacked_by(brd, D8, e, c)) {
+					if !in_check && (brd.castle&C_BQ > uint8(0)) && castle_queenside_intervening[BLACK]&brd.AllOccupied() == 0 &&
+						!is_attacked_by(brd, occ, B8, e, c) && !is_attacked_by(brd, occ, C8, e, c) && !is_attacked_by(brd, occ, D8, e, c) {
 						return true
 					}
 				case G8:
-					if !((brd.castle&C_BK > uint8(0)) && castle_kingside_intervening[BLACK]&brd.AllOccupied() == 0 &&
-						!is_attacked_by(brd, F8, e, c) && !is_attacked_by(brd, G8, e, c)) {
+					if !in_check && (brd.castle&C_BK > uint8(0)) && castle_kingside_intervening[BLACK]&brd.AllOccupied() == 0 &&
+						!is_attacked_by(brd, occ, F8, e, c) && !is_attacked_by(brd, occ, G8, e, c) {
 						return true
 					}
 				}

@@ -38,23 +38,23 @@ func get_non_captures(brd *Board, remaining_moves *MoveList) {
 		e := brd.Enemy()
 		if c == WHITE {
 			if (castle&C_WQ > uint8(0)) && castle_queenside_intervening[WHITE]&occ == 0 &&
-				!is_attacked_by(brd, B1, e, c) && !is_attacked_by(brd, C1, e, c) && !is_attacked_by(brd, D1, e, c) {
+				!is_attacked_by(brd, occ, B1, e, c) && !is_attacked_by(brd, occ, C1, e, c) && !is_attacked_by(brd, occ, D1, e, c) {
 				m = NewRegularMove(E1, C1, KING)
 				remaining_moves.Push(&SortItem{m, main_htable.Probe(KING, c, C1) | 1})
 			}
 			if (castle&C_WK > uint8(0)) && castle_kingside_intervening[WHITE]&occ == 0 &&
-				!is_attacked_by(brd, F1, e, c) && !is_attacked_by(brd, G1, e, c) {
+				!is_attacked_by(brd, occ, F1, e, c) && !is_attacked_by(brd, occ, G1, e, c) {
 				m = NewRegularMove(E1, G1, KING)
 				remaining_moves.Push(&SortItem{m, main_htable.Probe(KING, c, G1) | 1})
 			}
 		} else {
 			if (castle&C_BQ > uint8(0)) && castle_queenside_intervening[BLACK]&occ == 0 &&
-				!is_attacked_by(brd, B8, e, c) && !is_attacked_by(brd, C8, e, c) && !is_attacked_by(brd, D8, e, c) {
+				!is_attacked_by(brd, occ, B8, e, c) && !is_attacked_by(brd, occ, C8, e, c) && !is_attacked_by(brd, occ, D8, e, c) {
 				m = NewRegularMove(E8, C8, KING)
 				remaining_moves.Push(&SortItem{m, main_htable.Probe(KING, c, C8) | 1})
 			}
 			if (castle&C_BK > uint8(0)) && castle_kingside_intervening[BLACK]&occ == 0 &&
-				!is_attacked_by(brd, F8, e, c) && !is_attacked_by(brd, G8, e, c) {
+				!is_attacked_by(brd, occ, F8, e, c) && !is_attacked_by(brd, occ, G8, e, c) {
 				m = NewRegularMove(E8, G8, KING)
 				remaining_moves.Push(&SortItem{m, main_htable.Probe(KING, c, G8) | 1})
 			}
@@ -470,7 +470,7 @@ func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 	enemy := brd.Placement(e)
 
 	king_sq := furthest_forward(c, brd.pieces[c][KING])
-	threats := color_attack_map(brd, king_sq, e, c) // find any enemy pieces that attack the king.
+	threats := color_attack_map(brd, occ, king_sq, e, c) // find any enemy pieces that attack the king.
 	threat_count := pop_count(threats)
 
 	// Get direction of the attacker(s) and any intervening squares between the attacker and the king.
@@ -711,7 +711,7 @@ func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 	// King captures
 	for t := (king_masks[king_sq] & enemy); t > 0; t.Clear(to) { // generate to squares
 		to = furthest_forward(c, t)
-		if !is_attacked_by(brd, to, e, c) && threat_dir_1 != directions[king_sq][to] &&
+		if !is_attacked_by(brd, occ, to, e, c) && threat_dir_1 != directions[king_sq][to] &&
 			threat_dir_2 != directions[king_sq][to] {
 			m = NewCapture(king_sq, to, KING, brd.squares[to])
 			see = get_see(brd, king_sq, to, brd.squares[to])
@@ -723,7 +723,7 @@ func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 	// King moves
 	for t := (king_masks[king_sq] & empty); t > 0; t.Clear(to) { // generate to squares
 		to = furthest_forward(c, t)
-		if !is_attacked_by(brd, to, e, c) && threat_dir_1 != directions[king_sq][to] &&
+		if !is_attacked_by(brd, occ, to, e, c) && threat_dir_1 != directions[king_sq][to] &&
 			threat_dir_2 != directions[king_sq][to] {
 			m = NewRegularMove(king_sq, to, KING)
 			remaining_moves.Push(&SortItem{m, main_htable.Probe(KING, c, to)})

@@ -131,8 +131,15 @@ func (s *MoveSelector) Next() Move {
 		switch s.stage - 1 {
 		case STAGE_FIRST: 
 			s.index++
-			if s.brd.ValidMove(s.first_move) && s.brd.LegalMove(s.first_move, s.in_check) {
+			if s.brd.ValidMove(s.first_move, s.in_check) && s.brd.LegalMove(s.first_move, s.in_check) {
 				return s.first_move
+			} else {
+				// if s.first_move.IsMove() { 
+				// 	fmt.Println("first move invalid:")
+				// 	s.brd.Print()
+				// 	s.first_move.Print()
+				// 	fmt.Println(s.brd.castle) 
+				// }
 			}
 		case STAGE_WINNING:
 			m := s.winning[s.index].move
@@ -143,7 +150,7 @@ func (s *MoveSelector) Next() Move {
 		case STAGE_KILLER:
 			m := s.this_stk.killers[s.index]
 			s.index++
-			if m != s.first_move && s.brd.ValidMove(m) && s.brd.LegalMove(m, s.in_check) {
+			if m != s.first_move && s.brd.ValidMove(m, s.in_check) && s.brd.LegalMove(m, s.in_check) {
 				return m
 			}
 		case STAGE_LOSING:
@@ -178,11 +185,7 @@ func (s *MoveSelector) NextBatch() bool {
 		s.winning.Sort()
 		s.finished = len(s.winning)
 	case STAGE_KILLER:
-		if s.in_check {
-			s.finished = 0
-		} else {
-			s.finished = 3			
-		}
+		s.finished = KILLER_COUNT			
 	case STAGE_LOSING:
 		s.losing.Sort()
 		s.finished = len(s.losing)
