@@ -46,10 +46,11 @@ type SplitPoint struct {
 	alpha int // shared
 	beta  int
 	best  int // shared
-
-	slave_mask           uint32 // shared
-	all_slaves_searching bool   // shared
 	node_count           int    // shared
+	
+	// slave_mask           uint32 // shared
+	// all_slaves_searching bool   // shared
+
 
 	best_move    Move // shared
 	move_count   int  // shared. number of moves fully searched so far.
@@ -71,10 +72,8 @@ type StackItem struct {
 
 	hash_key uint64 // use hash key to search for repetitions
 
-	// ply             int
 	depth           int
 	extensions_left int
 
-	// skip_pruning bool
 	in_check bool
 }

@@ -39,6 +39,15 @@ import (
 // The assigned worker begins a search rooted at the chosen SP node. Each worker searching the SP
 // node requests moves from the SP node's move generator.
 
+// Cancellation:
+
+// When a beta cutoff occurs at an SP node, the worker sends a cancellation signal on a channel 
+// read by the other workers collaborating on the current split point.
+
+
+
+
+
 type Request struct{}
 
 type Balancer struct{}
@@ -55,3 +64,14 @@ func (w *Worker) split() {}
 // Wait for work to come in via the load balancer.  Execute the search,
 // then inform the load balancer once it's complete.
 func (w *Worker) work(done chan *Worker) {}
+
+
+
+
+
+
+
+
+
+
+

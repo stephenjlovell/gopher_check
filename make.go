@@ -46,7 +46,6 @@ func make_move(brd *Board, move Move) {
 	switch piece {
 	case PAWN:
 		brd.halfmove_clock = 0 // All pawn moves are irreversible.
-
 		switch captured_piece {
 		case EMPTY:
 			if abs(to-from) == 16 { // handle en passant advances
@@ -78,19 +77,18 @@ func make_move(brd *Board, move Move) {
 			relocate_piece(brd, PAWN, from, to, c)
 		}
 
-		// update the pawn hash key...
-
-	// update piece-specific logic to reduce frequency of checks for castle rights...
+	// to do: update pawn hash key...
 
 	case KING:
-		if captured_piece != EMPTY {
+		switch captured_piece {
+		case ROOK:
 			if brd.castle > 0 {
 				update_castle_rights(brd, from)
 				update_castle_rights(brd, to) //
 			}
 			remove_piece(brd, captured_piece, to, brd.Enemy())
 			brd.halfmove_clock = 0 // All capture moves are irreversible.
-		} else {
+		case EMPTY:
 			brd.halfmove_clock += 1
 			if brd.castle > 0 {
 				update_castle_rights(brd, from)
@@ -111,32 +109,51 @@ func make_move(brd *Board, move Move) {
 					}
 				}
 			}
-		}
-		relocate_king(brd, KING, from, to, c)
-	case ROOK:
-		if captured_piece != EMPTY {
+		default:
 			if brd.castle > 0 {
-				update_castle_rights(brd, from) // only need to check this for rooks and kings
-				update_castle_rights(brd, to)   //
+				update_castle_rights(brd, from)
 			}
 			remove_piece(brd, captured_piece, to, brd.Enemy())
 			brd.halfmove_clock = 0 // All capture moves are irreversible.
-		} else {
+		}
+		relocate_king(brd, KING, from, to, c)
+
+	case ROOK:
+		switch captured_piece {
+		case ROOK:
 			if brd.castle > 0 {
-				update_castle_rights(brd, from) // only need to check this for rooks and kings
+				update_castle_rights(brd, from) 
+				update_castle_rights(brd, to)   
+			}
+			remove_piece(brd, captured_piece, to, brd.Enemy())
+			brd.halfmove_clock = 0 // All capture moves are irreversible.
+		case EMPTY:
+			if brd.castle > 0 {
+				update_castle_rights(brd, from) 
 			}
 			brd.halfmove_clock += 1
+		default:
+			if brd.castle > 0 {
+				update_castle_rights(brd, from) 
+			}
+			remove_piece(brd, captured_piece, to, brd.Enemy())
+			brd.halfmove_clock = 0 // All capture moves are irreversible.	
 		}
 		relocate_piece(brd, ROOK, from, to, c)
+
 	default:
-		if captured_piece != EMPTY {
+		switch captured_piece {
+		case ROOK:
 			if brd.castle > 0 {
 				update_castle_rights(brd, to) //
 			}
 			remove_piece(brd, captured_piece, to, brd.Enemy())
 			brd.halfmove_clock = 0 // All capture moves are irreversible.
-		} else {
+		case EMPTY:
 			brd.halfmove_clock += 1
+		default:
+			remove_piece(brd, captured_piece, to, brd.Enemy())
+			brd.halfmove_clock = 0 // All capture moves are irreversible.
 		}
 		relocate_piece(brd, piece, from, to, c)
 	}
@@ -158,7 +175,6 @@ func unmake_move(brd *Board, move Move, memento *BoardMemento) {
 
 	switch piece {
 	case PAWN:
-
 		if move.PromotedTo() != EMPTY {
 			remove_piece(brd, move.PromotedTo(), to, c)
 			brd.squares[to] = captured_piece
@@ -166,7 +182,6 @@ func unmake_move(brd *Board, move Move, memento *BoardMemento) {
 		} else {
 			relocate_piece(brd, piece, to, from, c)
 		}
-
 		switch captured_piece {
 		case PAWN:
 			if enp_target != SQ_INVALID {
@@ -195,20 +210,18 @@ func unmake_move(brd *Board, move Move, memento *BoardMemento) {
 		relocate_king(brd, piece, to, from, c)
 		if captured_piece != EMPTY {
 			add_piece(brd, captured_piece, to, brd.Enemy())
-		} else {
-			if abs(to-from) == 2 { // king castled.
-				if c == WHITE {
-					if to == G1 {
-						relocate_piece(brd, ROOK, F1, H1, WHITE)
-					} else {
-						relocate_piece(brd, ROOK, D1, A1, WHITE)
-					}
+		} else if abs(to-from) == 2 { // king castled.
+			if c == WHITE {
+				if to == G1 {
+					relocate_piece(brd, ROOK, F1, H1, WHITE)
 				} else {
-					if to == G8 {
-						relocate_piece(brd, ROOK, F8, H8, BLACK)
-					} else {
-						relocate_piece(brd, ROOK, D8, A8, BLACK)
-					}
+					relocate_piece(brd, ROOK, D1, A1, WHITE)
+				}
+			} else {
+				if to == G8 {
+					relocate_piece(brd, ROOK, F8, H8, BLACK)
+				} else {
+					relocate_piece(brd, ROOK, D8, A8, BLACK)
 				}
 			}
 		}
