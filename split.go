@@ -36,10 +36,11 @@ type SPList []SplitPoint
 type SplitPoint struct {
 	sync.Mutex
 
+	selector  *MoveSelector
 	parent    *SplitPoint
 	master    *Worker
 	brd       *Board
-	stack     StackItem
+	this_stk  StackItem
 	depth     int
 	node_type int
 
@@ -54,8 +55,10 @@ type SplitPoint struct {
 
 	best_move    Move // shared
 	move_count   int  // shared. number of moves fully searched so far.
-	cutoff_found bool // shared
+	// cutoff_found bool // shared
+	cancel chan bool
 }
+
 
 type Stack []StackItem
 

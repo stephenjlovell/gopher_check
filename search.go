@@ -109,7 +109,7 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 
 		stk = make(Stack, MAX_STACK, MAX_STACK)
 		stk[0].in_check = in_check
-		guess, count = ybw(brd, stk, id_alpha, id_beta, d, 0, MAX_EXT, true, Y_PV)
+		guess, count = ybw(brd, stk, id_alpha, id_beta, d, 0, MAX_EXT, true, false, Y_PV)
 		sum += count
 
 		if stk[0].pv_move.IsMove() {
@@ -133,9 +133,31 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 	return id_move[c], sum
 }
 
-func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, can_null bool, node_type int) (int, int) {
+func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, can_null, is_sp bool, node_type int) (int, int) {
+	var this_stk *StackItem
+	var in_check bool
+	var sp *SplitPoint
 
-	// always extend 1-ply when at end of PV?
+	score, best := -INF, -INF
+	old_alpha := alpha
+	sum := 1
+
+	var best_move, first_move Move
+	var null_depth, hash_result, eval, count, legal_searched, child_type, r_depth, r_extensions int
+
+	f_prune, can_reduce := false, false
+
+	// if the is_sp flag is set, a worker has just been assigned to this split point.
+	// the SP master has already handled most of the setup, so just read the latest values
+	// from the SP and jump to the moves loop.
+	if is_sp {
+		sp = stk[ply].sp
+		this_stk = &sp.this_stk
+		in_check = this_stk.in_check
+		goto search_moves
+	}
+
+
 
 	if depth <= 0 {
 		if node_type == Y_PV {
@@ -149,15 +171,15 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		return 0, 0
 	}
 
-	this_stk := &stk[ply]
+	this_stk = &stk[ply]
 
 	this_stk.hash_key = brd.hash_key
-	if stk.IsRepetition(ply) {
+	if stk.IsRepetition(ply) { // check for draw by threefold repetition
 		return 0, 1
 		// return -ply, 1
 	}
 
-	in_check := this_stk.in_check
+	in_check = this_stk.in_check
 
 	if in_check != is_in_check(brd) {
 		fmt.Println(ply)
@@ -179,21 +201,16 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		}
 	}
 
-	score, best := -INF, -INF
-	old_alpha := alpha
-	sum, count, legal_searched := 1, 0, 0
 
-	var best_move, first_move Move
-	var null_depth int
 	if depth > 6 {
 		null_depth = depth - 3
 	} else {
 		null_depth = depth - 2
 	}
-	var hash_result int
+
 	first_move, hash_result = main_tt.probe(brd, depth, null_depth, &alpha, &beta, &score)
 
-	eval := evaluate(brd, alpha, beta)	
+	eval = evaluate(brd, alpha, beta)	
 	// if score > eval {
 	// 	if hash_result & ALPHA_FOUND > 0 {
 	// 		eval = score
@@ -222,15 +239,13 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	// skip IID when in check?
 	if !in_check && node_type == Y_PV && hash_result == NO_MATCH && can_null && depth >= IID_MIN { 
 		// No hash move available. Use IID to get a decent first move to try.
-		score, count = ybw(brd, stk, alpha, beta, depth-2, ply, extensions_left, can_null, node_type)
+		score, count = ybw(brd, stk, alpha, beta, depth-2, ply, extensions_left, can_null, false, node_type)
 		sum += count
 		first_move = this_stk.pv_move
 	}
 
-	var child_type, r_depth, r_extensions int
-
 	// Restrict pruning to STAGE_REMAINING
-	f_prune, can_reduce := false, false
+
 	if !in_check && ply > 0 && node_type != Y_PV && alpha > 100-MATE {
 		if depth <= F_PRUNE_MAX && eval+piece_values[BISHOP] < alpha {
 			f_prune = true
@@ -240,10 +255,12 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		}
 	}
 
+search_moves:
+
 	memento := brd.NewMemento()
 	selector := NewMoveSelector(brd, this_stk, in_check, first_move)
 
-	for m := selector.Next(); m != NO_MOVE; m = selector.Next() {
+	for m := selector.Next(is_sp); m != NO_MOVE; m = selector.Next(is_sp) {
 
 		make_move(brd, m)
 
@@ -252,7 +269,6 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		if f_prune && selector.CurrentStage() == STAGE_REMAINING && legal_searched > 0 && m.IsQuiet() &&
 			!is_passed_pawn(brd, m) && !brd.pawns_only() && !gives_check {
 			unmake_move(brd, m, memento)
-			// legal_searched += 1
 			continue
 		}
 
@@ -271,16 +287,16 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		stk[ply+1].in_check = gives_check // avoid having to recalculate in_check at beginning of search.
 
 		if node_type == Y_PV && alpha > old_alpha {
-			score, count = ybw(brd, stk, -alpha-1, -alpha, r_depth-1, ply+1, r_extensions, can_null, child_type)
+			score, count = ybw(brd, stk, -alpha-1, -alpha, r_depth-1, ply+1, r_extensions, can_null, false, child_type)
 			score = -score
 			sum += count
 			if score > alpha {
-				score, count = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, Y_PV)
+				score, count = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, false, Y_PV)
 				score = -score
 				sum += count
 			}
 		} else {
-			score, count = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, child_type)
+			score, count = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, false, child_type)
 			score = -score
 			sum += count
 		}
@@ -306,9 +322,13 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 			best = score
 		}
 		legal_searched += 1
-	}
 
-	// may want to look at how depth is being stored: is it accounting for non-check extensions/reductions?
+		// decide whether to split
+
+
+
+	} // end of moves loop
+
 
 	// at split nodes the legal_searched counter will need to be shared via the SP struct.
 
@@ -382,7 +402,7 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 	memento := brd.NewMemento()
 	selector := NewQMoveSelector(brd, this_stk, in_check, checks_remaining > 0)
 
-	for m := selector.Next(); m != NO_MOVE; m = selector.Next() {
+	for m := selector.Next(false); m != NO_MOVE; m = selector.Next(false) {
 
 		make_move(brd, m)
 
@@ -449,7 +469,7 @@ func null_make(brd *Board, stk Stack, beta, null_depth, ply, extensions_left int
 	brd.enp_target = SQ_INVALID
 
 	stk[ply+1].in_check = is_in_check(brd)
-	score, sum := ybw(brd, stk, -beta, -beta+1, null_depth-1, ply+1, extensions_left, false, Y_CUT)
+	score, sum := ybw(brd, stk, -beta, -beta+1, null_depth-1, ply+1, extensions_left, false, false, Y_CUT)
 
 	brd.c ^= 1
 	brd.hash_key = hash_key

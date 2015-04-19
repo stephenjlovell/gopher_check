@@ -48,9 +48,19 @@ import (
 
 
 
-type Request struct{}
+
+
+var load_balancer *Balancer
+
+func setup_load_balancer() {
+
+
+}
+
 
 type Balancer struct{}
+
+
 
 func (b *Balancer) get_available() {}
 
@@ -58,6 +68,8 @@ type Worker struct {
 	requests chan Request
 	sp_list  SPList
 }
+
+func (w *Worker) can_split() {}
 
 func (w *Worker) split() {}
 
@@ -67,7 +79,7 @@ func (w *Worker) work(done chan *Worker) {}
 
 
 
-
+type Request struct{}
 
 
 

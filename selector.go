@@ -52,7 +52,7 @@ const (
 )
 
 type SelectorInterface interface { // concrete Selector types must implement this interface
-	Next() Move
+	Next(bool) Move
 	NextBatch() bool
 	CurrentStage() int
 }
@@ -114,14 +114,23 @@ func NewQMoveSelector(brd *Board, this_stk *StackItem, in_check, can_check bool)
 	}
 }
 
-func (s *MoveSelector) NextShared() Move {
-	s.Lock()
-	m := s.Next()
-	s.Unlock()
+func (s *MoveSelector) Next(is_sp bool) Move {
+	if is_sp {
+		return s.NextSPMove()
+	} else {
+		return s.NextMove()
+	}
+}
+
+func (s *MoveSelector) NextSPMove() Move {
+	sp_selector := s.this_stk.sp.selector
+	sp_selector.Lock()
+	m := sp_selector.NextMove()
+	sp_selector.Unlock()
 	return m
 }
 
-func (s *MoveSelector) Next() Move {
+func (s *MoveSelector) NextMove() Move {
 	for {
 		for s.index == s.finished {
 			if s.NextBatch() {
@@ -202,7 +211,7 @@ func (s *MoveSelector) NextBatch() bool {
 	return done
 }
 
-func (s *QMoveSelector) Next() Move {
+func (s *QMoveSelector) Next(is_sp bool) Move {
 	for {
 		for s.index == s.finished {
 			if s.NextBatch() {
