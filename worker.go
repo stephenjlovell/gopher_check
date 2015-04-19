@@ -24,13 +24,13 @@
 package main
 
 import (
-// "sync"
+  "sync"
 )
 
 // Each worker maintains a list of active split points for which it is responsible.
 
 // When a worker's search reaches a new SP node, it creates a new SP struct, (including the current
-// []Stack info) and adds the SP to its active SP list.
+// []Stack info for nodes above the SP) and adds the SP to its active SP list.
 
 // When workers are idle (they've finished searching and have no split points of their own),
 // they request more work from the load balancer. The load balancer selects the best
@@ -43,43 +43,90 @@ import (
 
 // When a beta cutoff occurs at an SP node, the worker sends a cancellation signal on a channel 
 // read by the other workers collaborating on the current split point.
+// If there are more SPs below the current one, the cancellation signal will be fanned out to 
+// each child SP.
 
-
-
-
-
-
+const (
+  MAX_GOPROCS = 8
+  MAX_SP_PER_WORKER = 8
+)
 
 var load_balancer *Balancer
 
 func setup_load_balancer() {
-
-
+  load_balancer = &Balancer{
+    workers: make([]*Worker, 0, MAX_GOPROCS),
+    done: make(chan *Worker, MAX_GOPROCS),
+  }
+  workers := load_balancer.workers
+  for i := uint8(0); i < MAX_GOPROCS; i++ {
+    workers[i] = &Worker{
+      id: 1 << i,
+      sp_list: make(SPList, MAX_SP_PER_WORKER),
+    }
+  }
 }
 
 
-type Balancer struct{}
+
+type Balancer struct{
+  workers []*Worker
+  done chan *Worker
+}
 
 
+func (b *Balancer) Start() {
+  for _, w := range b.workers {
+    w.Work(b.done) // Start each worker
+  }
+}
 
-func (b *Balancer) get_available() {}
+func (b *Balancer) GetAvailable() {}
 
 type Worker struct {
-	requests chan Request
-	sp_list  SPList
+  sync.Mutex
+  id int
+  sp_count int  // cache the size of the SP list
+	assignments chan Assignment
+	sp_list  SPList  // stores the SPs for which this worker is responsible.
 }
 
-func (w *Worker) can_split() {}
+func (w *Worker) CanAddSP() bool {
+  w.Lock()
+  can_split := w.sp_count < MAX_SP_PER_WORKER
+  w.Unlock()
+  return can_split
+}
 
-func (w *Worker) split() {}
+func (w *Worker) AddSP(sp *SplitPoint) {
+  w.Lock()
+  w.sp_list = append(w.sp_list, sp) // may want to organize as a heap in order to 
+                                    // keep sorted. Otherwise implement insertion sort
+  w.Unlock()
+}
 
-// Wait for work to come in via the load balancer.  Execute the search,
-// then inform the load balancer once it's complete.
-func (w *Worker) work(done chan *Worker) {}
+
+func (w *Worker) Work(done chan *Worker) {
+
+  go func() {
+    for {
+      a := <-w.assignments  // Wait for LB to assign this worker as a slave to another worker.
+      sp := a.sp
+      brd := sp.brd.Copy()
+      brd.worker = w
+      _, _ = ybw(brd, a.stk, sp.alpha, sp.beta, sp.depth, sp.ply, 
+                sp.this_stk.extensions_left, sp.this_stk.can_null, true, sp.node_type)
+    }
+  }()
+
+}
 
 
 
-type Request struct{}
+type Assignment struct{
+  sp *SplitPoint
+  stk Stack
+}
 
 
 

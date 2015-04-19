@@ -107,7 +107,7 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 			return id_move[c], sum
 		} 
 
-		stk = make(Stack, MAX_STACK, MAX_STACK)
+		stk = NewStack()
 		stk[0].in_check = in_check
 		guess, count = ybw(brd, stk, id_alpha, id_beta, d, 0, MAX_EXT, true, false, Y_PV)
 		sum += count
@@ -138,8 +138,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	var in_check bool
 	var sp *SplitPoint
 
-	score, best := -INF, -INF
-	old_alpha := alpha
+	score, best, old_alpha := -INF, -INF, alpha
 	sum := 1
 
 	var best_move, first_move Move
@@ -152,7 +151,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	// from the SP and jump to the moves loop.
 	if is_sp {
 		sp = stk[ply].sp
-		this_stk = &sp.this_stk
+		this_stk = sp.this_stk
 		in_check = this_stk.in_check
 		goto search_moves
 	}
@@ -323,9 +322,11 @@ search_moves:
 		}
 		legal_searched += 1
 
-		// decide whether to split
-
-
+		// Determine if this would be a good location to begin searching in parallel.
+		if is_valid_sp(ply, depth, node_type, legal_searched, selector.CurrentStage()) {
+			setup_sp(brd, stk, selector, alpha, beta, best, depth, ply, 
+							 extensions_left, can_null, node_type, count)
+		}
 
 	} // end of moves loop
 
@@ -353,6 +354,67 @@ search_moves:
 		}
 	}
 }
+
+// Determine if the current node is a good place to start searching in parallel.
+func is_valid_sp(ply, depth, node_type, legal_searched, current_stage int) bool {
+	if depth >= SPLIT_MIN {
+		switch node_type {
+		case Y_PV:
+			return legal_searched > 0 && ply > 0
+		case Y_CUT:
+			return legal_searched > 3 && current_stage == STAGE_REMAINING
+		case Y_ALL:
+			return legal_searched > 0
+		}		
+	}
+	return false
+}
+
+// type SplitPoint struct {
+// 	sync.Mutex
+
+// 	selector  *MoveSelector
+// 	parent    *SplitPoint
+// 	master    *Worker
+// 	brd       *Board
+// 	this_stk  StackItem
+// 	depth     int
+// 	node_type int
+// 	alpha int // shared
+// 	beta  int
+// 	best  int // shared
+// 	node_count           int    // shared
+// 	// slave_mask           uint32 // shared
+// 	// all_slaves_searching bool   // shared
+// 	best_move    Move // shared
+// 	move_count   int  // shared. number of moves fully searched so far.
+// 	// cutoff_found bool // shared
+// 	cancel chan bool
+// }
+
+func setup_sp(brd *Board, stk Stack, ms *MoveSelector, alpha, beta, best, depth, ply, extensions_left int, can_null bool, node_type, count int) {
+	worker := brd.worker
+	// stk_copy := stk.CopyUpTo(ply)
+	sp := &SplitPoint{
+		selector: ms,
+		parent: stk[ply].sp,
+		master: worker,
+		brd: brd.Copy(),
+		this_stk: stk[ply].Copy(),
+		alpha: alpha,
+		beta: beta,
+		best: best,
+		depth: depth,
+		ply: ply,
+	}
+
+	if worker.CanAddSP() {
+		worker.AddSP(sp)
+	}
+
+}
+
+
 
 // Q-Search will always be done sequentially: Q-search subtrees are taller and narrower than in the main search,
 // making benefit of parallelism smaller and raising communication and synchronization overhead.

@@ -85,7 +85,7 @@ type QMoveSelector struct {
 	can_check 				bool
 }
 
-func NewMoveSelector(brd *Board, this_stk *StackItem, in_check bool, first_move Move) SelectorInterface {
+func NewMoveSelector(brd *Board, this_stk *StackItem, in_check bool, first_move Move) *MoveSelector {
 	return &MoveSelector{
 		AbstractSelector: AbstractSelector{
 			brd:             brd,

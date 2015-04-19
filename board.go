@@ -46,6 +46,7 @@ type Board struct {
 	enp_target      uint8     // 8 	bits
 	halfmove_clock  uint8     // 8 	bits
 	endgame_counter uint8     // 8 	bits
+	worker					*Worker  
 }
 
 type BoardMemento struct { // memento object used to store board state to unmake later.

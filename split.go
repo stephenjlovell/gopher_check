@@ -31,7 +31,7 @@ const (
 	MAX_STACK = 128
 )
 
-type SPList []SplitPoint
+type SPList []*SplitPoint
 
 type SplitPoint struct {
 	sync.Mutex
@@ -40,13 +40,14 @@ type SplitPoint struct {
 	parent    *SplitPoint
 	master    *Worker
 	brd       *Board
-	this_stk  StackItem
+	this_stk  *StackItem
 	depth     int
 	node_type int
 
 	alpha int // shared
 	beta  int
 	best  int // shared
+	ply int
 	node_count           int    // shared
 	
 	// slave_mask           uint32 // shared
@@ -77,6 +78,54 @@ type StackItem struct {
 
 	depth           int
 	extensions_left int
-
+	can_null bool
 	in_check bool
 }
+
+func (this_stk *StackItem) Copy() *StackItem {
+	return &StackItem{
+		sp: this_stk.sp,
+		value: this_stk.value,
+		eval: this_stk.eval,
+		pv_move: this_stk.pv_move,
+		current_move: this_stk.current_move,
+		first_move: this_stk.first_move,
+		killers: this_stk.killers,
+		hash_key: this_stk.hash_key,
+		depth: this_stk.depth,
+		extensions_left: this_stk.extensions_left,
+		in_check: this_stk.in_check,
+	}
+}
+
+
+func NewStack() Stack {
+	return make(Stack, MAX_STACK, MAX_STACK)
+}
+
+func (stk Stack) CopyUpTo(ply int) Stack {
+	stk_copy := NewStack()
+	for i := 0; i <= ply; i++ {
+		this_stk := &stk[i]
+		this_cpy := &stk_copy[i]
+		this_cpy.sp = this_stk.sp
+		this_cpy.value = this_stk.value
+		this_cpy.eval = this_stk.eval
+		this_cpy.pv_move = this_stk.pv_move
+		this_cpy.current_move = this_stk.current_move
+		this_cpy.first_move = this_stk.first_move
+		this_cpy.killers = this_stk.killers
+		this_cpy.hash_key = this_stk.hash_key
+		this_cpy.depth = this_stk.depth
+		this_cpy.extensions_left = this_stk.extensions_left
+		this_cpy.in_check = this_stk.in_check
+	}
+	return stk_copy
+}
+
+
+
+
+
+
+
