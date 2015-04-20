@@ -86,7 +86,7 @@ Debugging:
 
 Search refactoring:
 
-  -Move shared memory into SplitPoint struct to reduce communication costs.
+  -Switch to single SPList
 
 
 

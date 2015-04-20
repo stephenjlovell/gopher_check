@@ -31,7 +31,7 @@ const (
 	MAX_STACK = 128
 )
 
-type SPList []*SplitPoint
+
 
 type SplitPoint struct {
 	sync.Mutex
@@ -43,6 +43,8 @@ type SplitPoint struct {
 	this_stk  *StackItem
 	depth     int
 	node_type int
+
+	sort_key	int 			
 
 	alpha int // shared
 	beta  int
@@ -61,66 +63,38 @@ type SplitPoint struct {
 }
 
 
-type Stack []StackItem
-
-type StackItem struct {
-	sp    *SplitPoint
-	value int
-	eval  int
-
-	pv_move      Move
-	current_move Move
-	first_move   Move
-
-	killers KEntry
-
-	hash_key uint64 // use hash key to search for repetitions
-
-	depth           int
-	extensions_left int
-	can_null bool
-	in_check bool
-}
-
-func (this_stk *StackItem) Copy() *StackItem {
-	return &StackItem{
-		sp: this_stk.sp,
-		value: this_stk.value,
-		eval: this_stk.eval,
-		pv_move: this_stk.pv_move,
-		current_move: this_stk.current_move,
-		first_move: this_stk.first_move,
-		killers: this_stk.killers,
-		hash_key: this_stk.hash_key,
-		depth: this_stk.depth,
-		extensions_left: this_stk.extensions_left,
-		in_check: this_stk.in_check,
-	}
+type SPListItem struct{
+  sp *SplitPoint
+  stk Stack
+  index int
+  order int
 }
 
 
-func NewStack() Stack {
-	return make(Stack, MAX_STACK, MAX_STACK)
+type SPList []*SPListItem
+
+func (l SPList) Len() int { return len(l) }
+
+func (l SPList) Less(i, j int) bool { return l[i].order > l[j].order }
+
+func (l SPList) Swap(i, j int) {
+  l[i], l[j] = l[j], l[i]
+  l[i].index, l[j].index = j, i
 }
 
-func (stk Stack) CopyUpTo(ply int) Stack {
-	stk_copy := NewStack()
-	for i := 0; i <= ply; i++ {
-		this_stk := &stk[i]
-		this_cpy := &stk_copy[i]
-		this_cpy.sp = this_stk.sp
-		this_cpy.value = this_stk.value
-		this_cpy.eval = this_stk.eval
-		this_cpy.pv_move = this_stk.pv_move
-		this_cpy.current_move = this_stk.current_move
-		this_cpy.first_move = this_stk.first_move
-		this_cpy.killers = this_stk.killers
-		this_cpy.hash_key = this_stk.hash_key
-		this_cpy.depth = this_stk.depth
-		this_cpy.extensions_left = this_stk.extensions_left
-		this_cpy.in_check = this_stk.in_check
-	}
-	return stk_copy
+func (l *SPList) Push(li interface{}) {
+  n := len(*l)
+  item := li.(*SPListItem)
+  item.index = n
+  *l = append(*l, item)
+}
+
+func (l *SPList) Pop() interface{} {
+  old := *l
+  n := len(old)
+  item := old[n-1]
+  *l = old[0 : n-1]
+  return item
 }
 
 
