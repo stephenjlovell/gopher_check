@@ -28,10 +28,6 @@ import (
 )
 
 const (
-	MAX_STACK = 128
-)
-
-const (
   SP_NONE = iota
   SP_SLAVE
   SP_MASTER
@@ -42,8 +38,9 @@ type SplitPoint struct {
 
 	selector          *MoveSelector
 	parent            *SplitPoint
+  master            *Worker
+
 	brd               *Board
-	
   this_stk          *StackItem
 
   depth             int
@@ -60,33 +57,37 @@ type SplitPoint struct {
 	node_count        int    // shared
   legal_searched    int
 	
-	cancel chan bool
+}
+
+type SPCancellation struct {
+  sp *SplitPoint
+  hash_key uint64
 }
 
 
-type SPListItem struct{
+type SPListItem struct {
   sp *SplitPoint
   stk Stack
-  index int
-  order int
+  index uint8
+  order uint8
+  worker_mask uint8  // this will limit us to no more than 8 Worker goroutines...
 }
-
 
 type SPList []*SPListItem
 
 func (l SPList) Len() int { return len(l) }
 
-func (l SPList) Less(i, j int) bool { return l[i].order > l[j].order }
+func (l SPList) Less(i, j int) bool { return l[i].order < l[j].order }
 
 func (l SPList) Swap(i, j int) {
   l[i], l[j] = l[j], l[i]
-  l[i].index, l[j].index = j, i
+  l[i].index, l[j].index = uint8(j), uint8(i)
 }
 
 func (l *SPList) Push(li interface{}) {
   n := len(*l)
   item := li.(*SPListItem)
-  item.index = n
+  item.index = uint8(n)
   *l = append(*l, item)
 }
 

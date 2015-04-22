@@ -157,7 +157,6 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	// the SP master has already handled most of the pruning, so just read the latest values
 	// from the SP and jump to the moves loop.
 	if sp_type == SP_SLAVE {
-		fmt.Printf("Entered SP search")
 		sp = stk[ply].sp
 		this_stk = sp.this_stk
 		in_check = this_stk.in_check
@@ -329,12 +328,12 @@ search_moves:
 						this_stk.pv_move, this_stk.value, this_stk.depth = m, score, depth
 					}
 					if score >= beta {
+
 						if sp_type == SP_MASTER {
 							// The SP master has finished evaluating the node. Remove the SP from the worker's SP List.
-							brd.worker.RemoveSP(brd.hash_key)
+							load_balancer.remove_sp <- SPCancellation{sp, brd.hash_key}
 						}
 
-						// sp.cancel <- true // send cancellation signal
 
 						sp.Unlock()
 						store_cutoff(this_stk, m, brd.c, count) // what happens on refutation of main pv?
@@ -387,8 +386,7 @@ search_moves:
 
 	if sp_type == SP_MASTER {
 		// The SP master has finished evaluating the node. Remove the SP from the worker's SP List.
-		brd.worker.RemoveSP(brd.hash_key)
-
+		load_balancer.remove_sp <- SPCancellation{sp, brd.hash_key}
 	}
 
 
@@ -433,10 +431,11 @@ func can_split(brd *Board, ply, depth, node_type, legal_searched, current_stage 
 func setup_sp(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, beta, best, depth, ply, extensions_left, legal_searched int,
 							 can_null bool, node_type, count int) bool {
 	worker := brd.worker
-	if worker.CanAddSP() {
+	select {
+	case <-worker.available_slots:
 		sp := &SplitPoint{
 			selector: ms,
-			// parent:
+			master: worker,
 			brd: brd.Copy(),
 			this_stk: &stk[ply],
 
@@ -453,15 +452,14 @@ func setup_sp(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, be
 
 			node_count: count,
 			legal_searched: legal_searched,
-
-			cancel: make(chan bool),
 		}
 		stk[ply].sp = sp
-		worker.AddSP(sp, stk)
-		fmt.Printf("\nSP created by worker %d.", worker.id)
+
+		load_balancer.work <- SPListItem{sp: sp, stk: stk, order: uint8((sp.depth << 2)|sp.node_type) }
 		return true
+	default:
+		return false
 	}
-	return false
 }
 
 

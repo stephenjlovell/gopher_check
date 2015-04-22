@@ -78,7 +78,7 @@ func Perft(brd *Board, stk Stack, depth, ply int) int {
 	this_stk := stk[ply]
 	memento := brd.NewMemento()
 	generator := NewMoveSelector(brd, &this_stk, in_check, NO_MOVE)
-	for m := generator.Next(false); m != NO_MOVE; m = generator.Next(false) {
+	for m := generator.Next(SP_NONE); m != NO_MOVE; m = generator.Next(SP_NONE) {
 		if m.IsCapture() {
 			capture_count += 1
 		}
@@ -99,7 +99,7 @@ func PerftValidation(brd *Board, stk Stack, depth, ply int) int {
 	memento := brd.NewMemento()
 	// intentionally disregard whether king is in check while generating moves.
 	generator := NewMoveSelector(brd, &this_stk, false, NO_MOVE)
-	for m := generator.Next(false); m != NO_MOVE; m = generator.Next(false) {
+	for m := generator.Next(SP_NONE); m != NO_MOVE; m = generator.Next(SP_NONE) {
 		in_check := is_in_check(brd)
 		if !brd.ValidMove(m, in_check) || !brd.LegalMove(m, in_check) {
 			continue // rely on validation to prevent illegal moves...
