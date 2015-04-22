@@ -86,7 +86,12 @@ Debugging:
 
 Search refactoring:
 
-  -Switch to single SPList
+  Search needs access to:
+    - current SP
+      - Move Selector for current SP
+    - current stack
+
+
 
 
 

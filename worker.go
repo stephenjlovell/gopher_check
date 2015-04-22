@@ -24,6 +24,7 @@
 package main
 
 import (
+  "fmt"
   "sync"
   "container/heap"
 )
@@ -57,14 +58,17 @@ var load_balancer *Balancer
 func NewLoadBalancer() *Balancer {
   b := &Balancer{
     workers: make([]*Worker, MAX_WORKER_GOROUTINES, MAX_WORKER_GOROUTINES),
-    done: make(chan Done, MAX_WORKER_GOROUTINES),
+    done: make(chan Done, MAX_WORKER_GOROUTINES + 1),
+    sp_available: make(chan bool, MAX_WORKER_GOROUTINES * MAX_SP_PER_WORKER + 1),
   }
   for i := uint8(0); i < MAX_WORKER_GOROUTINES; i++ {
     b.workers[i] = &Worker{
       id: 1 << i,
       sp_list: make(SPList, 0, MAX_SP_PER_WORKER),
       sp_available: b.sp_available,
+      assign_sp: make(chan SPListItem, 1),
     }
+    heap.Init(&b.workers[i].sp_list)
   }
   return b
 }
@@ -93,8 +97,11 @@ func (b *Balancer) Balance() {
       case d := <-b.done: 
         // A slave worker has finished searching. Any SPs generated during search have been dealt with,
         // and the worker's SP list should now be empty.
+        fmt.Printf(" worker %d ready for new task", d.w.id)
         <-b.sp_available // wait for at least one split point to be available
+        fmt.Printf(" assignment available")
         d.w.assign_sp <- b.GetAvailable() // Assign the worker as slave to best available SP
+        fmt.Printf(" sent assignment to worker %d", d.w.id)
       }
     }
   }()
@@ -108,6 +115,7 @@ func (b *Balancer) RootWorker() *Worker {
 func (b *Balancer) GetAvailable() SPListItem {
   var item, best_item SPListItem
   var best_order int
+  fmt.Printf(" getting best available SP...")
   for _, w := range b.workers {
     w.Lock()
     if w.sp_count > 0 {
@@ -118,6 +126,7 @@ func (b *Balancer) GetAvailable() SPListItem {
     }
     w.Unlock()
   }
+  fmt.Printf("found best SP.")
   return best_item
 }
 
@@ -138,10 +147,12 @@ type Done struct {
 }
 
 func (w *Worker) RemoveSP(hash_key uint64) { // find and remove a finished SP
+  fmt.Printf(" removing SP...")
   w.Lock()
   for i, item := range w.sp_list {
     if item.sp.brd.hash_key == hash_key {
       heap.Remove(&w.sp_list, i)
+      fmt.Printf("removed SP %d", hash_key)
       break
     }
   }
@@ -150,32 +161,49 @@ func (w *Worker) RemoveSP(hash_key uint64) { // find and remove a finished SP
 }
 
 func (w *Worker) CanAddSP() bool {
-  return w.sp_count < MAX_SP_PER_WORKER
+  w.Lock()
+  can_add := w.sp_count < MAX_SP_PER_WORKER
+  w.Unlock()
+  return can_add
 }
 
 func (w *Worker) AddSP(sp *SplitPoint, stk Stack) {
   // A worker has discovered a good split point.  Add the SP to the worker's SP List. 
   // This allows other workers to begin searching this SP node when they're ready, without having
   // to wait for this worker to return to this point in the search.
-  item := SPListItem{sp: sp, stk: stk, order: (sp.depth << 3) | sp.node_type }
+  item := &SPListItem{sp: sp, stk: stk, order: (sp.depth << 3) | sp.node_type }
+  
+  w.Lock()
   heap.Push(&w.sp_list, item)
+  w.sp_count++
+  w.Unlock()
+
+  fmt.Printf(" added SP.")
   w.sp_available <- true // signal load balancer that another SP is available.
+  fmt.Printf(" sent on sp_available.")
 }
 
 
 func (w *Worker) Help(done chan Done) {
   go func() {
     for {
-      a := <-w.assign_sp  // Wait for LB to assign this worker as a slave to another worker.
-      sp := a.sp
+      done <- Done{w}
+      fmt.Printf(" worker %d requested more work.", w.id)
+      item := <-w.assign_sp  // Wait for LB to assign this worker as a slave to another worker.
+      fmt.Printf(" Assignment received by worker %d.", w.id)
+      sp := item.sp
       brd := sp.brd.Copy()
+      stk := item.stk.CopyUpTo(sp.ply)
+      stk[sp.ply].sp = sp
       brd.worker = w
+
       // Once the SP is fully evaluated, The SP master will handle returning its value to parent node.
-      _, _ = ybw(brd, a.stk.CopyUpTo(sp.ply), sp.alpha, sp.beta, sp.depth, sp.ply, 
-                sp.this_stk.extensions_left, sp.this_stk.can_null, true, sp.node_type)
+      _, _ = ybw(brd, stk, sp.alpha, sp.beta, sp.depth, sp.ply, 
+                 sp.extensions_left, sp.can_null, sp.node_type, SP_SLAVE)
+
       // At this point, any additional SPs found by the worker during the search rooted at a.sp
       // should be fully resolved.  The worker's SP list should be empty again.
-      done <- Done{w}
+      fmt.Printf(" Assignment finished by worker %d.", w.id)
     }
   }()
 }

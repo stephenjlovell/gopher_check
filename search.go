@@ -33,7 +33,7 @@ const (
 	MAX_DEPTH    = 16
 	MAX_EXT      = 16
 	MAX_PLY			 = MAX_DEPTH + MAX_EXT
-	SPLIT_MIN    = MAX_PLY + 1 // set > MAX_DEPTH to disable parallel search.
+	SPLIT_MIN    = 2 // set > MAX_DEPTH to disable parallel search.
 
 	F_PRUNE_MAX  = 3  // should always be less than SPLIT_MIN
 	LMR_MIN      = 2
@@ -114,7 +114,7 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 
 		stk = NewStack()
 		stk[0].in_check = in_check
-		guess, count = ybw(brd, stk, id_alpha, id_beta, d, 0, MAX_EXT, true, false, Y_PV)
+		guess, count = ybw(brd, stk, id_alpha, id_beta, d, 0, MAX_EXT, true, Y_PV, SP_NONE)
 		sum += count
 
 		if stk[0].pv_move.IsMove() {
@@ -126,6 +126,7 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 
 		nodes_per_iteration[d] += count
 		// if d > COMMS_MIN && print_info && uci_mode { // don't print info for first few plys to reduce communication traffic.
+			fmt.Printf("\n")
 			PrintInfo(guess, d, sum, time.Since(start), stk)
 		// }
 
@@ -138,10 +139,11 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 	return id_move[c], sum
 }
 
-func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, can_null, is_sp bool, node_type int) (int, int) {
+func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, can_null bool, node_type, sp_type int) (int, int) {
 	var this_stk *StackItem
 	var in_check bool
 	var sp *SplitPoint
+	var selector *MoveSelector
 
 	score, best, old_alpha := -INF, -INF, alpha
 	sum := 1
@@ -152,12 +154,15 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	f_prune, can_reduce := false, false
 
 	// if the is_sp flag is set, a worker has just been assigned to this split point.
-	// the SP master has already handled most of the setup, so just read the latest values
+	// the SP master has already handled most of the pruning, so just read the latest values
 	// from the SP and jump to the moves loop.
-	if is_sp {
+	if sp_type == SP_SLAVE {
+		fmt.Printf("Entered SP search")
 		sp = stk[ply].sp
 		this_stk = sp.this_stk
 		in_check = this_stk.in_check
+		best = sp.best
+		selector = sp.selector
 		goto search_moves
 	}
 
@@ -230,7 +235,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		if (hash_result & CUTOFF_FOUND) > 0 { // Hash hit valid for current bounds.
 			return score, sum
 		} else if !in_check && can_null && hash_result != AVOID_NULL && depth > 2 && in_endgame(brd) == 0 &&
-		!brd.pawns_only() && eval >= beta {
+		!brd.PawnsOnly() && eval >= beta {
 			score, count = null_make(brd, stk, beta, null_depth, ply, extensions_left)
 			sum += count
 			if score >= beta {
@@ -240,13 +245,13 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		}
 	}
 
-	// skip IID when in check?
-	if !in_check && node_type == Y_PV && hash_result == NO_MATCH && can_null && depth >= IID_MIN { 
-		// No hash move available. Use IID to get a decent first move to try.
-		score, count = ybw(brd, stk, alpha, beta, depth-2, ply, extensions_left, can_null, false, node_type)
-		sum += count
-		first_move = this_stk.pv_move
-	}
+	// // skip IID when in check?
+	// if !in_check && node_type == Y_PV && hash_result == NO_MATCH && can_null && depth >= IID_MIN { 
+	// 	// No hash move available. Use IID to get a decent first move to try.
+	// 	score, count = ybw(brd, stk, alpha, beta, depth-2, ply, extensions_left, can_null, node_type, SP_NONE)
+	// 	sum += count
+	// 	first_move = this_stk.pv_move
+	// }
 
 	// Restrict pruning to STAGE_REMAINING
 
@@ -259,19 +264,19 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		}
 	}
 
-search_moves:
-	is_sp_master := false
-	memento := brd.NewMemento()
-	selector := NewMoveSelector(brd, this_stk, in_check, first_move)
+	selector = NewMoveSelector(brd, this_stk, in_check, first_move)
 
-	for m := selector.Next(is_sp); m != NO_MOVE; m = selector.Next(is_sp) {
+search_moves:
+	memento := brd.NewMemento()
+
+	for m := selector.Next(sp_type); m != NO_MOVE; m = selector.Next(sp_type) {
 
 		make_move(brd, m)
 
 		gives_check := is_in_check(brd)
 
 		if f_prune && selector.CurrentStage() == STAGE_REMAINING && legal_searched > 0 && m.IsQuiet() &&
-			!is_passed_pawn(brd, m) && !brd.pawns_only() && !gives_check {
+			!is_passed_pawn(brd, m) && !brd.PawnsOnly() && !gives_check {
 			unmake_move(brd, m, memento)
 			continue
 		}
@@ -291,54 +296,96 @@ search_moves:
 		stk[ply+1].in_check = gives_check // avoid having to recalculate in_check at beginning of search.
 
 		if node_type == Y_PV && alpha > old_alpha {
-			score, count = ybw(brd, stk, -alpha-1, -alpha, r_depth-1, ply+1, r_extensions, can_null, false, child_type)
+			score, count = ybw(brd, stk, -alpha-1, -alpha, r_depth-1, ply+1, r_extensions, can_null, child_type, SP_NONE)
 			score = -score
 			sum += count
 			if score > alpha {
-				score, count = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, false, Y_PV)
+				score, count = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, Y_PV, SP_NONE)
 				score = -score
 				sum += count
 			}
 		} else {
-			score, count = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, false, child_type)
+			score, count = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, child_type, SP_NONE)
 			score = -score
 			sum += count
 		}
 
 		unmake_move(brd, m, memento) 
 
-		if score > best {
-			if score > alpha {
-				if node_type == Y_PV {
-					this_stk.pv_move, this_stk.value, this_stk.depth = m, score, depth
+
+		if sp_type != SP_NONE {
+			sp.Lock()
+
+			alpha = sp.alpha
+			beta = sp.beta
+			best = sp.best
+			best_move = sp.best_move
+
+			// ...handle node count
+
+			if score > best {
+				if score > alpha {
+					if node_type == Y_PV {
+						this_stk.pv_move, this_stk.value, this_stk.depth = m, score, depth
+					}
+					if score >= beta {
+						if sp_type == SP_MASTER {
+							// The SP master has finished evaluating the node. Remove the SP from the worker's SP List.
+							brd.worker.RemoveSP(brd.hash_key)
+						}
+
+						// sp.cancel <- true // send cancellation signal
+
+						sp.Unlock()
+						store_cutoff(this_stk, m, brd.c, count) // what happens on refutation of main pv?
+						main_tt.store(brd, m, depth, LOWER_BOUND, score)
+						return score, sum
+					}
+					alpha = score
+					sp.alpha = score
 				}
-				if score >= beta {
-					// if node_type == Y_PV {
-					// 	stk[ply+1].pv_move = NO_MOVE
-					// }
-					store_cutoff(this_stk, m, brd.c, count) // what happens on refutation of main pv?
-					main_tt.store(brd, m, depth, LOWER_BOUND, score)
-					return score, sum
-				}
-				alpha = score
+				best_move = m
+				sp.best_move = m
+				best = score
+				sp.best = score
 			}
-			best_move = m
-			best = score
+			legal_searched += 1
+			sp.legal_searched += 1
+			sp.Unlock()
+		} else {
+			if score > best {
+				if score > alpha {
+					if node_type == Y_PV {
+						this_stk.pv_move, this_stk.value, this_stk.depth = m, score, depth
+					}
+					if score >= beta {
+						store_cutoff(this_stk, m, brd.c, count) // what happens on refutation of main pv?
+						main_tt.store(brd, m, depth, LOWER_BOUND, score)
+						return score, sum
+					}
+					alpha = score
+				}
+				best_move = m
+				best = score
+			}
+			legal_searched += 1
 		}
-		legal_searched += 1
 
 		// Determine if this would be a good location to begin searching in parallel.
-		if !is_sp && can_split(brd, ply, depth, node_type, legal_searched, selector.CurrentStage()) {
-			is_sp_master = setup_sp(brd, stk, selector, alpha, beta, best, depth, ply, 
-							 								extensions_left, can_null, node_type, count)
+		if sp_type == SP_NONE && can_split(brd, ply, depth, node_type, legal_searched, selector.CurrentStage()) {
+			if setup_sp(brd, stk, selector, best_move, alpha, beta, best, depth, ply, 
+							 		extensions_left, legal_searched, can_null, node_type, count) {
+				sp = this_stk.sp
+				sp_type = SP_MASTER
+			}
 		}
-
 	} // end of moves loop
 
 
 	// at split nodes the legal_searched counter will need to be shared via the SP struct.
 
-	if is_sp_master {
+
+	if sp_type == SP_MASTER {
 		// The SP master has finished evaluating the node. Remove the SP from the worker's SP List.
 		brd.worker.RemoveSP(brd.hash_key)
 
@@ -369,12 +416,12 @@ search_moves:
 
 // Determine if the current node is a good place to start searching in parallel.
 func can_split(brd *Board, ply, depth, node_type, legal_searched, current_stage int) bool {
-	if depth >= SPLIT_MIN && (brd.worker == nil || brd.worker.CanAddSP()) {
+	if depth >= SPLIT_MIN {
 		switch node_type {
 		case Y_PV:
 			return legal_searched > 0 && ply > 0
 		case Y_CUT:
-			return legal_searched > 3 && current_stage == STAGE_REMAINING
+			return legal_searched > 4 && current_stage == STAGE_REMAINING
 		case Y_ALL:
 			return legal_searched > 0
 		}		
@@ -382,53 +429,39 @@ func can_split(brd *Board, ply, depth, node_type, legal_searched, current_stage 
 	return false
 }
 
-// type SplitPoint struct {
-// 	sync.Mutex
 
-// 	selector  *MoveSelector
-// 	parent    *SplitPoint
-// 	master    *Worker
-// 	brd       *Board
-// 	this_stk  StackItem
-// 	depth     int
-// 	node_type int
-// 	alpha int // shared
-// 	beta  int
-// 	best  int // shared
-// 	node_count           int    // shared
-// 	// slave_mask           uint32 // shared
-// 	// all_slaves_searching bool   // shared
-// 	best_move    Move // shared
-// 	move_count   int  // shared. number of moves fully searched so far.
-// 	// cutoff_found bool // shared
-// 	cancel chan bool
-// }
-
-func setup_sp(brd *Board, stk Stack, ms *MoveSelector, alpha, beta, best, depth, ply, extensions_left int,
+func setup_sp(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, beta, best, depth, ply, extensions_left, legal_searched int,
 							 can_null bool, node_type, count int) bool {
 	worker := brd.worker
-	sp_created := false
-	worker.Lock()
 	if worker.CanAddSP() {
 		sp := &SplitPoint{
 			selector: ms,
-			parent: stk[ply].sp,
-			master: worker,
+			// parent:
 			brd: brd.Copy(),
-			this_stk: stk[ply].Copy(),
+			this_stk: &stk[ply],
+
+			depth: depth,
+			ply: ply,
+			extensions_left: extensions_left,
+			can_null: can_null,
+			node_type: node_type,
+
 			alpha: alpha,
 			beta: beta,
 			best: best,
-			depth: depth,
-			ply: ply,
+			best_move: best_move,
+
+			node_count: count,
+			legal_searched: legal_searched,
+
+			cancel: make(chan bool),
 		}
-		// load_balancer.work <- SPListItem{sp, stk}
+		stk[ply].sp = sp
 		worker.AddSP(sp, stk)
-		worker.sp_count++
-		sp_created = true
+		fmt.Printf("\nSP created by worker %d.", worker.id)
+		return true
 	}
-	worker.Unlock()
-	return sp_created
+	return false
 }
 
 
@@ -548,7 +581,7 @@ func null_make(brd *Board, stk Stack, beta, null_depth, ply, extensions_left int
 	brd.enp_target = SQ_INVALID
 
 	stk[ply+1].in_check = is_in_check(brd)
-	score, sum := ybw(brd, stk, -beta, -beta+1, null_depth-1, ply+1, extensions_left, false, false, Y_CUT)
+	score, sum := ybw(brd, stk, -beta, -beta+1, null_depth-1, ply+1, extensions_left, false, Y_CUT, SP_NONE)
 
 	brd.c ^= 1
 	brd.hash_key = hash_key

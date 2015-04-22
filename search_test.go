@@ -32,11 +32,11 @@ import (
 func TestPlayingStrength(t *testing.T) {
 	setup()
 	print_info = false
-	depth := MAX_DEPTH
+	depth := MAX_DEPTH - 11
 	test := load_epd_file("test_suites/wac_300.epd")
 	var move_str string
 	sum, score := 0, 0
-	for _, epd := range test {
+	for _, epd := range test[:2] {
 		ResetAll()
 		move, count := Search(epd.brd, depth, 3000)
 		move_str = ToSAN(epd.brd, move)

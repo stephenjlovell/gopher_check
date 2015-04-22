@@ -247,7 +247,7 @@ func (brd *Board) AllOccupied() BB { return brd.occupied[0] | brd.occupied[1] }
 
 func (brd *Board) Placement(c uint8) BB { return brd.occupied[c] }
 
-func (brd *Board) pawns_only() bool {
+func (brd *Board) PawnsOnly() bool {
 	return brd.occupied[brd.c] == brd.pieces[brd.c][PAWN]|brd.pieces[brd.c][KING]
 }
 
@@ -286,17 +286,17 @@ func (brd *Board) Print() {
 	fmt.Printf("  ---------------------------------\n")
 	row := brd.squares[56:]
 	fmt.Printf("8 ")
-	brd.print_row(56, row)
+	brd.PrintRow(56, row)
 
 	for i := 48; i >= 0; i -= 8 {
 		row = brd.squares[i : i+8]
 		fmt.Printf("%v ", 1+(i/8))
-		brd.print_row(i, row)
+		brd.PrintRow(i, row)
 	}
 	fmt.Printf("    A   B   C   D   E   F   G   H\n")
 }
 
-func (brd *Board) print_row(start int, row []Piece) {
+func (brd *Board) PrintRow(start int, row []Piece) {
 	fmt.Printf("| ")
 	for i, piece := range row {
 		if piece == EMPTY {

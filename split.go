@@ -31,34 +31,35 @@ const (
 	MAX_STACK = 128
 )
 
-
+const (
+  SP_NONE = iota
+  SP_SLAVE
+  SP_MASTER
+)
 
 type SplitPoint struct {
 	sync.Mutex
 
-	selector  *MoveSelector
-	parent    *SplitPoint
-	master    *Worker
-	brd       *Board
-	this_stk  *StackItem
-	depth     int
-	node_type int
-
-	sort_key	int 			
-
-	alpha int // shared
-	beta  int
-	best  int // shared
-	ply int
-	node_count           int    // shared
+	selector          *MoveSelector
+	parent            *SplitPoint
+	brd               *Board
 	
-	// slave_mask           uint32 // shared
-	// all_slaves_searching bool   // shared
+  this_stk          *StackItem
 
+  depth             int
+  ply               int
+  extensions_left   int
+  can_null          bool
+  node_type         int
 
-	best_move    Move // shared
-	move_count   int  // shared. number of moves fully searched so far.
-	// cutoff_found bool // shared
+	alpha             int // shared
+	beta              int
+	best              int // shared
+  best_move         Move // shared
+
+	node_count        int    // shared
+  legal_searched    int
+	
 	cancel chan bool
 }
 

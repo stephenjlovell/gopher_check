@@ -114,19 +114,18 @@ func NewQMoveSelector(brd *Board, this_stk *StackItem, in_check, can_check bool)
 	}
 }
 
-func (s *MoveSelector) Next(is_sp bool) Move {
-	if is_sp {
-		return s.NextSPMove()
-	} else {
+func (s *MoveSelector) Next(sp_type int) Move {
+	if sp_type == SP_NONE {
 		return s.NextMove()
+	} else {
+		return s.NextSPMove()
 	}
 }
 
 func (s *MoveSelector) NextSPMove() Move {
-	sp_selector := s.this_stk.sp.selector
-	sp_selector.Lock()
-	m := sp_selector.NextMove()
-	sp_selector.Unlock()
+	s.Lock()
+	m := s.NextMove()
+	s.Unlock()
 	return m
 }
 
