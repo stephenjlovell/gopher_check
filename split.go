@@ -29,7 +29,7 @@ import (
 
 const (
   SP_NONE = iota
-  SP_SLAVE
+  SP_SERVANT
   SP_MASTER
 )
 
@@ -50,13 +50,13 @@ type SplitPoint struct {
   node_type         int
 
 	alpha             int // shared
-	beta              int
+	beta              int // shared
 	best              int // shared
   best_move         Move // shared
 
 	node_count        int    // shared
   legal_searched    int
-	
+	cancel            chan bool
 }
 
 type SPCancellation struct {

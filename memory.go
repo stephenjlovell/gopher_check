@@ -26,6 +26,7 @@ package main
 import (
 	// "fmt"
 	"math/rand"
+	"sync"
 )
 
 const (
@@ -50,6 +51,7 @@ const (
 )
 
 var main_tt TT
+var main_tt_mutex sync.Mutex
 
 func setup_main_tt() {
 	for i, _ := range main_tt {
@@ -117,8 +119,17 @@ func (tt *TT) get_slot(hash_key uint64) *Slot {
 // during parallel search:  https://cis.uab.edu/hyatt/hashing.html
 
 func (tt *TT) probe(brd *Board, depth, null_depth int, alpha, beta, score *int) (Move, int) {
+	main_tt_mutex.Lock()
+	hash_move, hash_result := tt.probe_sequential(brd, depth, null_depth, alpha, beta, score)
+	main_tt_mutex.Unlock()
+	return hash_move, hash_result
+}
+
+
+func (tt *TT) probe_sequential(brd *Board, depth, null_depth int, alpha, beta, score *int) (Move, int) {
 
 	// return NO_MOVE, NO_MATCH
+
 	var bucket *Bucket
 	hash_key := brd.hash_key
 	slot := tt.get_slot(hash_key)
@@ -171,8 +182,15 @@ func (tt *TT) probe(brd *Board, depth, null_depth int, alpha, beta, score *int) 
 	return NO_MOVE, NO_MATCH
 }
 
-// use lockless storing to avoid concurrent write issues without incurring locking overhead.
 func (tt *TT) store(brd *Board, move Move, depth, entry_type, value int) {
+	main_tt_mutex.Lock()
+	tt.store_sequential(brd, move, depth, entry_type, value)
+	main_tt_mutex.Unlock()
+}
+
+
+// use lockless storing to avoid concurrent write issues without incurring locking overhead.
+func (tt *TT) store_sequential(brd *Board, move Move, depth, entry_type, value int) {
 
 	hash_key := brd.hash_key
 	slot := tt.get_slot(hash_key)

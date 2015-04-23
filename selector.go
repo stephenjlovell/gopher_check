@@ -114,7 +114,7 @@ func NewQMoveSelector(brd *Board, this_stk *StackItem, in_check, can_check bool)
 	}
 }
 
-func (s *MoveSelector) Next(sp_type int) Move {
+func (s *MoveSelector) Next(sp_type int) (Move, int) {
 	if sp_type == SP_NONE {
 		return s.NextMove()
 	} else {
@@ -122,56 +122,49 @@ func (s *MoveSelector) Next(sp_type int) Move {
 	}
 }
 
-func (s *MoveSelector) NextSPMove() Move {
+func (s *MoveSelector) NextSPMove() (Move, int) {
 	s.Lock()
-	m := s.NextMove()
+	m, stage := s.NextMove()
 	s.Unlock()
-	return m
+	return m, stage
 }
 
-func (s *MoveSelector) NextMove() Move {
+func (s *MoveSelector) NextMove() (Move, int) {
 	for {
 		for s.index == s.finished {
 			if s.NextBatch() {
-				return NO_MOVE
+				return NO_MOVE, s.CurrentStage()
 			}
 		}
-		switch s.stage - 1 {
+		switch s.CurrentStage() {
 		case STAGE_FIRST: 
 			s.index++
 			if s.brd.ValidMove(s.first_move, s.in_check) && s.brd.LegalMove(s.first_move, s.in_check) {
-				return s.first_move
-			} else {
-				// if s.first_move.IsMove() { 
-				// 	fmt.Println("first move invalid:")
-				// 	s.brd.Print()
-				// 	s.first_move.Print()
-				// 	fmt.Println(s.brd.castle) 
-				// }
-			}
+				return s.first_move, STAGE_FIRST
+			} 
 		case STAGE_WINNING:
 			m := s.winning[s.index].move
 			s.index++
 			if m != s.first_move && s.brd.AvoidsCheck(m, s.in_check) {
-				return m
+				return m, STAGE_WINNING
 			}
 		case STAGE_KILLER:
 			m := s.this_stk.killers[s.index]
 			s.index++
 			if m != s.first_move && s.brd.ValidMove(m, s.in_check) && s.brd.LegalMove(m, s.in_check) {
-				return m
+				return m, STAGE_KILLER
 			}
 		case STAGE_LOSING:
 			m := s.losing[s.index].move
 			s.index++
 			if m != s.first_move && s.brd.AvoidsCheck(m, s.in_check) {
-				return m
+				return m, STAGE_LOSING
 			}
 		case STAGE_REMAINING:
 			m := s.remaining_moves[s.index].move
 			s.index++
 			if m != s.first_move && !s.this_stk.IsKiller(m) && s.brd.AvoidsCheck(m, s.in_check) {
-				return m
+				return m, STAGE_REMAINING
 			}
 		default:
 		}

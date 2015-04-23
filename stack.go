@@ -35,7 +35,7 @@ type StackItem struct {
   eval  int
 
   pv_move      Move
-  // current_move Move
+
   depth int
 
   killers KEntry
@@ -68,16 +68,14 @@ func (stk Stack) CopyUpTo(ply int) Stack {
   for i := 0; i <= ply; i++ {
     this_stk := &stk[i]
     this_cpy := &stk_copy[i]
+    
     this_cpy.sp = this_stk.sp
     this_cpy.value = this_stk.value
     this_cpy.eval = this_stk.eval
     this_cpy.pv_move = this_stk.pv_move
-    // this_cpy.current_move = this_stk.current_move
-    // this_cpy.first_move = this_stk.first_move
     this_cpy.killers = this_stk.killers
     this_cpy.hash_key = this_stk.hash_key
     this_cpy.depth = this_stk.depth
-    // this_cpy.extensions_left = this_stk.extensions_left
     this_cpy.in_check = this_stk.in_check
   }
   return stk_copy
