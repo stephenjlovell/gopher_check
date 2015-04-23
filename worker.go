@@ -63,7 +63,8 @@ func NewLoadBalancer() *Balancer {
   b := &Balancer{
     work: make(chan SPListItem, MAX_SP),
     done: make(chan Done, MAX_WORKER_GOROUTINES),
-    sp_available: make(chan bool, MAX_SP),
+    remove_sp: make(chan SPCancellation, MAX_SP),
+    // sp_available: make(chan bool, MAX_SP),
   }
 
   for i := uint8(0); i < MAX_WORKER_GOROUTINES; i++ {
@@ -91,7 +92,7 @@ type Balancer struct{
   work chan SPListItem
   done chan Done
   remove_sp chan SPCancellation
-  sp_available chan bool
+  // sp_available chan bool
 }
 
 func (b *Balancer) Start() {
@@ -111,15 +112,16 @@ func (b *Balancer) Balance() {
         b.RemoveSP(c)
 
       default:
+        // fmt.Printf(">")
         select {
         case item := <-b.work:
           // A worker has discovered a good split point.  Add the SP to the worker's SP List. 
           // This allows other workers to begin searching this SP node when they're ready, without having
           // to wait for this worker to return to this point in the search.
+          fmt.Printf(" LB: New SP from worker%d", item.sp.master.index)
           b.AddSP(item)
 
-        case <-b.sp_available: // wait for at least one split point to be available
-          d := <-b.done // A worker has finished searching and has requested more work. 
+        case d := <-b.done: // A worker has finished searching and has requested more work. 
           // Any SPs generated during search have been dealt with, and the worker's SP list should now be empty.
           
           // fmt.Printf(" worker %d ready for new task", d.w.index)
@@ -127,6 +129,7 @@ func (b *Balancer) Balance() {
           b.AssignBestSP(d.w) // Assign the worker as servant to best available SP
 
           // fmt.Printf(" sent assignment to worker %d", d.w.mask)
+        default:
         }
       }
     }
@@ -134,23 +137,24 @@ func (b *Balancer) Balance() {
 }
 
 func (b *Balancer) RemoveSP(c SPCancellation) {
-  fmt.Printf(" Removing...")
-  <-b.sp_available
+  // fmt.Printf(" Removing...")
+  // <-b.sp_available
   sp_list := b.sp_lists[c.sp.master.index]
   for i, item := range *sp_list {
     if item.sp.brd.hash_key == c.hash_key {
       heap.Remove(sp_list, i)
+      c.sp.master.available_slots <- true
       break
     }
   }
-  fmt.Printf("removed.")
+  // fmt.Printf("removed.")
 }
 
 func (b *Balancer) AddSP(item SPListItem) {
   master := item.sp.master
   item.worker_mask |= master.mask
   heap.Push(b.sp_lists[item.sp.master.index], &item)
-  b.sp_available <- true  
+  // b.sp_available <- true  
 }
 
 
@@ -158,40 +162,38 @@ func (b *Balancer) AssignBestSP(w *Worker) { // Select the best available split 
   var sp_list SPList
   var item, best_item *SPListItem
   var best_order uint8
-  fmt.Printf(" Getting best available SP...")
   var l int
   for i := 0; i < MAX_WORKER_GOROUTINES; i++ {
     sp_list = *b.sp_lists[i]
     l = len(sp_list)
     if l > 0 {
-      fmt.Printf(" nonzero SP list")
       item = sp_list[l-1]
-      if item.worker_mask & w.mask == 0 {
-        if item.order > best_order {
-          best_item = item
-        } else {
-          fmt.Printf(" not the best ordering...")
-        }             
-      } else {
-        fmt.Printf(" already working on this node...")
+      if item.worker_mask & w.mask == 0 && item.order > best_order {
+        best_item = item
       }
     }
   }
 
   if best_item == nil {
-    fmt.Printf(" no best item found!")
+    // fmt.Printf(" no best item found!")
+    b.done <- Done{w}  // Put the worker back into the queue.
   } else if best_item.worker_mask & w.mask > 0 {
-    fmt.Printf(" worker %d already assigned to this SP!")
+    // fmt.Printf(" worker %d already assigned to this SP!")
+    b.done <- Done{w}  // Put the worker back into the queue.
   } else if best_item.AllSearching() {
-    fmt.Printf(" All workers are already searching this SP!")
-  } else {
-    best_item.worker_mask |= w.mask
-    if !best_item.AllSearching() {
-      b.sp_available <- true // replace the availability flag unless all available workers are searching      
-    }
-    fmt.Printf(" found best SP.")    
-  }
-  w.assign_sp <- *best_item
+    // fmt.Printf(" All workers are already searching this SP!")
+    b.done <- Done{w}  // Put the worker back into the queue.
+  } else { 
+    best_item.worker_mask |= w.mask 
+    // fmt.Printf(" assigning SP...")
+    w.assign_sp <- *best_item
+    // fmt.Printf("assigned.")
+    
+    // if !best_item.AllSearching() {
+      // b.sp_available <- true // replace the availability flag unless all available workers are searching      
+    // }    
+  } 
+
 }
 
 func (item *SPListItem) AllSearching() bool {
@@ -216,7 +218,7 @@ func (w *Worker) Help(done chan Done) {
   go func() {
     for {
       done <- Done{w}
-      // fmt.Printf(" worker %d requested more work.", w.index)
+      // fmt.Printf(" worker%d requested more work.", w.index)
       item := <-w.assign_sp  // Wait for LB to assign this worker as a servant to another worker.
       // fmt.Printf(" Assignment received by worker %d.", w.index)
       sp := item.sp
@@ -225,13 +227,14 @@ func (w *Worker) Help(done chan Done) {
       stk[sp.ply].sp = sp
       brd.worker = w
 
+      // fmt.Printf(" worker%d searching.", w.index)
       // Once the SP is fully evaluated, The SP master will handle returning its value to parent node.
       _, _ = ybw(brd, stk, sp.alpha, sp.beta, sp.depth, sp.ply, 
                  sp.extensions_left, sp.can_null, sp.node_type, SP_SLAVE)
 
       // At this point, any additional SPs found by the worker during the search rooted at a.sp
       // should be fully resolved.  The SP list for this worker should be empty again.
-      // fmt.Printf(" Assignment finished by worker %d.", w.index)
+      // fmt.Printf(" worker%d finished.", w.index)
     }
   }()
 }

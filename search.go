@@ -44,9 +44,9 @@ const (
 )
 
 const (
-	Y_PV = iota
-	Y_CUT
+	Y_CUT = iota
 	Y_ALL
+	Y_PV
 )
 
 var side_to_move uint8
@@ -100,7 +100,7 @@ var id_score [2]int
 var id_alpha, id_beta int
 
 func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
-	var guess, count, sum int
+	var guess, total, sum int
 	c := brd.c
 	var stk Stack
 
@@ -114,8 +114,8 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 
 		stk = NewStack()
 		stk[0].in_check = in_check
-		guess, count = ybw(brd, stk, id_alpha, id_beta, d, 0, MAX_EXT, true, Y_PV, SP_NONE)
-		sum += count
+		guess, total = ybw(brd, stk, id_alpha, id_beta, d, 0, MAX_EXT, true, Y_PV, SP_NONE)
+		sum += total
 
 		if stk[0].pv_move.IsMove() {
 			id_move[c], id_score[c] = stk[0].pv_move, guess
@@ -124,7 +124,7 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 			fmt.Printf("Nil PV returned to ID\n")
 		}
 
-		nodes_per_iteration[d] += count
+		nodes_per_iteration[d] += total
 		// if d > COMMS_MIN && print_info && uci_mode { // don't print info for first few plys to reduce communication traffic.
 			fmt.Printf("\n")
 			PrintInfo(guess, d, sum, time.Since(start), stk)
@@ -149,7 +149,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	sum := 1
 
 	var best_move, first_move Move
-	var null_depth, hash_result, eval, count, legal_searched, child_type, r_depth, r_extensions int
+	var null_depth, hash_result, eval, subtotal, total, legal_searched, child_type, r_depth, r_extensions int
 
 	f_prune, can_reduce := false, false
 
@@ -235,8 +235,8 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 			return score, sum
 		} else if !in_check && can_null && hash_result != AVOID_NULL && depth > 2 && in_endgame(brd) == 0 &&
 		!brd.PawnsOnly() && eval >= beta {
-			score, count = null_make(brd, stk, beta, null_depth, ply, extensions_left)
-			sum += count
+			score, subtotal = null_make(brd, stk, beta, null_depth, ply, extensions_left)
+			sum += subtotal
 			if score >= beta {
 				main_tt.store(brd, 0, depth, LOWER_BOUND, score)
 				return score, sum
@@ -247,8 +247,8 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	// // skip IID when in check?
 	// if !in_check && node_type == Y_PV && hash_result == NO_MATCH && can_null && depth >= IID_MIN { 
 	// 	// No hash move available. Use IID to get a decent first move to try.
-	// 	score, count = ybw(brd, stk, alpha, beta, depth-2, ply, extensions_left, can_null, node_type, SP_NONE)
-	// 	sum += count
+	// 	score, subtotal = ybw(brd, stk, alpha, beta, depth-2, ply, extensions_left, can_null, node_type, SP_NONE)
+	// 	sum += subtotal
 	// 	first_move = this_stk.pv_move
 	// }
 
@@ -293,20 +293,20 @@ search_moves:
 		}
 
 		stk[ply+1].in_check = gives_check // avoid having to recalculate in_check at beginning of search.
-
+		total = 0
 		if node_type == Y_PV && alpha > old_alpha {
-			score, count = ybw(brd, stk, -alpha-1, -alpha, r_depth-1, ply+1, r_extensions, can_null, child_type, SP_NONE)
+			score, subtotal = ybw(brd, stk, -alpha-1, -alpha, r_depth-1, ply+1, r_extensions, can_null, child_type, SP_NONE)
 			score = -score
-			sum += count
+			total += subtotal
 			if score > alpha {
-				score, count = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, Y_PV, SP_NONE)
+				score, subtotal = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, Y_PV, SP_NONE)
 				score = -score
-				sum += count
+				total += subtotal
 			}
 		} else {
-			score, count = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, child_type, SP_NONE)
+			score, subtotal = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, child_type, SP_NONE)
 			score = -score
-			sum += count
+			total += subtotal
 		}
 
 		unmake_move(brd, m, memento) 
@@ -320,7 +320,11 @@ search_moves:
 			best = sp.best
 			best_move = sp.best_move
 
-			// ...handle node count
+			sp.node_count += total
+			sum = sp.node_count
+
+			sp.legal_searched += 1
+			legal_searched = sp.legal_searched
 
 			if score > best {
 				if score > alpha {
@@ -331,12 +335,12 @@ search_moves:
 
 						if sp_type == SP_MASTER {
 							// The SP master has finished evaluating the node. Remove the SP from the worker's SP List.
+							// fmt.Printf(" worker:%d sending cancellation...", brd.worker.index)
 							load_balancer.remove_sp <- SPCancellation{sp, brd.hash_key}
+							// fmt.Printf("sent.")
 						}
-
-
 						sp.Unlock()
-						store_cutoff(this_stk, m, brd.c, count) // what happens on refutation of main pv?
+						store_cutoff(this_stk, m, brd.c, total) // what happens on refutation of main pv?
 						main_tt.store(brd, m, depth, LOWER_BOUND, score)
 						return score, sum
 					}
@@ -348,17 +352,16 @@ search_moves:
 				best = score
 				sp.best = score
 			}
-			legal_searched += 1
-			sp.legal_searched += 1
 			sp.Unlock()
 		} else {
+			sum += total
 			if score > best {
 				if score > alpha {
 					if node_type == Y_PV {
 						this_stk.pv_move, this_stk.value, this_stk.depth = m, score, depth
 					}
 					if score >= beta {
-						store_cutoff(this_stk, m, brd.c, count) // what happens on refutation of main pv?
+						store_cutoff(this_stk, m, brd.c, total) // what happens on refutation of main pv?
 						main_tt.store(brd, m, depth, LOWER_BOUND, score)
 						return score, sum
 					}
@@ -373,11 +376,12 @@ search_moves:
 		// Determine if this would be a good location to begin searching in parallel.
 		if sp_type == SP_NONE && can_split(brd, ply, depth, node_type, legal_searched, selector.CurrentStage()) {
 			if setup_sp(brd, stk, selector, best_move, alpha, beta, best, depth, ply, 
-							 		extensions_left, legal_searched, can_null, node_type, count) {
+							 		extensions_left, legal_searched, can_null, node_type, total) {
 				sp = this_stk.sp
 				sp_type = SP_MASTER
 			}
 		}
+
 	} // end of moves loop
 
 
@@ -386,7 +390,9 @@ search_moves:
 
 	if sp_type == SP_MASTER {
 		// The SP master has finished evaluating the node. Remove the SP from the worker's SP List.
+		// fmt.Printf(" worker:%d sending cancellation...", brd.worker.index)
 		load_balancer.remove_sp <- SPCancellation{sp, brd.hash_key}
+		// fmt.Printf("sent.")
 	}
 
 
@@ -429,7 +435,7 @@ func can_split(brd *Board, ply, depth, node_type, legal_searched, current_stage 
 
 
 func setup_sp(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, beta, best, depth, ply, extensions_left, legal_searched int,
-							 can_null bool, node_type, count int) bool {
+							 can_null bool, node_type, total int) bool {
 	worker := brd.worker
 	select {
 	case <-worker.available_slots:
@@ -450,7 +456,7 @@ func setup_sp(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, be
 			best: best,
 			best_move: best_move,
 
-			node_count: count,
+			node_count: total,
 			legal_searched: legal_searched,
 		}
 		stk[ply].sp = sp
@@ -489,7 +495,7 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 	}
 
 
-	score, best, sum, count := -INF, -INF, 1, 0
+	score, best, sum, total := -INF, -INF, 1, 0
 	r_checks_remaining := checks_remaining
 
 	if in_check {
@@ -526,9 +532,9 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 
 		stk[ply+1].in_check = gives_check // avoid having to recalculate in_check at beginning of search.
 
-		score, count = quiescence(brd, stk, -beta, -alpha, depth-1, ply+1, r_checks_remaining)
+		score, total = quiescence(brd, stk, -beta, -alpha, depth-1, ply+1, r_checks_remaining)
 		score = -score
-		sum += count
+		sum += total
 		unmake_move(brd, m, memento)
 
 		if score > best {
@@ -587,9 +593,9 @@ func null_make(brd *Board, stk Stack, beta, null_depth, ply, extensions_left int
 	return -score, sum
 }
 
-func store_cutoff(this_stk *StackItem, m Move, c uint8, count int) {
+func store_cutoff(this_stk *StackItem, m Move, c uint8, total int) {
 	if m.IsQuiet() {
-		main_htable.Store(m, c, count)
+		main_htable.Store(m, c, total)
 		this_stk.StoreKiller(m) // store killer moves in stack for this Goroutine.
 	}
 }
