@@ -25,7 +25,8 @@ package main
 
 import (
   "fmt"
-  // "sync"
+  "time"
+  "sync"
   "container/heap"
 )
 
@@ -61,10 +62,13 @@ var load_balancer *Balancer
 
 func NewLoadBalancer() *Balancer {
   b := &Balancer{
-    work: make(chan SPListItem, MAX_SP+1),
-    done: make(chan Done, MAX_WORKER_GOROUTINES+1),
-    waiting: make(chan Done, MAX_WORKER_GOROUTINES+1),
-    remove_sp: make(chan SPCancellation, MAX_SP+1),
+    work: make(chan SPListItem, MAX_SP),
+    waiting: make(chan Done, MAX_WORKER_GOROUTINES),
+    cancel_sp: make(chan SPCancellation, MAX_SP),
+
+    done: make(chan uint8, MAX_WORKER_GOROUTINES),
+    add_sp: make(chan uint8, MAX_SP),
+    remove_sp: make(chan uint8, MAX_SP),
   }
 
   for i := uint8(0); i < MAX_WORKER_GOROUTINES; i++ {
@@ -87,127 +91,201 @@ func NewLoadBalancer() *Balancer {
 
 type Balancer struct{
   workers [MAX_WORKER_GOROUTINES]*Worker
-  sp_lists [MAX_WORKER_GOROUTINES]*SPList
 
-  sp_counts [MAX_WORKER_GOROUTINES]int  // cache the number of available SP per worker.
-  sp_mask   uint8
+  sp_lists [MAX_WORKER_GOROUTINES]*SPList
+  sp_mutex sync.Mutex
 
   // All communication with the load balancer should be done via channel.
-  work chan SPListItem
-  done chan Done
-  waiting chan Done
-  remove_sp chan SPCancellation
+  work      chan SPListItem
+  waiting   chan Done
+  cancel_sp chan SPCancellation
+
+  done      chan uint8
+  add_sp    chan uint8
+  remove_sp chan uint8
 }
 
 func (b *Balancer) Start() {
   for _, w := range b.workers[1:] {
     w.Help(b.done) // Start each worker except for the root worker.
   }
-  b.Balance() // start assigning tasks to workers
+  b.Dispatch()
+  b.AddSP()
+  b.CleanupSP()
+  // b.StartPrinting()
 }
 
-// when work is complete at an SP node, there's no guarantee that the SP cancellation will happen
-// before the workers finish.
+func (b *Balancer) StartPrinting() {
+  go func() {
+    for _ = range time.Tick(500 * time.Millisecond) {  
+      b.Print()  
+    }
+  }()
+}
 
-func (b *Balancer) Balance() {
+func (b *Balancer) Print() {
+  b.sp_mutex.Lock()
+  fmt.Printf("\n| ")
+  for i := 0; i < MAX_WORKER_GOROUTINES; i++ {
+    list := b.sp_lists[i]
+    fmt.Printf("%d ", len(*list))
+  }
+  fmt.Printf("|")
+  b.sp_mutex.Unlock()
+}
+
+
+func (b *Balancer) Dispatch() {
+  go func() {
+    var idle_mask, sp_mask, assigned uint8
+
+    // wait for a new worker or SP to become available, then try to dispatch work.
+    for {
+      fmt.Printf("\nidle_mask:%b  sp_mask:%b", idle_mask, sp_mask)
+      select {
+      case w_mask := <- b.done:
+        fmt.Printf("\nAssigning...")
+        idle_mask |= w_mask
+        assigned = b.AttemptAssignment(idle_mask, sp_mask)
+        idle_mask &= (^assigned)
+        fmt.Printf("Assigned %b", assigned)
+      case add_mask := <-b.add_sp:
+        fmt.Printf("\nadding SP...")
+        sp_mask |= add_mask
+        assigned = b.AttemptAssignment(idle_mask, sp_mask)
+        idle_mask &= (^assigned)
+        fmt.Printf("assigned %b", assigned)
+      case remove_mask := <-b.remove_sp:
+        sp_mask &= (^remove_mask)
+      }
+    }
+
+  }()
+}
+
+func (b *Balancer) AttemptAssignment(idle_mask, sp_mask uint8) uint8 {
+  var w_index, sp_index, w_temp, sp_temp, w_current, sp_current, assigned uint8
+  var item *SPListItem
+  var w *Worker
+
+  w_temp = idle_mask
+  b.sp_mutex.Lock()
+
+  for ; w_temp > 0; w_temp &= (^w_current) {
+    w_index = uint8(lsb(BB(w_temp)))
+    w_current = 1 << w_index
+
+    sp_temp = sp_mask & (^w_current)
+    for ; sp_temp > 0; sp_temp &= (^sp_current) {
+      sp_index = uint8(lsb(BB(sp_temp)))
+      sp_current = 1 << sp_index
+
+      item = heap.Pop(b.sp_lists[sp_index]).(*SPListItem)
+      w = b.workers[w_index]
+      item.worker_mask |= w.mask
+      
+      assert(item != nil, "Nil item in SP List!")
+
+      // fmt.Printf(" Assigning...")
+      w.assign_sp <- *item // send the item to the worker
+      // fmt.Printf("Assigned")
+
+      assigned |= w.mask
+      heap.Push(b.sp_lists[sp_index], item)
+      break
+    }
+  }
+  b.sp_mutex.Unlock()
+  return assigned
+}
+
+
+func (b *Balancer) AddSP() {
   go func() {
     for {
-      fmt.Printf(">")
       select {
-      case c := <-b.remove_sp:
-        b.RemoveSP(c)
-
       case item := <-b.work:
         // A worker has discovered a good split point.  Add the SP to the worker's SP List. 
         // This allows other workers to begin searching this SP node when they're ready, without having
         // to wait for this worker to return to this point in the search.
         // fmt.Printf(" LB: New SP @ worker%d", item.sp.master.index)
-        b.AddSP(item)
 
-        FlushStaging: // Any workers waiting for a relevant SP should be sent back to the done queue.
-          for {
-            select {
-            case d := <-b.waiting:
-              b.done <- d
-            default:
-              break FlushStaging    
-            }
-          }
-
-      case d := <-b.done:
-        b.AssignBestSP(d.w) // Assign the worker as servant to best available SP, or move the worker 
-                            // to waiting area if the worker can't participate in any available SP.  
+        master := item.sp.master
+        item.worker_mask |= master.mask
+        b.sp_mutex.Lock()
+        heap.Push(b.sp_lists[item.sp.master.index], &item)
+        b.add_sp <- master.mask
+        b.sp_mutex.Unlock()
+        // fmt.Printf(" Added SP%x", item.sp.brd.hash_key)
       }
     }
   }()
 }
 
-
-func (b *Balancer) AddSP(item SPListItem) {
-  master := item.sp.master
-
-  b.sp_mask |= master.mask
-  b.sp_counts[master.index] += 1
-  item.worker_mask |= master.mask
-  
-  heap.Push(b.sp_lists[item.sp.master.index], &item)
-  fmt.Printf(" Added SP%d", item.sp.brd.hash_key)
+type SPCancellation struct {
+  w *Worker
+  hash_key uint64
+  cancel_servant bool
 }
 
-func (b *Balancer) RemoveSP(c SPCancellation) {
-  sp_list := b.sp_lists[c.sp.master.index]
-  for i, item := range *sp_list {
-    if item.sp.brd.hash_key == c.hash_key {
-      heap.Remove(sp_list, i)
-      b.sp_counts[i] -= 1
-      if b.sp_counts[i] == 0 {
-        b.sp_mask &= (^item.sp.master.mask)
+// Only masters should send cancellation signal.
+func (b *Balancer) CleanupSP() {
+  go func() {
+    var helpers uint8
+    var l, i, index int
+    var item *SPListItem
+
+    for {
+      c := <-b.cancel_sp  // iteratively remove the SP and all its descendants.
+      // fmt.Printf(" removing SP%x", c.hash_key)
+      b.sp_mutex.Lock()
+      list := b.sp_lists[c.w.index]
+      l = len(*list)
+      if c.cancel_servant {
+        // remove all SPs for this worker, since it's master node has been cancelled.
+        for ; l > 0; l-- {
+          item = heap.Pop(list).(*SPListItem)
+          close(item.sp.cancel)
+
+          helpers = item.worker_mask
+          helpers &= (^c.w.mask)
+          index = 0
+          for ; helpers > 0; helpers &= ^(1<<uint8(index)) {
+            index = lsb(BB(helpers))
+            b.cancel_sp <- SPCancellation{b.workers[index], 0, true}
+          }  
+        }
+        b.remove_sp <- c.w.mask
+      } else {
+        for i, item = range *list {
+          if item.sp.brd.hash_key == c.hash_key {
+            helpers = item.worker_mask
+            heap.Remove(list, i)
+            close(item.sp.cancel)
+            c.w.available_slots <- true
+            if l == 1 {
+              b.remove_sp <- c.w.mask // If this was the only SP for this worker, update the SP mask.
+            }
+            break
+          }
+        }
+        helpers &= (^c.w.mask)
+        index = 0
+        for ; helpers > 0; helpers &= ^(1<<uint8(index)) {
+          index = lsb(BB(helpers))
+          b.cancel_sp <- SPCancellation{b.workers[index], 0, true}
+        }      
       }
-      close(c.sp.cancel)
-      c.sp.master.available_slots <- true // let the worker know it now has another SP slot available.
-      fmt.Printf(" Removed SP%d", c.hash_key)
-      return
+      b.sp_mutex.Unlock()
     }
-  }
-  fmt.Printf(" Missing SP%d", c.hash_key)
+  }()
 }
 
-func (b *Balancer) AssignBestSP(w *Worker) bool { // Select the best available split point.
-  var sp_list SPList
-  var item, best_item *SPListItem
-  var best_order uint8
-  var l int
-  index := w.index
-  for i := uint8(0); i < MAX_WORKER_GOROUTINES; i++ {
-    if i == index {
-      continue
-    }
-    sp_list = *b.sp_lists[i]
-    l = b.sp_counts[i]
-    if l > 0 {
-      item = sp_list[l-1]
-      if item.worker_mask & w.mask > 0 {
-        // fmt.Printf(" worker%d already assigned to this node: %b!", w.index, item.worker_mask)
-      }
-      if item.worker_mask & w.mask == 0 && item.order > best_order {
-        best_item = item
-      }
-    }
-  }
 
-  if best_item == nil {
-    b.waiting <- Done{w}  // Put the worker back into the queue.
-    return false
-  }
 
-  best_item.worker_mask |= w.mask 
-  w.assign_sp <- *best_item
-  return true
-}
-
-func (item *SPListItem) AllSearching() bool {
-  return (item.worker_mask>>1) == ALL_SERVANTS_SEARCHING
-}
+// func (item *SPListItem) AllSearching() bool {
+//   return (item.worker_mask>>1) == ALL_SERVANTS_SEARCHING
+// }
 
 func (b *Balancer) RootWorker() *Worker {
   return b.workers[0] 
@@ -223,11 +301,10 @@ type Worker struct {
 	assign_sp chan SPListItem
 }
 
-func (w *Worker) Help(done chan Done) {
+func (w *Worker) Help(done chan uint8) {
   go func() {
     for {
-      done <- Done{w}
-      // fmt.Printf(" worker%d requested more work.", w.index)
+      done <- w.mask
 
       item := <-w.assign_sp  // Wait for LB to assign this worker as a servant to another worker.
 
@@ -237,7 +314,7 @@ func (w *Worker) Help(done chan Done) {
       stk[sp.ply].sp = sp
       brd.worker = w
 
-      fmt.Printf(" worker%d searching:\n", w.index)
+      // fmt.Printf(" worker%d searching SP%x\n", w.index, sp.brd.hash_key)
       // fmt.Printf("%d %d %d %d %d\n", sp.alpha, sp.beta, sp.depth, sp.ply, sp.extensions_left)
       // Once the SP is fully evaluated, The SP master will handle returning its value to parent node.
       _, _ = ybw(brd, stk, sp.alpha, sp.beta, sp.depth, sp.ply, 
@@ -245,7 +322,16 @@ func (w *Worker) Help(done chan Done) {
 
       // At this point, any additional SPs found by the worker during the search rooted at a.sp
       // should be fully resolved.  The SP list for this worker should be empty again.
-      fmt.Printf(" worker%d finished.", w.index)
+      // fmt.Printf(" worker%d finished SP%x", w.index, sp.brd.hash_key)
+
+      assert(len(*load_balancer.sp_lists[w.index]) == 0, " worker" + string(w.index) + " returned with work remaining")
+
+      for i := 0; i < MAX_SP_PER_WORKER; i++ {
+        select {
+        case w.available_slots <- true:  // Refill the availability channel.
+        default:
+        }
+      }
     }
   }()
 }

@@ -59,11 +59,6 @@ type SplitPoint struct {
 	cancel            chan bool
 }
 
-type SPCancellation struct {
-  sp *SplitPoint
-  hash_key uint64
-}
-
 
 type SPListItem struct {
   sp *SplitPoint

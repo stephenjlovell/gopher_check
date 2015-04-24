@@ -51,13 +51,13 @@ const (
 
 var side_to_move uint8
 var search_id int
-var cancel_search bool
+var cancel_search chan bool
 var print_info bool = true
 
 var nodes_per_iteration [MAX_DEPTH + 1]int
 
 func AbortSearch() {
-	cancel_search = true
+	close(cancel_search)
 	if print_info {
 		fmt.Println("Search aborted by GUI")
 	}
@@ -71,7 +71,7 @@ func search_timer(timer *time.Timer) {
 }
 
 func Search(brd *Board, depth, time_limit int) (Move, int) {
-	cancel_search = false
+	cancel_search = make(chan bool)
 	side_to_move = brd.c
 	id_move[brd.c] = 0
 	start := time.Now()
@@ -108,14 +108,17 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 	in_check := is_in_check(brd)
 
 	for d := 1; d <= depth; d++ {
-		if cancel_search {
-			return id_move[c], sum
-		} 
 
 		stk = NewStack()
 		stk[0].in_check = in_check
 		guess, total = ybw(brd, stk, id_alpha, id_beta, d, 0, MAX_EXT, true, Y_PV, SP_NONE)
 		sum += total
+
+		select {
+		case <-cancel_search:
+			return id_move[c], sum
+		default:
+		}
 
 		if stk[0].pv_move.IsMove() {
 			id_move[c], id_score[c] = stk[0].pv_move, guess
@@ -176,8 +179,10 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		return score, sum
 	}
 
-	if cancel_search {
+	select {
+	case <-cancel_search:
 		return 0, 0
+	default:
 	}
 
 	this_stk = &stk[ply]
@@ -339,7 +344,8 @@ search_moves:
 						sp.Unlock()
 						if sp_type == SP_MASTER {
 							// The SP master has finished evaluating the node. Remove the SP from the worker's SP List.
-							load_balancer.remove_sp <- SPCancellation{sp, brd.hash_key}
+							// close(sp.cancel)
+							load_balancer.cancel_sp <- SPCancellation{brd.worker, brd.hash_key, false }
 							store_cutoff(this_stk, m, brd.c, total) // what happens on refutation of main pv?
 							main_tt.store(brd, m, depth, LOWER_BOUND, score)
 							return score, sum
@@ -385,7 +391,7 @@ search_moves:
 	switch sp_type {
 	case SP_MASTER: // The SP master has finished evaluating the node. Ask the load balancer to remove the SP 
 									// from the worker's SP List.
-		load_balancer.remove_sp <- SPCancellation{sp, brd.hash_key}
+		load_balancer.cancel_sp <- SPCancellation{brd.worker, brd.hash_key, false }
 	case SP_SERVANT:
 		return NO_SCORE, 0
 	default:
@@ -462,8 +468,9 @@ func setup_sp(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, be
 			cancel: make(chan bool),
 		}
 		stk[ply].sp = sp
-
+		// fmt.Printf(" W%d sending SP%x", worker.index, brd_copy.hash_key)
 		load_balancer.work <- SPListItem{sp: sp, stk: stk.CopyUpTo(ply), order: uint8((sp.depth << 2)|sp.node_type) }
+		// fmt.Printf("...sent")
 		return true
 	default:
 		return false
@@ -475,8 +482,11 @@ func setup_sp(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, be
 // Q-Search will always be done sequentially: Q-search subtrees are taller and narrower than in the main search,
 // making benefit of parallelism smaller and raising communication and synchronization overhead.
 func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining int) (int, int) {
-	if cancel_search {
+
+	select {
+	case <-cancel_search:
 		return 0, 0
+	default:
 	}
 
 	this_stk := &stk[ply]

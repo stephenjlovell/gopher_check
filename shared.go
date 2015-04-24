@@ -139,6 +139,12 @@ func chebyshev_distance(from, to int) int {
 	return max(abs(row(from)-row(to)), abs(column(from)-column(to)))
 }
 
+func assert(statement bool, failure_message string) {
+	if !statement {
+		panic("\nassertion failed: " + failure_message + "\n")
+	}
+}
+
 func setup() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	rand.Seed(4129246945) // keep the same seed each time for debugging purposes.

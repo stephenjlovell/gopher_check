@@ -84,7 +84,7 @@ func correct_move(epd *EPD, move_str string) bool {
 // 		fmt.Printf("%d. ", i+1)
 // 		_, count := Search(current_board, depth, MAX_TIME)
 // 		sum += count
-// 		Assert(*current_board == *copy, "Search did not return to original board state.")
+// 		assert(*current_board == *copy, "Search did not return to original board state.")
 // 	}
 // 	fmt.Printf("Total nodes searched: %.4f m\n", float64(sum)/1000000.0)
 // 	fmt.Printf("Average Branching factor by iteration:\n")
