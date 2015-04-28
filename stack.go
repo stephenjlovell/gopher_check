@@ -63,11 +63,10 @@ func NewStack() Stack {
   return make(Stack, MAX_STACK, MAX_STACK)
 }
 
-func (stk Stack) CopyUpTo(ply int) Stack {
-  stk_copy := NewStack()
+func (stk Stack) CopyUpTo(other_stk Stack, ply int) {
   for i := 0; i <= ply; i++ {
     this_stk := &stk[i]
-    this_cpy := &stk_copy[i]
+    this_cpy := &other_stk[i]
     
     this_cpy.sp = this_stk.sp
     this_cpy.value = this_stk.value
@@ -78,6 +77,5 @@ func (stk Stack) CopyUpTo(ply int) Stack {
     this_cpy.depth = this_stk.depth
     this_cpy.in_check = this_stk.in_check
   }
-  return stk_copy
 }
 

@@ -167,6 +167,7 @@ func (s *MoveSelector) NextMove() (Move, int) {
 				return m, STAGE_REMAINING
 			}
 		default:
+			// fmt.Printf("?")
 		}
 	}
 }
@@ -197,6 +198,7 @@ func (s *MoveSelector) NextBatch() bool {
 		s.remaining_moves.Sort()
 		s.finished = len(s.remaining_moves)
 	default:
+		s.finished = 0
 		done = true
 	}
 	s.stage++

@@ -155,6 +155,7 @@ func setup() {
 	setup_eval()
 	setup_zobrist()
 	setup_main_tt()
+	setup_load_balancer()
 
 	fmt.Println("\n------------------------------------------------------------------")
 	fmt.Println("\u265B GopherCheck \u265B\nCopyright \u00A9 2014 Stephen J. Lovell")

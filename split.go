@@ -39,6 +39,8 @@ type SplitPoint struct {
 	selector          *MoveSelector
 	parent            *SplitPoint
   master            *Worker
+  worker_mask       uint32
+
 
 	brd               *Board
   this_stk          *StackItem
@@ -59,40 +61,10 @@ type SplitPoint struct {
 	cancel            chan bool
 }
 
-
-type SPListItem struct {
-  sp *SplitPoint
-  stk Stack
-  index uint8
-  order uint8
-  worker_mask uint8  // this will limit us to no more than 8 Worker goroutines...
+func (sp *SplitPoint) Order() int {
+  return (sp.depth << 3) | (sp.node_type)
 }
 
-type SPList []*SPListItem
-
-func (l SPList) Len() int { return len(l) }
-
-func (l SPList) Less(i, j int) bool { return l[i].order < l[j].order }
-
-func (l SPList) Swap(i, j int) {
-  l[i], l[j] = l[j], l[i]
-  l[i].index, l[j].index = uint8(j), uint8(i)
-}
-
-func (l *SPList) Push(li interface{}) {
-  n := len(*l)
-  item := li.(*SPListItem)
-  item.index = uint8(n)
-  *l = append(*l, item)
-}
-
-func (l *SPList) Pop() interface{} {
-  old := *l
-  n := len(old)
-  item := old[n-1]
-  *l = old[0 : n-1]
-  return item
-}
 
 
 
