@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"math/rand"
 	"runtime"
+	"sync/atomic"
 )
 
 const (
@@ -97,6 +98,19 @@ var pawn_attack_offsets = [4]int{9, 7, -9, -7}
 var pawn_advance_offsets = [4]int{8, 16, -8, -16}
 
 var directions [64][64]int
+
+type SafeCounter int64
+
+func (c *SafeCounter) Add(i int64) int64 {
+	return atomic.AddInt64((*int64)(c), i)
+}
+
+func (c *SafeCounter) Get() int64 {
+	return atomic.LoadInt64((*int64)(c))
+}
+
+
+
 
 func max(a, b int) int {
 	if a > b {

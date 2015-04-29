@@ -84,18 +84,12 @@ Total score: 289/300                    << some search pathology starting to sho
 
 Debugging:
 
-Search refactoring:
-
-  Search needs access to:
-    - current SP
-      - Move Selector for current SP
-    - current stack
-
-
 
 
 
 To Do:
+
+Implement Helpful Master Concept
 
 Implement Pondering.
 

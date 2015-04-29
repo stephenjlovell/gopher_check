@@ -53,6 +53,7 @@ const (
   MAX_SP = MAX_WORKER_GOROUTINES * MAX_SP_PER_WORKER
 )
 
+var node_count [MAX_WORKER_GOROUTINES]SafeCounter
 
 var load_balancer *Balancer
 
@@ -128,15 +129,15 @@ func (w *Worker) Help(b *Balancer) {
 
     for {
 
+      // to do: Randomize the order of workers when looking for best SP
+      
       b.Lock()
       sp, best_sp = nil, nil
       for _, master := range b.workers { // try to find a good SP
         if master.index == w.index {
           continue
         }
-
         sp = master.current_sp
-
         for sp != nil {
           // fmt.Printf(" Finding best sp")
           if best_sp == nil || sp.Order() > best_sp.Order() {
@@ -155,12 +156,16 @@ func (w *Worker) Help(b *Balancer) {
         // fmt.Printf(" Best SP found.\n")
       }
 
+      // if sp.master.index > 0 {
+        // fmt.Printf("%d",sp.master.index)
+      // }
+
       brd := sp.brd.Copy()
       brd.worker = w
       sp.master.stk.CopyUpTo(w.stk, sp.ply)
       w.stk[sp.ply].sp = sp
 
-
+      sp.Add(1)
       // fmt.Printf(" worker%d searching SP%x\n", w.index, sp.brd.hash_key)
 
       // Once the SP is fully evaluated, The SP master will handle returning its value to parent node.
@@ -169,6 +174,7 @@ func (w *Worker) Help(b *Balancer) {
 
       // At this point, any additional SPs found by the worker during the search rooted at a.sp
       // should be fully resolved.  The SP list for this worker should be empty again.
+      sp.Done()
 
       // fmt.Printf(" worker%d finished SP%x", w.index, sp.brd.hash_key)
 

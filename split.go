@@ -35,6 +35,7 @@ const (
 
 type SplitPoint struct {
 	sync.Mutex
+  sync.WaitGroup
 
 	selector          *MoveSelector
 	parent            *SplitPoint

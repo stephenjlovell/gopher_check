@@ -33,7 +33,7 @@ const (
 	MAX_DEPTH    = 16
 	MAX_EXT      = 16
 	MAX_PLY			 = MAX_DEPTH + MAX_EXT
-	SPLIT_MIN    = 2 // set > MAX_DEPTH to disable parallel search.
+	SPLIT_MIN    = 3 // set > MAX_PLY to disable parallel search.
 
 	F_PRUNE_MAX  = 3  // should always be less than SPLIT_MIN
 	LMR_MIN      = 2
@@ -168,7 +168,6 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		this_stk 	= sp.this_stk
 		eval 		 	= sp.this_stk.eval
 		in_check 	= this_stk.in_check
-		// best 			= sp.best
 		selector 	= sp.selector
 		sp.Unlock()
 		goto search_moves
@@ -239,6 +238,10 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	// 	first_move = this_stk.pv_move
 	// }
 
+	selector = NewMoveSelector(brd, this_stk, in_check, first_move)
+
+search_moves:
+
 	if !in_check && ply > 0 && node_type != Y_PV && alpha > 100-MATE {
 		if depth <= F_PRUNE_MAX && eval+piece_values[BISHOP] < alpha {
 			f_prune = true
@@ -248,26 +251,23 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		}
 	}
 
-	selector = NewMoveSelector(brd, this_stk, in_check, first_move)
-
-search_moves:
 	memento := brd.NewMemento()
 
 	for m, stage := selector.Next(sp_type); m != NO_MOVE; m, stage = selector.Next(sp_type) {
 
-		// if sp_type == SP_SERVANT {
-		// 	select {
-		// 	case <-sp.cancel:
-		// 		return NO_SCORE, 0
-		// 	default:
-		// 	}
-		// }
+		if sp_type == SP_SERVANT {
+			select {
+			case <-sp.cancel:
+				return NO_SCORE, 0
+			default:
+			}
+		}
 
 		make_move(brd, m)
 
 		gives_check := is_in_check(brd)
 
-		if f_prune && stage == STAGE_REMAINING && legal_searched > 0 && m.IsQuiet() &&
+		if f_prune && stage >= STAGE_REMAINING && legal_searched > 0 && m.IsQuiet() &&
 			!is_passed_pawn(brd, m) && !brd.PawnsOnly() && !gives_check {
 			unmake_move(brd, m, memento)
 			continue
@@ -279,7 +279,7 @@ search_moves:
 		if m.IsPromotion() && stage == STAGE_WINNING && extensions_left > 0 {
 			r_depth = depth + 1  // extend winning promotions only
 			r_extensions = extensions_left - 1
-		} else if can_reduce && stage == STAGE_REMAINING && 
+		} else if can_reduce && stage >= STAGE_REMAINING && 
 			((node_type == Y_ALL && legal_searched > 2) || legal_searched > 6) && !is_passed_pawn(brd, m) && 
 			!gives_check {
 			r_depth = depth - 1 // Late move reductions
@@ -302,6 +302,8 @@ search_moves:
 			total += subtotal
 		}
 
+		// node_count[brd.worker.index].Add(int64(total))
+
 		unmake_move(brd, m, memento) 
 
 		if sp_type != SP_NONE {
@@ -323,6 +325,7 @@ search_moves:
 
 				best_move = m
 				sp.best_move = m
+
 				best = score
 				sp.best = score
 				
@@ -382,9 +385,21 @@ search_moves:
 
 
 	switch sp_type {
-	case SP_MASTER: // The SP master has finished evaluating the node. Ask the load balancer to remove the SP 
-									// from the worker's SP List.
-		brd.worker.RemoveSP()
+	case SP_MASTER: 
+		brd.worker.RemoveSP() // Every move at this SP has been consumed. Remove the SP from the SP list, since
+		// no new workers should be assigned here.
+
+		// To do: implement Helpful Master concept
+
+		sp.Wait() // If servants are still busy at this SP, wait here until they are all finished.
+
+		sp.Lock()
+		best = sp.best
+		best_move = sp.best_move
+		alpha = sp.alpha
+		sum = sp.node_count
+		sp.Unlock()
+
 	case SP_SERVANT:
 		return NO_SCORE, 0
 	default:
@@ -418,11 +433,11 @@ func can_split(brd *Board, ply, depth, node_type, legal_searched, stage int) boo
 	if depth >= SPLIT_MIN {
 		switch node_type {
 		case Y_PV:
-			return legal_searched > 0 && ply > 0
+			return legal_searched > 1 && ply > 0
 		case Y_CUT:
-			return legal_searched > 3 && stage == STAGE_REMAINING
+			return legal_searched > 4 && stage >= STAGE_REMAINING
 		case Y_ALL:
-			return legal_searched > 0
+			return legal_searched > 1
 		}		
 	}
 	return false
@@ -491,7 +506,6 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 
 	this_stk.hash_key = brd.hash_key
 	if stk.IsRepetition(ply) {
-		// return 0, 1
 		return -ply, 1
 	}
 
@@ -500,7 +514,7 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 		if is_checkmate(brd, in_check) {
 			return ply - MATE, 1
 		} else {
-			return 0, 1
+			return -ply, 1
 		}
 	}
 

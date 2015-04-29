@@ -56,6 +56,11 @@ func TestPlayingStrength(t *testing.T) {
 		branching = math.Pow(float64(nodes_per_iteration[d])/float64(nodes_per_iteration[1]), float64(1)/float64(d-1))
 		fmt.Printf("%d ABF: %.4f\n", d, branching)
 	}
+
+	// for i := 0; i < MAX_WORKER_GOROUTINES; i++ {
+	// 	fmt.Printf("%d ", node_count[i].Get())
+	// }
+
 }
 
 func correct_move(epd *EPD, move_str string) bool {
