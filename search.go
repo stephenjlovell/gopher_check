@@ -33,7 +33,7 @@ const (
 	MAX_DEPTH    = 16
 	MAX_EXT      = 16
 	MAX_PLY			 = MAX_DEPTH + MAX_EXT
-	SPLIT_MIN    = 3 // set > MAX_PLY to disable parallel search.
+	SPLIT_MIN    = 16 // set >= MAX_PLY to disable parallel search.
 
 	F_PRUNE_MAX  = 3  // should always be less than SPLIT_MIN
 	LMR_MIN      = 2
@@ -59,7 +59,9 @@ var nodes_per_iteration [MAX_DEPTH + 1]int
 var cancel chan bool
 
 func AbortSearch() {
-	close(cancel)
+	if cancel != nil {
+		close(cancel)
+	}
 	if print_info {
 		fmt.Println("Search aborted by GUI")
 	}
@@ -234,15 +236,19 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		}
 	}
 
-	// // skip IID when in check?
-	// if !in_check && node_type == Y_PV && hash_result == NO_MATCH && can_null && depth >= IID_MIN { 
-	// 	// No hash move available. Use IID to get a decent first move to try.
-	// 	score, subtotal = ybw(brd, stk, alpha, beta, depth-2, ply, extensions_left, can_null, node_type, SP_NONE)
-	// 	sum += subtotal
-	// 	first_move = this_stk.pv_move
-	// }
+	// skip IID when in check?
+	if !in_check && node_type == Y_PV && hash_result == NO_MATCH && can_null && depth >= IID_MIN { 
+		// No hash move available. Use IID to get a decent first move to try.
+		score, subtotal = ybw(brd, stk, alpha, beta, depth-2, ply, extensions_left, can_null, node_type, SP_NONE)
+		sum += subtotal
+		first_move = this_stk.pv.m
+	}
 
 	selector = NewMoveSelector(brd, this_stk, in_check, first_move)
+
+	// if node_type == Y_PV { // remove any stored pv move from a previous iteration.
+		this_stk.pv.m, this_stk.pv.next = NO_MOVE, nil
+	// }
 
 search_moves:
 
@@ -414,8 +420,6 @@ search_moves:
 		// for servant_mask := sp.ServantMask(); servant_mask > 0 {
 
 		// }
-
-
 
 		sp.Lock()
 		best = sp.best

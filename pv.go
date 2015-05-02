@@ -62,9 +62,9 @@ func (pv *PV) SavePV(brd *Board, depth int) {
 	for pv != nil {
 		m = pv.m
 		in_check = is_in_check(copy)
-		// if !m.IsMove() {
-		// 	break
-		// }
+		if !m.IsMove() {
+			break
+		}
 
 		if !copy.ValidMove(m, in_check) || !copy.LegalMove(m, in_check) { 
 			// fmt.Printf("!")

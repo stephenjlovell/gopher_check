@@ -49,7 +49,7 @@ func TestPlayingStrength(t *testing.T) {
 
 	setup()
 	print_info = false
-	depth := MAX_DEPTH - 7
+	depth := 8
 	test := load_epd_file("test_suites/wac_300.epd")
 	var move_str string
 	sum, score := 0, 0
@@ -57,7 +57,7 @@ func TestPlayingStrength(t *testing.T) {
 	// defer profile.Start(profile.CPUProfile).Stop()
 
 	start := time.Now()
-	for _, epd := range test {
+	for i, epd := range test {
 		ResetAll()
 		move, count := Search(epd.brd, depth, 4000)
 		move_str = ToSAN(epd.brd, move)
@@ -65,7 +65,7 @@ func TestPlayingStrength(t *testing.T) {
 			score += 1
 			fmt.Printf("-")
 		} else {
-			fmt.Printf("X")
+			fmt.Printf("%d.", i+1)
 		}
 		sum += count
 	}

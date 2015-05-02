@@ -82,6 +82,29 @@ Total nodes searched: 1158.1233 m
 Total score: 289/300                    << some search pathology starting to show up...
 12 ABF: 2.2250
 
+5/1/15
+
+Sequential:
+
+201.9570m nodes searched in 380.8877s (0.5302m NPS)
+Total score: 290/300
+10 ABF: 2.1224
+
+524.6370m nodes searched in 979.3909s (0.5357m NPS)
+Total score: 290/300
+12 ABF: 1.8323
+
+Parallel:
+
+409.2498m nodes searched in 352.0772s (1.1624m NPS)
+Total score: 289/300
+10 ABF: 2.2653
+
+1121.2286m nodes searched in 967.0860s (1.1594m NPS)
+Total score: 286/300
+12 ABF: 1.9649
+
+
 Debugging:
 
 
