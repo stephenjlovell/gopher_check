@@ -89,6 +89,12 @@ Debugging:
 
 To Do:
 
+Run profiling.
+
+Make return of PV safe for parallelism
+
+Implement Magic Bitboards
+
 Implement Helpful Master Concept
 
 Implement Pondering.

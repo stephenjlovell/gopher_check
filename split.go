@@ -35,12 +35,12 @@ const (
 
 type SplitPoint struct {
 	sync.Mutex
-  sync.WaitGroup
+  wg                sync.WaitGroup
 
 	selector          *MoveSelector
 	parent            *SplitPoint
   master            *Worker
-  worker_mask       uint32
+  servant_mask       uint8
 
 
 	brd               *Board
@@ -63,7 +63,14 @@ type SplitPoint struct {
 }
 
 func (sp *SplitPoint) Order() int {
-  return (sp.depth << 3) | (sp.node_type)
+  return (sp.depth << 11) | (sp.legal_searched << 3) | (sp.node_type)
+}
+
+func (sp *SplitPoint) ServantMask() uint8 {
+    sp.Lock()
+    servant_mask := sp.servant_mask
+    sp.Unlock()
+    return servant_mask
 }
 
 

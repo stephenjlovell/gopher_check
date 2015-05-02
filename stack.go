@@ -31,15 +31,14 @@ type Stack []StackItem
 
 type StackItem struct {
   sp    *SplitPoint
-  value int
-  eval  int
 
-  pv_move      Move
-
-  depth int
+  // pv_move      Move
+  // value int
+  // depth int
+  pv PV
 
   killers KEntry
-
+  eval  int
   hash_key uint64 // use hash key to search for repetitions
   in_check bool
 }
@@ -47,13 +46,11 @@ type StackItem struct {
 func (this_stk *StackItem) Copy() *StackItem {
   return &StackItem{
     // sp: this_stk.sp,
-    value: this_stk.value,
-    eval: this_stk.eval,
-    pv_move: this_stk.pv_move,
+    pv: this_stk.pv,
 
     killers: this_stk.killers,
+    eval: this_stk.eval,
     hash_key: this_stk.hash_key,
-    depth: this_stk.depth,
     in_check: this_stk.in_check,
   }
 }
@@ -68,14 +65,14 @@ func (stk Stack) CopyUpTo(other_stk Stack, ply int) {
     this_stk := &stk[i]
     this_cpy := &other_stk[i]
     
-    this_cpy.sp = this_stk.sp
-    this_cpy.value = this_stk.value
-    this_cpy.eval = this_stk.eval
-    this_cpy.pv_move = this_stk.pv_move
-    this_cpy.killers = this_stk.killers
+    // this_cpy.sp = this_stk.sp
+    // this_cpy.value = this_stk.value
+    // this_cpy.eval = this_stk.eval
+    // this_cpy.pv_move = this_stk.pv_move
+    // this_cpy.killers = this_stk.killers
     this_cpy.hash_key = this_stk.hash_key
-    this_cpy.depth = this_stk.depth
-    this_cpy.in_check = this_stk.in_check
+    // this_cpy.depth = this_stk.depth
+    // this_cpy.in_check = this_stk.in_check
   }
 }
 

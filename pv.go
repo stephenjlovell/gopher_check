@@ -27,29 +27,41 @@ import (
 // "fmt"
 )
 
-func (stk Stack) PVtoUCI() string {
+
+type PV struct {
+	m Move
+	value int
+	depth int
+	next *PV
+}
+
+func (pv *PV) ToUCI() string {
 	var m Move
 	str := ""
-	m = stk[0].pv_move
+	m = pv.m
 	if !m.IsMove() {
 		return str
 	}
-	str = stk[0].pv_move.ToUCI()
-	for _, this_stk := range stk[1:] {
-		m = this_stk.pv_move
-		if m == 0 || m == NO_MOVE {
+	str = pv.m.ToUCI()
+	for pv != nil {
+		m = pv.m
+		if !m.IsMove() {
 			break
 		}
 		str += " " + m.ToUCI()
+		pv = pv.next
 	}
 	return str
 }
 
-func (stk Stack) SavePV(brd *Board, depth int) {
+
+func (pv *PV) SavePV(brd *Board, depth int) {
 	copy := brd.Copy() // create a local copy of the board to avoid having to unmake moves.
-	for _, this_stk := range stk {
-		m := this_stk.pv_move
-		in_check := is_in_check(copy)
+	var m Move
+	var in_check bool
+	for pv != nil {
+		m = pv.m
+		in_check = is_in_check(copy)
 		// if !m.IsMove() {
 		// 	break
 		// }
@@ -59,10 +71,10 @@ func (stk Stack) SavePV(brd *Board, depth int) {
 			break
 		}
 
-		main_tt.store(copy, m, this_stk.depth, EXACT, this_stk.value)
+		main_tt.store(copy, m, pv.depth, EXACT, pv.value)
 
 		make_move(copy, m)
-
+		pv = pv.next
 	}
 }
 

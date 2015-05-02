@@ -57,8 +57,8 @@ func PrintInfo(score, depth, node_count int, time_elapsed time.Duration, stk Sta
 	ms := Milliseconds(time_elapsed)
 	nps := int64(float64(node_count) / (float64(ms) / float64(1000.0)))
 	fmt.Printf("info score cp %d depth %d nodes %d nps %d time %d", score, depth, node_count, nps, ms)
-	if stk[0].pv_move != 0 {
-		fmt.Printf(" pv %s\n", stk.PVtoUCI())
+	if stk[0].pv.m.IsMove() {
+		fmt.Printf(" pv %s\n", stk[0].pv.ToUCI())
 	}
 	fmt.Printf("NPS: %.4f m\n", float64(nps)/1000000)
 }

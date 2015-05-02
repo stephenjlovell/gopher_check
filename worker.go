@@ -68,11 +68,17 @@ func NewLoadBalancer() *Balancer {
     done: make(chan *Worker, MAX_WORKER_GOROUTINES),
   }
   for i := uint8(0); i < MAX_WORKER_GOROUTINES; i++ {
+
+    // polling_order := make([]int, MAX_WORKER_GOROUTINES-1)
+
+
+
     b.workers[i] = &Worker{
       mask: 1 << i,
       index: i,
       stk: NewStack(),
       assign_sp: make(chan *SplitPoint, 1),
+      // cancel: make(chan bool, 1),
     }
   }
   return b
@@ -105,20 +111,21 @@ type Worker struct {
   current_sp *SplitPoint
   stk Stack
 
+  // polling_order []int
+
   assign_sp chan *SplitPoint
+  // cancel chan bool
 }
 
 
 func (w *Worker) RemoveSP() {
   load_balancer.Lock()
-  // fmt.Printf(" Removing SP...")
   
   last_sp := w.current_sp.parent
   close(w.current_sp.cancel)
   w.current_sp = last_sp
 
   load_balancer.Unlock()
-  // fmt.Printf("removed.")
 }
 
 
@@ -139,7 +146,6 @@ func (w *Worker) Help(b *Balancer) {
         }
         sp = master.current_sp
         for sp != nil {
-          // fmt.Printf(" Finding best sp")
           if best_sp == nil || sp.Order() > best_sp.Order() {
             best_sp = sp
           }
@@ -148,25 +154,23 @@ func (w *Worker) Help(b *Balancer) {
       }
       b.Unlock()
 
-      if best_sp == nil {      // No SP was available.
+      if best_sp == nil {  // no SP was available.
         b.done <- w
         sp = <-w.assign_sp // wait for the next SP to be discovered.
       } else {
         sp = best_sp
-        // fmt.Printf(" Best SP found.\n")
       }
-
-      // if sp.master.index > 0 {
-        // fmt.Printf("%d",sp.master.index)
-      // }
 
       brd := sp.brd.Copy()
       brd.worker = w
       sp.master.stk.CopyUpTo(w.stk, sp.ply)
       w.stk[sp.ply].sp = sp
 
-      sp.Add(1)
-      // fmt.Printf(" worker%d searching SP%x\n", w.index, sp.brd.hash_key)
+      sp.wg.Add(1)
+      // sp.Lock()
+      // sp.servant_mask |= w.mask
+      // sp.Unlock()
+
 
       // Once the SP is fully evaluated, The SP master will handle returning its value to parent node.
       _, _ = ybw(brd, w.stk, sp.alpha, sp.beta, sp.depth, sp.ply, 
@@ -174,9 +178,13 @@ func (w *Worker) Help(b *Balancer) {
 
       // At this point, any additional SPs found by the worker during the search rooted at a.sp
       // should be fully resolved.  The SP list for this worker should be empty again.
-      sp.Done()
+      
+      sp.wg.Done()
+      // sp.Lock()
+      // sp.servant_mask &= (^w.mask)
+      // sp.Unlock()
 
-      // fmt.Printf(" worker%d finished SP%x", w.index, sp.brd.hash_key)
+
 
 
     }

@@ -61,6 +61,17 @@ const ( // direction codes (0...8)
 	DIR_INVALID
 )
 
+
+type SafeCounter int64
+
+func (c *SafeCounter) Add(i int64) int64 {
+	return atomic.AddInt64((*int64)(c), i)
+}
+
+func (c *SafeCounter) Get() int64 {
+	return atomic.LoadInt64((*int64)(c))
+}
+
 var opposite_dir = [16]int{SE, SW, NW, NE, SOUTH, WEST, NORTH, EAST, DIR_INVALID}
 
 var mask_of_length [65]uint64
@@ -99,18 +110,6 @@ var pawn_advance_offsets = [4]int{8, 16, -8, -16}
 
 var directions [64][64]int
 
-type SafeCounter int64
-
-func (c *SafeCounter) Add(i int64) int64 {
-	return atomic.AddInt64((*int64)(c), i)
-}
-
-func (c *SafeCounter) Get() int64 {
-	return atomic.LoadInt64((*int64)(c))
-}
-
-
-
 
 func max(a, b int) int {
 	if a > b {
@@ -133,13 +132,7 @@ func abs(x int) int {
 		return x
 	}
 }
-func round(x float64) int {
-	if x >= 0 {
-		return int(x + 0.5)
-	} else {
-		return int(x - 0.5)
-	}
-}
+
 
 func on_board(sq int) bool       { return 0 <= sq && sq <= 63 }
 func row(sq int) int             { return sq >> 3 }
