@@ -217,7 +217,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		null_depth = depth - 2
 	}
 
-	first_move, hash_result = main_tt.probe(brd, depth, null_depth, &alpha, &beta, &score)
+	first_move, hash_result = main_tt.probe(brd, depth, null_depth, alpha, beta, &score)
 
 	eval = evaluate(brd, alpha, beta)	
 	this_stk.eval = eval
