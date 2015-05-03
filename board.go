@@ -40,7 +40,7 @@ type Board struct {
 	occupied        [2]BB     // 128 bits
 	material        [2]int32  // 64  bits
 	hash_key        uint64    // 64  bits
-	pawn_hash_key   uint64    // 64  bits
+	pawn_hash_key   uint32    // 32  bits
 	c               uint8     // 8   bits
 	castle          uint8     // 8   bits
 	enp_target      uint8     // 8 	bits
@@ -51,7 +51,7 @@ type Board struct {
 
 type BoardMemento struct { // memento object used to store board state to unmake later.
 	hash_key       uint64
-	pawn_hash_key  uint64
+	pawn_hash_key  uint32
 	castle         uint8
 	enp_target     uint8
 	halfmove_clock uint8
@@ -249,6 +249,14 @@ func (brd *Board) Placement(c uint8) BB { return brd.occupied[c] }
 
 func (brd *Board) PawnsOnly() bool {
 	return brd.occupied[brd.c] == brd.pieces[brd.c][PAWN]|brd.pieces[brd.c][KING]
+}
+
+func (brd *Board) InEndgame() int {
+	if brd.endgame_counter < ENDGAME_COUNT {
+		return 1
+	} else {
+		return 0
+	}
 }
 
 func (brd *Board) Copy() *Board {

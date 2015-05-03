@@ -23,38 +23,58 @@
 
 package main
 
-import (
-// "fmt"
-	"sync"
+const (
+  PAWN_ENTRY_COUNT = 16384
+  // PAWN_ENTRY_COUNT = 32768
+  PAWN_TT_MASK = PAWN_ENTRY_COUNT - 1
 )
 
-type HTable [2][8][64]uint64
+var main_pawn_tt PawnTT
 
-var main_htable HTable
-var htable_mutex sync.Mutex
+type PawnTT [PAWN_ENTRY_COUNT]*PawnEntry
 
-func (h *HTable) Store(m Move, c uint8, count int) {
-	htable_mutex.Lock()
-	h[c][m.Piece()][m.To()] += uint64((count >> 2) | 1)
-	htable_mutex.Unlock()
+type PawnEntry struct {
+  passed_pawns BB
+  value int
+  key uint32
 }
 
-func (h *HTable) Probe(pc Piece, c uint8, to int) uint64 {
-	value := uint64(0)
-	htable_mutex.Lock()
-	if h[c][pc][to] > 0 {
-		value = (((h[c][pc][to] >> 3) & mask_of_length[21]) | 1) << 1
-	}
-	htable_mutex.Unlock()
-	return value
+func setup_pawn_tt() {
+  for i, _ := range main_pawn_tt {
+    main_pawn_tt[i] = &PawnEntry{
+      value: NO_SCORE,
+    }
+  } 
 }
 
-func (h *HTable) Clear() {
-	for i := 0; i < 2; i++ {
-		for j := 0; j < 6; j++ {
-			for k := 0; k < 64; k++ {
-				h[i][j][k] = 0
-			}
-		}
-	}
+// Typical hit rate is around 97 %
+func (ptt *PawnTT) Probe(key uint32) *PawnEntry {
+  return ptt[key & PAWN_TT_MASK]
 }
+
+func (entry *PawnEntry) Store(key uint32, value int, passed_pawns BB) {
+  entry.passed_pawns = passed_pawns
+  entry.value = value
+  entry.key = key
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

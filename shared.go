@@ -162,6 +162,7 @@ func setup() {
 	setup_eval()
 	setup_zobrist()
 	setup_main_tt()
+	setup_pawn_tt()
 	setup_load_balancer()
 
 	fmt.Println("\n------------------------------------------------------------------")

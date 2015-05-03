@@ -49,7 +49,7 @@ func TestPlayingStrength(t *testing.T) {
 
 	setup()
 	print_info = false
-	depth := 8
+	depth := 10
 	test := load_epd_file("test_suites/wac_300.epd")
 	var move_str string
 	sum, score := 0, 0
@@ -80,10 +80,6 @@ func TestPlayingStrength(t *testing.T) {
 		branching = math.Pow(float64(nodes_per_iteration[d])/float64(nodes_per_iteration[1]), float64(1)/float64(d-1))
 		fmt.Printf("%d ABF: %.4f\n", d, branching)
 	}
-
-	// for i := 0; i < MAX_WORKER_GOROUTINES; i++ {
-	// 	fmt.Printf("%d ", node_count[i].Get())
-	// }
 
 }
 

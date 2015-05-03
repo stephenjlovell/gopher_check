@@ -24,13 +24,15 @@
 package main
 
 import (
-	"fmt"
+	// "fmt"
 )
 
 var passed_pawn_bonus = [2][8]int{
 	{0, 128, 64, 32, 16, 8, 4, 0},
 	{0, 4, 8, 16, 32, 64, 128, 0},
 }
+
+var double_pawn_penalty = [8]int{0, 0, -15, -30, -45, -60, -75, -90}
 
 var promote_row = [2][2]int{
 	{1, 2},
@@ -42,8 +44,6 @@ const (
 	DUO_BONUS        = 2
 	ISOLATED_PENALTY = -4
 )
-
-var double_pawn_penalty = [8]int{0, 0, -15, -30, -45, -60, -75, -90}
 
 var main_pst = [2][6][64]int{
 	{ // Black
@@ -236,33 +236,33 @@ func is_passed_pawn(brd *Board, m Move) bool {
 	if m.Piece() != PAWN {
 		return false
 	} else {
-		c, e := brd.c, brd.Enemy()
-		return pawn_passed_masks[c][m.From()]&brd.pieces[e][PAWN] == 0
+		return pawn_passed_masks[brd.c][m.From()]&brd.pieces[brd.Enemy()][PAWN] == 0
 	}
 }
 
-var placement_test int
-
 func evaluate(brd *Board, alpha, beta int) int {
+	var placement int
 	c, e := brd.c, brd.Enemy()
 	material := int(brd.material[c] - brd.material[e])
-	if brd.pieces[c][KING] == 0 {
-		fmt.Printf(" King missing at eval.")
-		return -MATE
-	}
+	// if brd.pieces[c][KING] == 0 {
+	// 	fmt.Printf(" King missing at eval.")
+	// 	return -MATE
+	// }
+
 	// lazy evaluation: if material balance is already outside the search window by an amount that outweighs
 	// the largest likely placement evaluation, return the material as an approximate evaluation.
 	// This prevents the engine from wasting a lot of time evaluating unrealistic positions.
-
 	if material+piece_values[BISHOP] < alpha || material-piece_values[BISHOP] > beta {
 		return material + tempo_bonus(c)
 	}
-	placement := adjusted_placement(brd, c, e) - adjusted_placement(brd, e, c) + tempo_bonus(c)
-	// if placement > placement_test {
-	// 	placement_test = placement
-	// 	fmt.Printf("%d ", placement_test)
-	// }
-	return material + placement
+
+	placement = net_placement(brd) + net_pawn_placement(brd)
+	// placement = net_pawn_placement(brd)
+	if c == BLACK {
+		placement = -placement
+	} 
+
+	return material + placement + tempo_bonus(c)
 }
 
 func lazy_eval(brd *Board) int {
@@ -277,14 +277,11 @@ func tempo_bonus(c uint8) int {
 	}
 }
 
-// current ranges (approximate):
-// PST bonus: {-152, 82}
-// Mobility: { -39, 55}
-// Pawn structure: {  }
-
-// overall +- 550
-
 var queen_tropism_bonus = [8]int{0, 12, 9, 6, 3, 0, -3, -6}
+
+func net_placement(brd *Board) int {
+	return adjusted_placement(brd, WHITE, BLACK) - adjusted_placement(brd, BLACK, WHITE)
+}
 
 func adjusted_placement(brd *Board, c, e uint8) int {
 
@@ -314,12 +311,7 @@ func adjusted_placement(brd *Board, c, e uint8) int {
 		mobility += knight_mobility[pop_count(attacks&unguarded)]
 	}
 
-	b = brd.pieces[c][BISHOP]
-	// if pop_count(b) > 1 {
-	// 	// A pair of bishops is more useful the fewer enemy pawns are in play.
-	// 	placement += bishop_pair_pawns[pop_count(brd.pieces[e][PAWN])]
-	// }
-	for ; b > 0; b.Clear(sq) {
+	for b = brd.pieces[c][BISHOP]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
 		attacks = bishop_attacks(occ, sq) & available
 		king_threats += pop_count(attacks & enemy_king_zone)
@@ -340,27 +332,23 @@ func adjusted_placement(brd *Board, c, e uint8) int {
 
 		// add minor queen tropism bonus
 		placement += queen_tropism_bonus[chebyshev_distance(sq, enemy_king_sq)]
-
 	}
 
-	endgame := in_endgame(brd)
+	endgame := brd.InEndgame()
 	for b = brd.pieces[c][KING]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
 		attacks = king_masks[sq] & available
 		king_threats += pop_count(attacks & enemy_king_zone)
 
-		if endgame == 0 {
+		if endgame == 0 {  
 			placement += pawn_shield_bonus[pop_count(brd.pieces[c][PAWN]&king_shield_masks[c][sq])]
 		}
-		// placement += king_pst[c][endgame][sq]
 	}
 
 	// Squares along the edges of the board receive higher king threat bonuses, since there are fewer
 	// places where the king can escape.
 	border_bonus := borders[enemy_king_sq]
 	placement += king_threat_bonus[king_threats+border_bonus]
-
-	placement += pawn_structure(brd, c, e, endgame, enemy_king_sq)
 
 	return placement + mobility
 }
@@ -386,81 +374,123 @@ var pawn_tropism_factor = [8]int{0, 3, 2, 2, 1, 0, 0, 0}
 // Bad structures:
 //   -Isolated pawns - Penalty for any pawn without friendly pawns on adjacent files.
 //   -Double/tripled pawns - Penalty for having multiple pawns on the same file.
-func pawn_structure(brd *Board, c, e uint8, endgame, enemy_king_sq int) int {
-	var structure, sq int
+
+
+func net_pawn_placement(brd *Board) int {
+	var value int
+	var passed_pawns BB
+	entry := main_pawn_tt.Probe(brd.pawn_hash_key)
+	if entry.key == brd.pawn_hash_key {
+		value = entry.value			
+		passed_pawns = entry.passed_pawns
+	} else {
+		value, passed_pawns = net_pawn_structure(brd)
+		entry.Store(brd.pawn_hash_key, value, passed_pawns)
+	}
+
+	return value + net_passed_pawns(brd, passed_pawns)
+}
+
+func net_pawn_structure(brd *Board) (int, BB) {
+	var c_value, e_value int
+	var c_passed, e_passed BB
+	c_value, c_passed = pawn_structure(brd, WHITE, BLACK)
+	e_value, e_passed = pawn_structure(brd, BLACK, WHITE)
+	return (c_value-e_value), (c_passed|e_passed)
+}
+
+func pawn_structure(brd *Board, c, e uint8) (int, BB) {
+	var value, sq, passed_bonus int
+	var passed_pawns BB
 	own_pawns := brd.pieces[c][PAWN]
 	enemy_pawns := brd.pieces[e][PAWN]
-	occ := brd.AllOccupied()
+
 	for b := own_pawns; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
-
+		// isolated pawns
+		if pawn_isolated_masks[sq]&own_pawns == 0 {
+			value += ISOLATED_PENALTY
+		}
+		// pawn duos
+		if pawn_side_masks[sq]&own_pawns > 0 {
+			value += DUO_BONUS
+		}
 		// passed pawns
 		if pawn_passed_masks[c][sq]&enemy_pawns == 0 {
-
-			base_bonus := passed_pawn_bonus[c][row(sq)]
-
-			if endgame == 1 {
-				base_bonus += base_bonus >> 1 // increase the base bonus by half during endgame.
+			passed_bonus = passed_pawn_bonus[c][row(sq)]
+			if pawn_isolated_masks[sq]&own_pawns > 0 { // passed pawn is supported by other pawns
+				passed_bonus += passed_bonus>>2
 			}
-			structure += base_bonus
+			value += passed_bonus
+			passed_pawns |= sq_mask_on[sq]
+		}
+	}
+	for i := 0; i < 8; i++ {
+		value += double_pawn_penalty[pop_count(column_masks[i]&own_pawns)]
+	}
+	return value, passed_pawns
+}
 
-			minor_bonus := base_bonus >> 2
-			// passed pawns that are blocked by a friendly rook can't promote and can immobilize the
-			// friendly rook if the pawn is attacked.
-			if pawn_blocked_masks[c][sq]&brd.pieces[c][ROOK] > 0 {
-				if is_attacked_by(brd, occ, sq, e, c) {
-					structure -= base_bonus >> 1
-				} else {
-					structure -= minor_bonus
-				}
+
+func net_passed_pawns(brd *Board, passed_pawns BB) int {
+	return passed_pawn_score(brd, WHITE, BLACK, passed_pawns) - passed_pawn_score(brd, WHITE, BLACK, passed_pawns)
+}
+
+func passed_pawn_score(brd *Board, c, e uint8, passed_pawns BB) int {
+	var structure, sq int
+	own_pawns := brd.pieces[c][PAWN]
+	occ := brd.AllOccupied()
+	enemy_king_sq := furthest_forward(e, brd.pieces[e][KING])
+	endgame := brd.InEndgame()
+
+	for b := own_pawns & passed_pawns; b > 0; b.Clear(sq) {
+		sq = furthest_forward(c, b)
+
+		base_bonus := passed_pawn_bonus[c][row(sq)]
+
+		if endgame == 1 {
+			structure += base_bonus >> 1 // increase the base bonus by half during endgame.
+		}
+
+		minor_bonus := base_bonus >> 2
+
+		// passed pawns that are blocked by a friendly rook can't promote and can immobilize the
+		// friendly rook if the pawn is attacked.
+		if pawn_blocked_masks[c][sq]&brd.pieces[c][ROOK] > 0 {
+			if is_attacked_by(brd, occ, sq, e, c) {
+				structure -= base_bonus >> 1
+			} else {
+				structure -= minor_bonus
 			}
+		}
 
-			if (pawn_blocked_masks[c][sq] & brd.occupied[e]) > 0 {
-				structure -= base_bonus >> 1 // pawn is directly blocked by an enemy piece.
-			}
+		if (pawn_blocked_masks[c][sq] & brd.occupied[e]) > 0 {
+			structure -= base_bonus >> 1 // pawn is directly blocked by an enemy piece.
+		}
 
-			structure -= pawn_tropism_factor[chebyshev_distance(sq, enemy_king_sq)] * minor_bonus
+		structure -= pawn_tropism_factor[chebyshev_distance(sq, enemy_king_sq)] * minor_bonus
 
-			if pawn_isolated_masks[sq]&own_pawns > 0 {
+		next := get_offset(c, sq, 8)
+		if brd.squares[next] == EMPTY {
+			temp_occ := occ & sq_mask_off[sq]
+			if !is_attacked_by(brd, temp_occ, next, e, c) { // next square undefended.
 				structure += minor_bonus
-			}
-
-			next := get_offset(c, sq, 8)
-			if brd.squares[next] == EMPTY {
-				temp_occ := occ & sq_mask_off[sq]
-				if !is_attacked_by(brd, temp_occ, next, e, c) { // next square undefended.
-					structure += minor_bonus
-					next = get_offset(c, next, 8)
-					if next >= 0 && next < 64 && brd.squares[next] == EMPTY {
-						if !is_attacked_by(brd, temp_occ, next, e, c) { // next square undefended.
-							structure += minor_bonus
-							next = get_offset(c, next, 8)
-							if next >= 0 && next < 64 && brd.squares[next] == EMPTY {
-								if !is_attacked_by(brd, temp_occ, next, e, c) { // next square undefended.
-									structure += minor_bonus
-								}
+				next = get_offset(c, next, 8)
+				if next >= 0 && next < 64 && brd.squares[next] == EMPTY {
+					if !is_attacked_by(brd, temp_occ, next, e, c) { // next square undefended.
+						structure += minor_bonus
+						next = get_offset(c, next, 8)
+						if next >= 0 && next < 64 && brd.squares[next] == EMPTY {
+							if !is_attacked_by(brd, temp_occ, next, e, c) { // next square undefended.
+								structure += minor_bonus
 							}
 						}
 					}
 				}
 			}
 		}
-
-		// isolated pawns
-		if pawn_isolated_masks[sq]&own_pawns == 0 {
-			structure += ISOLATED_PENALTY
-		}
-
-		// pawn duos
-		if pawn_side_masks[sq]&own_pawns > 0 {
-			structure += DUO_BONUS
-		}
-
 	}
 
-	for i := 0; i < 8; i++ {
-		structure += double_pawn_penalty[pop_count(column_masks[i]&own_pawns)]
-	}
 	return structure
 }
 
@@ -472,10 +502,3 @@ func get_offset(c uint8, sq, off int) int {
 	}
 }
 
-func in_endgame(brd *Board) int {
-	if brd.endgame_counter < ENDGAME_COUNT {
-		return 1
-	} else {
-		return 0
-	}
-}

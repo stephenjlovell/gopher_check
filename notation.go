@@ -246,7 +246,6 @@ var fen_piece_chars = map[string]int{
 
 func ParsePlacement(brd *Board, str string) {
 	var row_str string
-	// fmt.Println(str)
 	row_fields := strings.Split(str, "/")
 	sq := 0
 	match_digit, _ := regexp.Compile("\\d")
@@ -262,8 +261,10 @@ func ParsePlacement(brd *Board, str string) {
 			} else {
 				c := uint8(fen_piece_chars[chr] >> 3)
 				piece_type := Piece(fen_piece_chars[chr] & 7)
-				// fmt.Printf("%d, %d, %d\n", piece_type, sq, c)
 				add_piece(brd, piece_type, sq, c) // place the piece on the board.
+				if piece_type == PAWN {
+					brd.pawn_hash_key ^= pawn_zobrist(sq, c)
+				}
 				sq += 1
 			}
 		}

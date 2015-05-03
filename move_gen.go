@@ -835,8 +835,23 @@ func get_checks(brd *Board, remaining_moves *MoveList) {
 
 	var unblock_path BB // blockers must move off the path of attack.
 
-	// Discovered checks should not be made if the uncovered piece will just be recaptured at a loss...
-
+	// don't bother with double advances.
+	for t = single_advances & (bishop_blockers | rook_blockers); t > 0; t.Clear(to) {
+		to = furthest_forward(c, t)
+		from = to + pawn_from_offsets[c][OFF_SINGLE]
+		m = NewRegularMove(from, to, PAWN)
+		remaining_moves.Push(&SortItem{m, main_htable.Probe(PAWN, c, to)})
+	}
+	// Knights
+	for f = brd.pieces[c][KNIGHT] & (bishop_blockers | rook_blockers); f > 0; f.Clear(from) {
+		from = furthest_forward(c, f) // Locate each knight for the side to move.
+		for t = (knight_masks[from] & empty); t > 0; t.Clear(to) {
+			to = furthest_forward(c, t)
+			m = NewRegularMove(from, to, KNIGHT)
+			remaining_moves.Push(&SortItem{m, main_htable.Probe(KNIGHT, c, to)})
+		}
+	}
+	// Bishops
 	for f = brd.pieces[c][BISHOP] & rook_blockers; f > 0; f.Clear(from) {
 		from = furthest_forward(c, f)
 		unblock_path = (^intervening[king_sq][from]) & empty
@@ -846,7 +861,7 @@ func get_checks(brd *Board, remaining_moves *MoveList) {
 			remaining_moves.Push(&SortItem{m, main_htable.Probe(BISHOP, c, to)})
 		}
 	}
-
+	// Rooks
 	for f = brd.pieces[c][ROOK] & bishop_blockers; f > 0; f.Clear(from) {
 		from = furthest_forward(c, f)
 		unblock_path = (^intervening[king_sq][from]) & empty
@@ -856,29 +871,29 @@ func get_checks(brd *Board, remaining_moves *MoveList) {
 			remaining_moves.Push(&SortItem{m, main_htable.Probe(ROOK, c, to)})
 		}
 	}
+	// Queens cannot give discovered check, since the enemy king would already be in check.
 
-	for t = single_advances & (bishop_blockers | rook_blockers); t > 0; t.Clear(to) {
-		to = furthest_forward(c, t)
-		from = to + pawn_from_offsets[c][OFF_SINGLE]
-		m = NewRegularMove(from, to, PAWN)
-		remaining_moves.Push(&SortItem{m, main_htable.Probe(PAWN, c, to)})
-	}
-
-	// double advances?
-
-	// knight
-
-	for f = brd.pieces[c][KNIGHT] & (bishop_blockers | rook_blockers); f > 0; f.Clear(from) {
-		from = furthest_forward(c, f) // Locate each knight for the side to move.
-		for t = (knight_masks[from] & empty); t > 0; t.Clear(to) {
+	// Kings
+	for f := brd.pieces[c][KING] & (bishop_blockers|rook_blockers); f > 0; f.Clear(from) {
+		from = furthest_forward(c, brd.pieces[c][KING])
+		unblock_path = (^intervening[king_sq][from]) & empty
+		for t := (king_masks[from] & unblock_path); t > 0; t.Clear(to) { // generate to squares
 			to = furthest_forward(c, t)
-			m = NewRegularMove(from, to, KNIGHT)
-			remaining_moves.Push(&SortItem{m, main_htable.Probe(KNIGHT, c, to)})
+			m = NewRegularMove(from, to, KING)
+			remaining_moves.Push(&SortItem{m, main_htable.Probe(KING, c, to)})
 		}
 	}
-	// start with queen mask.  All blocking pieces will intersect it.
 
-	// what about queens?
 
 }
+
+
+
+
+
+
+
+
+
+
 

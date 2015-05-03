@@ -225,7 +225,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	if node_type != Y_PV {
 		if (hash_result & CUTOFF_FOUND) > 0 { // Hash hit valid for current bounds.
 			return score, sum
-		} else if !in_check && can_null && hash_result != AVOID_NULL && depth > 2 && in_endgame(brd) == 0 &&
+		} else if !in_check && can_null && hash_result != AVOID_NULL && depth > 2 && brd.InEndgame() == 0 &&
 		!brd.PawnsOnly() && eval >= beta {
 			score, subtotal = null_make(brd, stk, beta, null_depth, ply, extensions_left)
 			sum += subtotal
@@ -634,7 +634,7 @@ func determine_child_type(node_type, legal_searched int) int {
 func null_make(brd *Board, stk Stack, beta, null_depth, ply, extensions_left int) (int, int) {
 	hash_key, enp_target := brd.hash_key, brd.enp_target
 	brd.c ^= 1
-	brd.hash_key ^= side_key
+	brd.hash_key ^= side_key64
 	brd.hash_key ^= enp_zobrist(enp_target)
 	brd.enp_target = SQ_INVALID
 
