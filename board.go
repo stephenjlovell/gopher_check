@@ -67,6 +67,10 @@ func (brd *Board) NewMemento() *BoardMemento {
 	}
 }
 
+func (brd *Board) KingSq(c uint8) int {
+	return furthest_forward(c, brd.pieces[c][KING])
+}
+
 // Used to verify that a killer or hash move is legal. 
 func (brd *Board) LegalMove(m Move, in_check bool) bool {
 	if in_check {
@@ -108,7 +112,7 @@ func (brd *Board) EvadesCheck(m Move) bool {
 	if piece == KING {
 		return !is_attacked_by(brd, occ_after_move(brd.AllOccupied(), from, to), to, e, c)
 	} else {
-		king_sq := furthest_forward(c, brd.pieces[c][KING])
+		king_sq := brd.KingSq(c)
 		threats := color_attack_map(brd, occ, king_sq, e, c)
 		if pop_count(threats) > 1 {
 			return false // only king moves can escape from double check.
@@ -251,8 +255,21 @@ func (brd *Board) PawnsOnly() bool {
 	return brd.occupied[brd.c] == brd.pieces[brd.c][PAWN]|brd.pieces[brd.c][KING]
 }
 
+func (brd *Board) ColorPawnsOnly(c uint8) bool {
+	return brd.occupied[c] == brd.pieces[c][PAWN]|brd.pieces[c][KING]	
+}
+
 func (brd *Board) InEndgame() int {
 	if brd.endgame_counter < ENDGAME_COUNT {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+// Determines if capturing the given piece would bring us into the endgame
+func (brd *Board) GivesEndgame(pc_value uint8) int {
+	if brd.endgame_counter + pc_value < ENDGAME_COUNT {
 		return 1
 	} else {
 		return 0

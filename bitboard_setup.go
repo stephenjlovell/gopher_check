@@ -138,6 +138,7 @@ func setup_row_masks() {
   for i := 1; i < 8; i++ {
     row_masks[i] = (row_masks[i-1] << 8) // create the remaining rows by shifting the previous
   } // row up by 8 squares.
+  middle_rows = row_masks[2]|row_masks[3]|row_masks[4]|row_masks[5]
 }
 
 func setup_column_masks() {
@@ -171,11 +172,6 @@ func setup_directions() {
 }
 
 func setup_pawn_structure_masks() {
-  for i := 0; i < 64; i++ { // initialize arrays
-    pawn_passed_masks[WHITE][i] = 0
-    pawn_passed_masks[BLACK][i] = 0
-    pawn_isolated_masks[i] = 0
-  }
   var sq, col int
   var center BB
 
@@ -209,6 +205,11 @@ func setup_pawn_structure_masks() {
     if col != 7 {
       pawn_passed_masks[BLACK][i] |= (center << 1)
     } // kingside row
+
+    pawn_attack_spans[WHITE][i] = pawn_passed_masks[WHITE][i] & (^column_masks[col])
+    pawn_attack_spans[BLACK][i] = pawn_passed_masks[BLACK][i] & (^column_masks[col])
+    pawn_front_spans[WHITE][i] = pawn_passed_masks[WHITE][i] & (column_masks[col])
+    pawn_front_spans[BLACK][i] = pawn_passed_masks[BLACK][i] & (column_masks[col])
   }
 }
 

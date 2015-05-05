@@ -125,7 +125,7 @@ func make_move(brd *Board, move Move) {
 			remove_piece(brd, captured_piece, to, brd.Enemy())
 			brd.halfmove_clock = 0 // All capture moves are irreversible.
 		}
-		relocate_king(brd, KING, from, to, c)
+		relocate_king(brd, KING, captured_piece, from, to, c)
 
 	case ROOK:
 		switch captured_piece {
@@ -227,7 +227,7 @@ func unmake_move(brd *Board, move Move, memento *BoardMemento) {
 		}
 
 	case KING:
-		unmake_relocate_king(brd, piece, to, from, c)
+		unmake_relocate_king(brd, piece, captured_piece, to, from, c)
 		if captured_piece != EMPTY {
 			unmake_add_piece(brd, captured_piece, to, brd.Enemy())
 		} else if abs(to-from) == 2 { // king castled.
@@ -340,23 +340,35 @@ func unmake_relocate_piece(brd *Board, piece Piece, from, to int, c uint8) {
 }
 
 
-func relocate_king(brd *Board, piece Piece, from, to int, c uint8) {
+func relocate_king(brd *Board, piece, captured_piece Piece, from, to int, c uint8) {
 	from_to := (sq_mask_on[from] | sq_mask_on[to])
 	brd.pieces[c][piece] ^= from_to
 	brd.occupied[c] ^= from_to
 	brd.squares[from] = EMPTY
 	brd.squares[to] = piece
-	endgame := brd.InEndgame()
-	brd.material[c] += int32(king_pst[c][endgame][to] - king_pst[c][endgame][from])
+
+	// engame counter has already been updated in case of capture
+	brd.material[c] += int32(king_pst[c][brd.InEndgame()][to] - 
+													 king_pst[c][brd.GivesEndgame(endgame_count_values[captured_piece])][from])
+	
 	// XOR out the key for piece at from, and XOR in the key for piece at to.
 	brd.hash_key ^= (zobrist(piece, from, c) ^ zobrist(piece, to, c))
 }
-func unmake_relocate_king(brd *Board, piece Piece, from, to int, c uint8) {
+func unmake_relocate_king(brd *Board, piece, captured_piece Piece, from, to int, c uint8) {
 	from_to := (sq_mask_on[from] | sq_mask_on[to])
 	brd.pieces[c][piece] ^= from_to
 	brd.occupied[c] ^= from_to
 	brd.squares[from] = EMPTY
 	brd.squares[to] = piece
-	endgame := brd.InEndgame()
-	brd.material[c] += int32(king_pst[c][endgame][to] - king_pst[c][endgame][from])
+
+	// endgame counter hasn't been updated yet
+	brd.material[c] += int32(king_pst[c][brd.GivesEndgame(endgame_count_values[captured_piece])][to] - 
+													 king_pst[c][brd.InEndgame()][from])
+
 }
+
+
+
+
+
+

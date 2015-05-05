@@ -68,17 +68,12 @@ func NewLoadBalancer() *Balancer {
     done: make(chan *Worker, MAX_WORKER_GOROUTINES),
   }
   for i := uint8(0); i < MAX_WORKER_GOROUTINES; i++ {
-
-    // polling_order := make([]int, MAX_WORKER_GOROUTINES-1)
-
-
-
     b.workers[i] = &Worker{
       mask: 1 << i,
       index: i,
       stk: NewStack(),
+      ptt: NewPawnTT(),
       assign_sp: make(chan *SplitPoint, 1),
-      // cancel: make(chan bool, 1),
     }
   }
   return b
@@ -110,6 +105,7 @@ type Worker struct {
 
   current_sp *SplitPoint
   stk Stack
+  ptt *PawnTT
 
   // polling_order []int
 

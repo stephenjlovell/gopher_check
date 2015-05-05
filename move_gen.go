@@ -125,7 +125,7 @@ func get_non_captures(brd *Board, remaining_moves *MoveList) {
 	}
 	// Kings
 	for f := brd.pieces[c][KING]; f > 0; f.Clear(from) {
-		from = furthest_forward(c, brd.pieces[c][KING])
+		from = brd.KingSq(c)
 		for t := (king_masks[from] & empty); t > 0; t.Clear(to) { // generate to squares
 			to = furthest_forward(c, t)
 			m = NewRegularMove(from, to, KING)
@@ -288,7 +288,7 @@ func get_captures(brd *Board, winning, losing *MoveList) {
 	}
 	// King
 	for f := brd.pieces[c][KING]; f > 0; f.Clear(from) {
-		from = furthest_forward(c, brd.pieces[c][KING])
+		from = brd.KingSq(c)
 		for t := (king_masks[from] & enemy); t > 0; t.Clear(to) { // generate to squares
 			to = furthest_forward(c, t)
 			m = NewCapture(from, to, KING, brd.squares[to])
@@ -441,7 +441,7 @@ func get_winning_captures(brd *Board, winning *MoveList) {
 	}
 	// King
 	for f := brd.pieces[c][KING]; f > 0; f.Clear(from) {
-		from = furthest_forward(c, brd.pieces[c][KING])
+		from = brd.KingSq(c)
 		for t := (king_masks[from] & enemy); t > 0; t.Clear(to) { // generate to squares
 			to = furthest_forward(c, t)
 			m = NewCapture(from, to, KING, brd.squares[to])
@@ -469,7 +469,7 @@ func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 	empty := ^occ
 	enemy := brd.Placement(e)
 
-	king_sq := furthest_forward(c, brd.pieces[c][KING])
+	king_sq := brd.KingSq(c)
 	threats := color_attack_map(brd, occ, king_sq, e, c) // find any enemy pieces that attack the king.
 	threat_count := pop_count(threats)
 
@@ -875,7 +875,7 @@ func get_checks(brd *Board, remaining_moves *MoveList) {
 
 	// Kings
 	for f := brd.pieces[c][KING] & (bishop_blockers|rook_blockers); f > 0; f.Clear(from) {
-		from = furthest_forward(c, brd.pieces[c][KING])
+		from = brd.KingSq(c)
 		unblock_path = (^intervening[king_sq][from]) & empty
 		for t := (king_masks[from] & unblock_path); t > 0; t.Clear(to) { // generate to squares
 			to = furthest_forward(c, t)

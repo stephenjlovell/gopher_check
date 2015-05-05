@@ -25,11 +25,8 @@ package main
 
 const (
   PAWN_ENTRY_COUNT = 16384
-  // PAWN_ENTRY_COUNT = 32768
   PAWN_TT_MASK = PAWN_ENTRY_COUNT - 1
 )
-
-var main_pawn_tt PawnTT
 
 type PawnTT [PAWN_ENTRY_COUNT]*PawnEntry
 
@@ -39,12 +36,16 @@ type PawnEntry struct {
   key uint32
 }
 
-func setup_pawn_tt() {
-  for i, _ := range main_pawn_tt {
-    main_pawn_tt[i] = &PawnEntry{
+func NewPawnTT() *PawnTT {
+  var ptt PawnTT
+  for i := 0; i < PAWN_ENTRY_COUNT; i++ {
+    ptt[i] = &PawnEntry{
+      passed_pawns: 0,
       value: NO_SCORE,
-    }
-  } 
+      key: 0,
+    }    
+  }
+  return &ptt
 }
 
 // Typical hit rate is around 97 %

@@ -49,7 +49,8 @@ func TestPlayingStrength(t *testing.T) {
 
 	setup()
 	print_info = false
-	depth := 10
+	depth := 8
+	timeout := 30000
 	test := load_epd_file("test_suites/wac_300.epd")
 	var move_str string
 	sum, score := 0, 0
@@ -59,7 +60,7 @@ func TestPlayingStrength(t *testing.T) {
 	start := time.Now()
 	for i, epd := range test {
 		ResetAll()
-		move, count := Search(epd.brd, depth, 4000)
+		move, count := Search(epd.brd, depth, timeout)
 		move_str = ToSAN(epd.brd, move)
 		if correct_move(epd, move_str) {
 			score += 1
@@ -80,7 +81,7 @@ func TestPlayingStrength(t *testing.T) {
 		branching = math.Pow(float64(nodes_per_iteration[d])/float64(nodes_per_iteration[1]), float64(1)/float64(d-1))
 		fmt.Printf("%d ABF: %.4f\n", d, branching)
 	}
-
+	fmt.Printf("Timeout: %.1fs\n", float64(timeout)/1000.0)
 }
 
 func correct_move(epd *EPD, move_str string) bool {

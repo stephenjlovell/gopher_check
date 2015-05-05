@@ -76,9 +76,11 @@ var opposite_dir = [16]int{SE, SW, NW, NE, SOUTH, WEST, NORTH, EAST, DIR_INVALID
 
 var mask_of_length [65]uint64
 
+var middle_rows BB
 var row_masks [8]BB
 var column_masks [8]BB
 var ray_masks [8][64]BB
+
 
 var pawn_isolated_masks, pawn_side_masks [64]BB
 
@@ -86,7 +88,8 @@ var intervening [64][64]BB
 var castle_queenside_intervening, castle_kingside_intervening [2]BB
 
 var knight_masks, bishop_masks, rook_masks, queen_masks, king_masks, sq_mask_on, sq_mask_off [64]BB
-var pawn_attack_masks, pawn_blocked_masks, pawn_passed_masks, king_zone_masks, king_shield_masks [2][64]BB
+var pawn_attack_masks, pawn_blocked_masks, pawn_passed_masks, pawn_attack_spans, pawn_front_spans,
+		king_zone_masks, king_shield_masks [2][64]BB
 
 const (
 	OFF_SINGLE = iota
@@ -95,9 +98,13 @@ const (
 	OFF_RIGHT
 )
 
-var piece_values = [8]int{100, 320, 333, 510, 880, 5000} // default piece values
-var endgame_count_values = [8]uint8{1, 3, 3, 5, 9}       // piece values used to determine endgame status
+var endgame_count_values = [8]uint8{1, 3, 3, 5, 9} // piece values used to determine endgame status
 
+// var piece_values = [8]int{100, 325, 325, 500, 975}
+var piece_values = [8]int{100, 320, 333, 510, 880, 5000} // default piece values
+
+
+// var promote_values = [8]int{0, 225, 225, 400, 875}
 var promote_values = [8]int{0, 220, 233, 410, 780, 0, 0, 0}
 
 var pawn_from_offsets = [2][4]int{{8, 16, 9, 7}, {-8, -16, -7, -9}}
@@ -134,6 +141,15 @@ func abs(x int) int {
 }
 
 
+func get_offset(c uint8, sq, n int) int {
+	if c == WHITE {
+		return sq + n
+	} else {
+		return sq - n
+	}
+}
+
+
 func on_board(sq int) bool       { return 0 <= sq && sq <= 63 }
 func row(sq int) int             { return sq >> 3 }
 func column(sq int) int          { return sq & 7 }
@@ -162,7 +178,6 @@ func setup() {
 	setup_eval()
 	setup_zobrist()
 	setup_main_tt()
-	setup_pawn_tt()
 	setup_load_balancer()
 
 	fmt.Println("\n------------------------------------------------------------------")

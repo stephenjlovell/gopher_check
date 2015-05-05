@@ -250,9 +250,7 @@ func ParsePlacement(brd *Board, str string) {
 	sq := 0
 	match_digit, _ := regexp.Compile("\\d")
 	for row := len(row_fields) - 1; row >= 0; row-- {
-
 		row_str = row_fields[row]
-
 		for _, r := range row_str {
 			chr := string(r)
 			if match_digit.MatchString(chr) {
@@ -261,15 +259,17 @@ func ParsePlacement(brd *Board, str string) {
 			} else {
 				c := uint8(fen_piece_chars[chr] >> 3)
 				piece_type := Piece(fen_piece_chars[chr] & 7)
-				add_piece(brd, piece_type, sq, c) // place the piece on the board.
+				add_piece(brd, piece_type, sq, c) // place the piece on the board.					
 				if piece_type == PAWN {
 					brd.pawn_hash_key ^= pawn_zobrist(sq, c)
 				}
 				sq += 1
 			}
 		}
-
 	}
+	// now that the endgame counter is accurate, add in king PST
+	brd.material[WHITE] += int32(king_pst[WHITE][brd.InEndgame()][brd.KingSq(WHITE)])
+	brd.material[BLACK] += int32(king_pst[BLACK][brd.InEndgame()][brd.KingSq(BLACK)])
 }
 
 func ParseSide(str string) uint8 {

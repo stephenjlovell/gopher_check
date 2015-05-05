@@ -99,7 +99,7 @@ func is_attacked_by(brd *Board, occ BB, sq int, attacker, defender uint8) bool {
 func is_pinned(brd *Board, sq int, c, e uint8) BB {
 	occ := brd.AllOccupied()
 	var threat, guarded_king, pin_area BB
-	dir := directions[sq][furthest_forward(c, brd.pieces[c][KING])] // get direction toward king
+	dir := directions[sq][brd.KingSq(c)] // get direction toward king
 	threat_dir := opposite_dir[dir]
 	switch dir {
 	case NW, NE:
@@ -238,7 +238,7 @@ func side_in_check(brd *Board, c, e uint8) bool { // determines if specified sid
 	if brd.pieces[c][KING] == 0 {
 		return true
 	} else {
-		return is_attacked_by(brd, brd.AllOccupied(), furthest_forward(c, brd.pieces[c][KING]), e, c)
+		return is_attacked_by(brd, brd.AllOccupied(), brd.KingSq(c), e, c)
 	}
 }
 
@@ -264,7 +264,7 @@ func is_checkmate(brd *Board, in_check bool) bool {
 	}
 	var to int
 	e := brd.Enemy()
-	from := furthest_forward(c, brd.pieces[c][KING])
+	from := brd.KingSq(c)
 	target := ^brd.occupied[c]
 	occ := brd.AllOccupied()
 	for t := king_masks[from] & target; t > 0; t.Clear(to) { // generate to squares
