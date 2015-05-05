@@ -28,12 +28,12 @@ import (
 )
 
 const (
-	ENDGAME_COUNT     = 18
-	DUO_BONUS         = 2
-	DEFENDED_BONUS    = 4
-	ISOLATED_PENALTY  = 8
-	BACKWARD_PENALTY  = 4
-	PAWN_ONLY_PENALTY = 15
+	ENDGAME_COUNT    = 18
+	DUO_BONUS        = 2
+	DEFENDED_BONUS   = 4
+	ISOLATED_PENALTY = 8
+	BACKWARD_PENALTY = 4
+	// PAWN_ONLY_PENALTY = 15
 )
 
 var main_pst = [2][8][64]int{ // Black. White PST will be set in setup_eval.
@@ -148,8 +148,9 @@ var king_saftey_base = [2][2][64]int{
 }
 
 // adjusts value of knights and rooks based on number of own pawns in play.
-var knight_pawns = [16]int{-20, -16, -12, -8, -4, 0,  4,  8, 12}
-var rook_pawns = 	 [16]int{ 16,  12,   8,  4,  2, 0, -2, -4, -8}
+var knight_pawns = [16]int{-20, -16, -12, -8, -4, 0, 4, 8, 12}
+var rook_pawns = [16]int{16, 12, 8, 4, 2, 0, -2, -4, -8}
+
 // adjusts the value of bishop pairs based on number of enemy pawns in play.
 var bishop_pair_pawns = [16]int{10, 10, 8, 8, 6, 4, 2, 1, 0}
 
@@ -271,7 +272,7 @@ func adjusted_placement(brd *Board, c, e uint8) int {
 		sq = furthest_forward(c, b)
 		attacks = king_masks[sq] & available
 		if endgame == 0 {
-			placement += pawn_shield_bonus[pop_count(brd.pieces[c][PAWN]&king_shield_masks[c][sq])]			
+			placement += pawn_shield_bonus[pop_count(brd.pieces[c][PAWN]&king_shield_masks[c][sq])]
 		}
 	}
 
@@ -333,23 +334,24 @@ func net_pawn_structure(brd *Board) (int, BB) {
 func pawn_structure(brd *Board, c, e uint8) (int, BB) {
 	var value, sq int
 	var passed_pawns BB
-	own_pawns := brd.pieces[c][PAWN]
-	enemy_pawns := brd.pieces[e][PAWN]
+	own_pawns, enemy_pawns := brd.pieces[c][PAWN], brd.pieces[e][PAWN]
 
 	for b := own_pawns; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
-		// isolated pawns
-		if pawn_isolated_masks[sq]&own_pawns == 0 {
+
+		if pawn_isolated_masks[sq]&own_pawns == 0 { // isolated pawns
 			value -= ISOLATED_PENALTY
+		} else {
+			// pawn duos
+			if (pawn_side_masks[sq]&own_pawns)&middle_rows > 0 {
+				value += DUO_BONUS
+			}
+			// defended pawns
+			if pawn_attack_masks[e][sq]&own_pawns > 0 {
+				value += DEFENDED_BONUS
+			}
 		}
-		// pawn duos
-		if (pawn_side_masks[sq]&own_pawns)&middle_rows > 0 {
-			value += DUO_BONUS
-		}
-		// defended pawns
-		if pawn_attack_masks[e][sq]&own_pawns > 0 {
-			value += DEFENDED_BONUS
-		}
+
 		// passed pawns
 		if pawn_passed_masks[c][sq]&enemy_pawns == 0 {
 			value += passed_pawn_bonus[c][row(sq)]

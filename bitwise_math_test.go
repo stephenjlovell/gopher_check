@@ -24,28 +24,22 @@
 package main
 
 import (
-  "testing"
+	"testing"
 )
 
 var result int // hack to make sure compiler doesn't eliminate func under test.
 
 func BenchmarkPopCount(b *testing.B) {
-  bb := BB(random_key64())
-  for i := 0; i < b.N; i++ {
-    result = pop_count(bb)
-  }
+	bb := BB(random_key64())
+	for i := 0; i < b.N; i++ {
+		result = pop_count(bb)
+	}
 }
 
 func BenchmarkLSB(b *testing.B) {
-  setup_bitwise_ops()
-  bb := BB(random_key64())
-  for i := 0; i < b.N; i++ {
-    result = lsb(bb)
-  }
+	setup_bitwise_ops()
+	bb := BB(random_key64())
+	for i := 0; i < b.N; i++ {
+		result = lsb(bb)
+	}
 }
-
-
-
-
-
-

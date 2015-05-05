@@ -259,7 +259,7 @@ func ParsePlacement(brd *Board, str string) {
 			} else {
 				c := uint8(fen_piece_chars[chr] >> 3)
 				piece_type := Piece(fen_piece_chars[chr] & 7)
-				add_piece(brd, piece_type, sq, c) // place the piece on the board.					
+				add_piece(brd, piece_type, sq, c) // place the piece on the board.
 				if piece_type == PAWN {
 					brd.pawn_hash_key ^= pawn_zobrist(sq, c)
 				}

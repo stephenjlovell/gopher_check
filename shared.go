@@ -31,9 +31,9 @@ import (
 )
 
 const (
-	INF  = 10000 // an arbitrarily large score used to signal checkmate.
-	NO_SCORE = INF - 1 // score used to signal
-	MATE = NO_SCORE - 1 // maximum checkmate score (i.e. mate in 0)
+	INF      = 10000        // an arbitrarily large score used to signal checkmate.
+	NO_SCORE = INF - 1      // score used to signal
+	MATE     = NO_SCORE - 1 // maximum checkmate score (i.e. mate in 0)
 ) // total value of all starting pieces for one side: 9006
 
 const ( // color
@@ -61,7 +61,6 @@ const ( // direction codes (0...8)
 	DIR_INVALID
 )
 
-
 type SafeCounter int64
 
 func (c *SafeCounter) Add(i int64) int64 {
@@ -81,7 +80,6 @@ var row_masks [8]BB
 var column_masks [8]BB
 var ray_masks [8][64]BB
 
-
 var pawn_isolated_masks, pawn_side_masks [64]BB
 
 var intervening [64][64]BB
@@ -89,7 +87,7 @@ var castle_queenside_intervening, castle_kingside_intervening [2]BB
 
 var knight_masks, bishop_masks, rook_masks, queen_masks, king_masks, sq_mask_on, sq_mask_off [64]BB
 var pawn_attack_masks, pawn_blocked_masks, pawn_passed_masks, pawn_attack_spans, pawn_front_spans,
-		king_zone_masks, king_shield_masks [2][64]BB
+	king_zone_masks, king_shield_masks [2][64]BB
 
 const (
 	OFF_SINGLE = iota
@@ -103,7 +101,6 @@ var endgame_count_values = [8]uint8{1, 3, 3, 5, 9} // piece values used to deter
 // var piece_values = [8]int{100, 325, 325, 500, 975}
 var piece_values = [8]int{100, 320, 333, 510, 880, 5000} // default piece values
 
-
 // var promote_values = [8]int{0, 225, 225, 400, 875}
 var promote_values = [8]int{0, 220, 233, 410, 780, 0, 0, 0}
 
@@ -116,7 +113,6 @@ var pawn_attack_offsets = [4]int{9, 7, -9, -7}
 var pawn_advance_offsets = [4]int{8, 16, -8, -16}
 
 var directions [64][64]int
-
 
 func max(a, b int) int {
 	if a > b {
@@ -140,7 +136,6 @@ func abs(x int) int {
 	}
 }
 
-
 func get_offset(c uint8, sq, n int) int {
 	if c == WHITE {
 		return sq + n
@@ -148,7 +143,6 @@ func get_offset(c uint8, sq, n int) int {
 		return sq - n
 	}
 }
-
 
 func on_board(sq int) bool       { return 0 <= sq && sq <= 63 }
 func row(sq int) int             { return sq >> 3 }

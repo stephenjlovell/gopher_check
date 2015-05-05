@@ -24,58 +24,37 @@
 package main
 
 const (
-  PAWN_ENTRY_COUNT = 16384
-  PAWN_TT_MASK = PAWN_ENTRY_COUNT - 1
+	PAWN_ENTRY_COUNT = 16384
+	PAWN_TT_MASK     = PAWN_ENTRY_COUNT - 1
 )
 
 type PawnTT [PAWN_ENTRY_COUNT]*PawnEntry
 
 type PawnEntry struct {
-  passed_pawns BB
-  value int
-  key uint32
+	passed_pawns BB
+	value        int
+	key          uint32
 }
 
 func NewPawnTT() *PawnTT {
-  var ptt PawnTT
-  for i := 0; i < PAWN_ENTRY_COUNT; i++ {
-    ptt[i] = &PawnEntry{
-      passed_pawns: 0,
-      value: NO_SCORE,
-      key: 0,
-    }    
-  }
-  return &ptt
+	var ptt PawnTT
+	for i := 0; i < PAWN_ENTRY_COUNT; i++ {
+		ptt[i] = &PawnEntry{
+			passed_pawns: 0,
+			value:        NO_SCORE,
+			key:          0,
+		}
+	}
+	return &ptt
 }
 
 // Typical hit rate is around 97 %
 func (ptt *PawnTT) Probe(key uint32) *PawnEntry {
-  return ptt[key & PAWN_TT_MASK]
+	return ptt[key&PAWN_TT_MASK]
 }
 
 func (entry *PawnEntry) Store(key uint32, value int, passed_pawns BB) {
-  entry.passed_pawns = passed_pawns
-  entry.value = value
-  entry.key = key
+	entry.passed_pawns = passed_pawns
+	entry.value = value
+	entry.key = key
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -27,7 +27,7 @@
 package main
 
 import (
-	// "fmt"
+// "fmt"
 )
 
 // const (
@@ -88,7 +88,7 @@ func pop_count(b BB) int {
 var msb_table [65536]int
 var debruijn_lsb_table [64]int
 
-var lsb_table[65536]int
+var lsb_table [65536]int
 
 func setup_bitwise_ops() {
 	// for i := 0; i < 64; i++ {

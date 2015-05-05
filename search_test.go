@@ -39,11 +39,10 @@ import (
 // 	for n := 0; n < b.N; n++ {
 // 		brd := ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 // 		ResetAll()
-// 		Search(brd, depth, 4000)		
+// 		Search(brd, depth, 4000)
 // 		fmt.Printf(".")
 // 	}
 // }
-
 
 func TestPlayingStrength(t *testing.T) {
 
@@ -97,4 +96,3 @@ func correct_move(epd *EPD, move_str string) bool {
 	}
 	return false
 }
-

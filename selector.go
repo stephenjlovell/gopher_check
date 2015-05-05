@@ -71,7 +71,7 @@ type AbstractSelector struct {
 }
 
 func (s *AbstractSelector) CurrentStage() int {
-	return s.stage-1
+	return s.stage - 1
 }
 
 type MoveSelector struct {
@@ -81,8 +81,8 @@ type MoveSelector struct {
 
 type QMoveSelector struct {
 	AbstractSelector
-	checks 						MoveList
-	can_check 				bool
+	checks    MoveList
+	can_check bool
 }
 
 func NewMoveSelector(brd *Board, this_stk *StackItem, in_check bool, first_move Move) *MoveSelector {
@@ -109,7 +109,7 @@ func NewQMoveSelector(brd *Board, this_stk *StackItem, in_check, can_check bool)
 			losing:          MoveList{},
 			remaining_moves: MoveList{},
 		},
-		checks:						 MoveList{},
+		checks:    MoveList{},
 		can_check: can_check,
 	}
 }
@@ -137,11 +137,11 @@ func (s *MoveSelector) NextMove() (Move, int) {
 			}
 		}
 		switch s.CurrentStage() {
-		case STAGE_FIRST: 
+		case STAGE_FIRST:
 			s.index++
 			if s.brd.ValidMove(s.first_move, s.in_check) && s.brd.LegalMove(s.first_move, s.in_check) {
 				return s.first_move, STAGE_FIRST
-			} 
+			}
 		case STAGE_WINNING:
 			m := s.winning[s.index].move
 			s.index++
@@ -187,7 +187,7 @@ func (s *MoveSelector) NextBatch() bool {
 		s.winning.Sort()
 		s.finished = len(s.winning)
 	case STAGE_KILLER:
-		s.finished = KILLER_COUNT			
+		s.finished = KILLER_COUNT
 	case STAGE_LOSING:
 		s.losing.Sort()
 		s.finished = len(s.losing)
@@ -272,14 +272,3 @@ func (s *QMoveSelector) NextBatch() bool {
 	s.stage++
 	return done
 }
-
-
-
-
-
-
-
-
-
-
-

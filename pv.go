@@ -27,12 +27,11 @@ import (
 // "fmt"
 )
 
-
 type PV struct {
-	m Move
+	m     Move
 	value int
 	depth int
-	next *PV
+	next  *PV
 }
 
 func (pv *PV) ToUCI() string {
@@ -54,7 +53,6 @@ func (pv *PV) ToUCI() string {
 	return str
 }
 
-
 func (pv *PV) SavePV(brd *Board, depth int) {
 	copy := brd.Copy() // create a local copy of the board to avoid having to unmake moves.
 	var m Move
@@ -66,7 +64,7 @@ func (pv *PV) SavePV(brd *Board, depth int) {
 			break
 		}
 
-		if !copy.ValidMove(m, in_check) || !copy.LegalMove(m, in_check) { 
+		if !copy.ValidMove(m, in_check) || !copy.LegalMove(m, in_check) {
 			// fmt.Printf("!")
 			break
 		}

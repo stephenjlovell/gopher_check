@@ -61,7 +61,6 @@ func (b BB) Print() {
 	fmt.Printf("\n")
 }
 
-
 func sliding_attacks(piece Piece, occ BB, sq int) BB {
 	switch piece {
 	case BISHOP:
@@ -122,4 +121,3 @@ func scan_up(occ BB, dir, sq int) BB {
 // 		return BB(0)
 // 	}
 // }
-

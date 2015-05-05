@@ -54,18 +54,17 @@ func color_attack_map(brd *Board, occ BB, sq int, c, e uint8) BB {
 	return attacks
 }
 
-func attacks_after_move(brd *Board, occ, enemy_occ BB, sq int, c, e uint8) BB { 
+func attacks_after_move(brd *Board, occ, enemy_occ BB, sq int, c, e uint8) BB {
 	var attacks, b_attackers, r_attackers BB
-	attacks |= pawn_attack_masks[e][sq] & brd.pieces[c][PAWN] & enemy_occ  // Pawns
+	attacks |= pawn_attack_masks[e][sq] & brd.pieces[c][PAWN] & enemy_occ // Pawns
 	attacks |= knight_masks[sq] & brd.pieces[c][KNIGHT] & enemy_occ       // Knights
-	b_attackers = brd.pieces[c][BISHOP] | brd.pieces[c][QUEEN] & enemy_occ // Bishops and Queens
+	b_attackers = brd.pieces[c][BISHOP] | brd.pieces[c][QUEEN]&enemy_occ  // Bishops and Queens
 	attacks |= bishop_attacks(occ, sq) & b_attackers
-	r_attackers = brd.pieces[c][ROOK] | brd.pieces[c][QUEEN] & enemy_occ // Rooks and Queens
+	r_attackers = brd.pieces[c][ROOK] | brd.pieces[c][QUEEN]&enemy_occ // Rooks and Queens
 	attacks |= rook_attacks(occ, sq) & r_attackers
 	attacks |= king_masks[sq] & brd.pieces[c][KING] // Kings
 	return attacks
 }
-
 
 func is_attacked_by(brd *Board, occ BB, sq int, attacker, defender uint8) bool {
 	if pawn_attack_masks[defender][sq]&brd.pieces[attacker][PAWN] > 0 { // Pawns
@@ -277,9 +276,5 @@ func is_checkmate(brd *Board, in_check bool) bool {
 }
 
 func occ_after_move(occ BB, from, to int) BB {
-	return (occ|sq_mask_on[to])&sq_mask_off[from]
+	return (occ | sq_mask_on[to]) & sq_mask_off[from]
 }
-
-
-
-

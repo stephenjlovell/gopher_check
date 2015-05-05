@@ -46,7 +46,7 @@ func make_move(brd *Board, move Move) {
 	switch piece {
 	case PAWN:
 		brd.halfmove_clock = 0 // All pawn moves are irreversible.
-		brd.pawn_hash_key ^= (pawn_zobrist(from, c)^pawn_zobrist(to, c))
+		brd.pawn_hash_key ^= (pawn_zobrist(from, c) ^ pawn_zobrist(to, c))
 		switch captured_piece {
 		case EMPTY:
 			if abs(to-from) == 16 { // handle en passant advances
@@ -66,7 +66,7 @@ func make_move(brd *Board, move Move) {
 			if brd.castle > 0 {
 				update_castle_rights(brd, to)
 			}
-			remove_piece(brd, captured_piece, to, brd.Enemy())	
+			remove_piece(brd, captured_piece, to, brd.Enemy())
 		default: // any non-pawn piece is captured
 			remove_piece(brd, captured_piece, to, brd.Enemy())
 		}
@@ -131,29 +131,29 @@ func make_move(brd *Board, move Move) {
 		switch captured_piece {
 		case ROOK:
 			if brd.castle > 0 {
-				update_castle_rights(brd, from) 
-				update_castle_rights(brd, to)   
+				update_castle_rights(brd, from)
+				update_castle_rights(brd, to)
 			}
 			remove_piece(brd, captured_piece, to, brd.Enemy())
 			brd.halfmove_clock = 0 // All capture moves are irreversible.
 		case EMPTY:
 			if brd.castle > 0 {
-				update_castle_rights(brd, from) 
+				update_castle_rights(brd, from)
 			}
 			brd.halfmove_clock += 1
 		case PAWN:
 			if brd.castle > 0 {
-				update_castle_rights(brd, from) 
+				update_castle_rights(brd, from)
 			}
 			remove_piece(brd, captured_piece, to, brd.Enemy())
-			brd.halfmove_clock = 0 // All capture moves are irreversible.	
+			brd.halfmove_clock = 0 // All capture moves are irreversible.
 			brd.pawn_hash_key ^= pawn_zobrist(to, brd.Enemy())
 		default:
 			if brd.castle > 0 {
-				update_castle_rights(brd, from) 
+				update_castle_rights(brd, from)
 			}
 			remove_piece(brd, captured_piece, to, brd.Enemy())
-			brd.halfmove_clock = 0 // All capture moves are irreversible.	
+			brd.halfmove_clock = 0 // All capture moves are irreversible.
 		}
 		relocate_piece(brd, ROOK, from, to, c)
 
@@ -339,7 +339,6 @@ func unmake_relocate_piece(brd *Board, piece Piece, from, to int, c uint8) {
 	brd.material[c] += int32(main_pst[c][piece][to] - main_pst[c][piece][from])
 }
 
-
 func relocate_king(brd *Board, piece, captured_piece Piece, from, to int, c uint8) {
 	from_to := (sq_mask_on[from] | sq_mask_on[to])
 	brd.pieces[c][piece] ^= from_to
@@ -348,9 +347,9 @@ func relocate_king(brd *Board, piece, captured_piece Piece, from, to int, c uint
 	brd.squares[to] = piece
 
 	// engame counter has already been updated in case of capture
-	brd.material[c] += int32(king_pst[c][brd.InEndgame()][to] - 
-													 king_pst[c][brd.GivesEndgame(endgame_count_values[captured_piece])][from])
-	
+	brd.material[c] += int32(king_pst[c][brd.InEndgame()][to] -
+		king_pst[c][brd.GivesEndgame(endgame_count_values[captured_piece])][from])
+
 	// XOR out the key for piece at from, and XOR in the key for piece at to.
 	brd.hash_key ^= (zobrist(piece, from, c) ^ zobrist(piece, to, c))
 }
@@ -362,13 +361,7 @@ func unmake_relocate_king(brd *Board, piece, captured_piece Piece, from, to int,
 	brd.squares[to] = piece
 
 	// endgame counter hasn't been updated yet
-	brd.material[c] += int32(king_pst[c][brd.GivesEndgame(endgame_count_values[captured_piece])][to] - 
-													 king_pst[c][brd.InEndgame()][from])
+	brd.material[c] += int32(king_pst[c][brd.GivesEndgame(endgame_count_values[captured_piece])][to] -
+		king_pst[c][brd.InEndgame()][from])
 
 }
-
-
-
-
-
-

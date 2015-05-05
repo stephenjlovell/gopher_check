@@ -40,7 +40,7 @@ var legal_max_tree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 31959
 // 	legal_movegen(PerftValidation)
 // }
 
-func legal_movegen(fn func(brd *Board, stk Stack, depth, ply int) (int)) {
+func legal_movegen(fn func(brd *Board, stk Stack, depth, ply int) int) {
 	setup()
 	brd := StartPos()
 	copy := brd.Copy()
@@ -88,7 +88,6 @@ func Perft(brd *Board, stk Stack, depth, ply int) int {
 	}
 	return sum
 }
-
 
 func PerftValidation(brd *Board, stk Stack, depth, ply int) int {
 	if depth == 0 {

@@ -28,55 +28,46 @@ import (
 )
 
 const (
-  SP_NONE = iota
-  SP_SERVANT
-  SP_MASTER
+	SP_NONE = iota
+	SP_SERVANT
+	SP_MASTER
 )
 
 type SplitPoint struct {
 	sync.Mutex
-  wg                sync.WaitGroup
+	wg sync.WaitGroup
 
-	selector          *MoveSelector
-	parent            *SplitPoint
-  master            *Worker
-  servant_mask       uint8
+	selector     *MoveSelector
+	parent       *SplitPoint
+	master       *Worker
+	servant_mask uint8
 
+	brd      *Board
+	this_stk *StackItem
 
-	brd               *Board
-  this_stk          *StackItem
+	depth           int
+	ply             int
+	extensions_left int
+	can_null        bool
+	node_type       int
 
-  depth             int
-  ply               int
-  extensions_left   int
-  can_null          bool
-  node_type         int
+	alpha     int  // shared
+	beta      int  // shared
+	best      int  // shared
+	best_move Move // shared
 
-	alpha             int // shared
-	beta              int // shared
-	best              int // shared
-  best_move         Move // shared
-
-	node_count        int    // shared
-  legal_searched    int
-	cancel            chan bool
+	node_count     int // shared
+	legal_searched int
+	cancel         chan bool
 }
 
 func (sp *SplitPoint) Order() int {
-  return (sp.depth << 11) | (sp.legal_searched << 3) | (sp.node_type)
+	return (sp.depth << 11) | (sp.legal_searched << 3) | (sp.node_type)
 }
 
 func (sp *SplitPoint) ServantMask() uint8 {
-    sp.Lock()
-    servant_mask := sp.servant_mask
-    sp.Unlock()
-    return servant_mask
+	sp.Lock()
+	servant_mask := sp.servant_mask
+	sp.Unlock()
+	return servant_mask
 }
-
-
-
-
-
-
-
-

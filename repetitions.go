@@ -41,6 +41,3 @@ func (stk Stack) IsRepetition(ply int) bool {
 	}
 	return false
 }
-
-
-

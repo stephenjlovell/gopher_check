@@ -23,7 +23,6 @@
 
 package main
 
-
 func get_non_captures(brd *Board, remaining_moves *MoveList) {
 	var from, to int
 	var single_advances, double_advances BB
@@ -453,7 +452,6 @@ func get_winning_captures(brd *Board, winning *MoveList) {
 	}
 }
 
-
 func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 	c, e := brd.c, brd.Enemy()
 
@@ -593,8 +591,8 @@ func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 				// In addition to making sure this capture will get the king out of check and that
 				// the piece is not pinned, verify that removing the enemy pawn does not leave the
 				// king in check.
-				if (sq_mask_on[to] & defense_map) > 0 && pinned_can_move(brd, from, to, c, e) && 
-				is_pinned(brd, int(enp_target), c, e) & sq_mask_on[to] > 0  {
+				if (sq_mask_on[to]&defense_map) > 0 && pinned_can_move(brd, from, to, c, e) &&
+					is_pinned(brd, int(enp_target), c, e)&sq_mask_on[to] > 0 {
 
 					m = NewCapture(from, to, PAWN, PAWN)
 					see = get_see(brd, from, to, PAWN)
@@ -716,7 +714,7 @@ func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 			m = NewCapture(king_sq, to, KING, brd.squares[to])
 			see = get_see(brd, king_sq, to, brd.squares[to])
 			// if see >= 0 {
-				winning.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], KING)})
+			winning.Push(&SortItem{m, SortWinningCapture(see, brd.squares[to], KING)})
 			// }
 		}
 	}
@@ -874,7 +872,7 @@ func get_checks(brd *Board, remaining_moves *MoveList) {
 	// Queens cannot give discovered check, since the enemy king would already be in check.
 
 	// Kings
-	for f := brd.pieces[c][KING] & (bishop_blockers|rook_blockers); f > 0; f.Clear(from) {
+	for f := brd.pieces[c][KING] & (bishop_blockers | rook_blockers); f > 0; f.Clear(from) {
 		from = brd.KingSq(c)
 		unblock_path = (^intervening[king_sq][from]) & empty
 		for t := (king_masks[from] & unblock_path); t > 0; t.Clear(to) { // generate to squares
@@ -884,16 +882,4 @@ func get_checks(brd *Board, remaining_moves *MoveList) {
 		}
 	}
 
-
 }
-
-
-
-
-
-
-
-
-
-
-

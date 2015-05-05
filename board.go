@@ -46,7 +46,7 @@ type Board struct {
 	enp_target      uint8     // 8 	bits
 	halfmove_clock  uint8     // 8 	bits
 	endgame_counter uint8     // 8 	bits
-	worker					*Worker  
+	worker          *Worker
 }
 
 type BoardMemento struct { // memento object used to store board state to unmake later.
@@ -71,7 +71,7 @@ func (brd *Board) KingSq(c uint8) int {
 	return furthest_forward(c, brd.pieces[c][KING])
 }
 
-// Used to verify that a killer or hash move is legal. 
+// Used to verify that a killer or hash move is legal.
 func (brd *Board) LegalMove(m Move, in_check bool) bool {
 	if in_check {
 		return brd.EvadesCheck(m)
@@ -90,7 +90,7 @@ func (brd *Board) PseudolegalAvoidsCheck(m Move) bool {
 	case PAWN:
 		if m.CapturedPiece() == PAWN && brd.TypeAt(m.To()) == EMPTY { // En-passant
 			return pinned_can_move(brd, m.From(), m.To(), brd.c, brd.Enemy()) &&
-				is_pinned(brd, int(brd.enp_target), brd.c, brd.Enemy()) & sq_mask_on[m.To()] > 0 
+				is_pinned(brd, int(brd.enp_target), brd.c, brd.Enemy())&sq_mask_on[m.To()] > 0
 		} else {
 			return pinned_can_move(brd, m.From(), m.To(), brd.c, brd.Enemy())
 		}
@@ -117,7 +117,7 @@ func (brd *Board) EvadesCheck(m Move) bool {
 		if pop_count(threats) > 1 {
 			return false // only king moves can escape from double check.
 		}
-		if (threats|intervening[furthest_forward(e, threats)][king_sq]) & sq_mask_on[to] == 0 {
+		if (threats|intervening[furthest_forward(e, threats)][king_sq])&sq_mask_on[to] == 0 {
 			return false // the moving piece must kill or block the attacking piece.
 		}
 		if !pinned_can_move(brd, from, to, c, e) {
@@ -125,13 +125,12 @@ func (brd *Board) EvadesCheck(m Move) bool {
 		}
 		if brd.enp_target != SQ_INVALID && piece == PAWN && m.CapturedPiece() == PAWN && // En-passant
 			brd.TypeAt(to) == EMPTY {
-			occ = occ_after_move(brd.AllOccupied(), from, to)&sq_mask_off[brd.enp_target]
+			occ = occ_after_move(brd.AllOccupied(), from, to) & sq_mask_off[brd.enp_target]
 			return attacks_after_move(brd, occ, occ&brd.occupied[e], king_sq, e, c) == 0
 		}
 	}
 	return true
 }
-
 
 func (brd *Board) ValidMove(m Move, in_check bool) bool {
 	if !m.IsMove() {
@@ -168,11 +167,11 @@ func (brd *Board) ValidMove(m Move, in_check bool) bool {
 		} else if diff == 8 {
 			return brd.TypeAt(to) == EMPTY
 		} else if diff == 16 {
-			return brd.TypeAt(to) == EMPTY && brd.TypeAt(get_offset(c, from, 8)) == EMPTY 
+			return brd.TypeAt(to) == EMPTY && brd.TypeAt(get_offset(c, from, 8)) == EMPTY
 		} else if captured_piece == EMPTY {
 			// fmt.Printf("Invalid pawn move!{%s}", m.ToString())
 			return false
-		} else { 
+		} else {
 			if captured_piece == PAWN && brd.TypeAt(to) == EMPTY {
 				if brd.enp_target != SQ_INVALID && get_offset(c, to, -8) == int(brd.enp_target) {
 					return true
@@ -220,7 +219,7 @@ func (brd *Board) ValidMove(m Move, in_check bool) bool {
 	case KNIGHT: // no special treatment needed for knights.
 
 	default:
-		if sliding_attacks(piece, brd.AllOccupied(), from) & sq_mask_on[to] == 0 {
+		if sliding_attacks(piece, brd.AllOccupied(), from)&sq_mask_on[to] == 0 {
 			// fmt.Printf("Invalid sliding attack!{%s}", m.ToString())
 			return false
 		}
@@ -233,7 +232,6 @@ func (brd *Board) ValidMove(m Move, in_check bool) bool {
 
 	return true
 }
-
 
 func (brd *Board) ValueAt(sq int) int {
 	return brd.squares[sq].Value()
@@ -256,7 +254,7 @@ func (brd *Board) PawnsOnly() bool {
 }
 
 func (brd *Board) ColorPawnsOnly(c uint8) bool {
-	return brd.occupied[c] == brd.pieces[c][PAWN]|brd.pieces[c][KING]	
+	return brd.occupied[c] == brd.pieces[c][PAWN]|brd.pieces[c][KING]
 }
 
 func (brd *Board) InEndgame() int {
@@ -269,7 +267,7 @@ func (brd *Board) InEndgame() int {
 
 // Determines if capturing the given piece would bring us into the endgame
 func (brd *Board) GivesEndgame(pc_value uint8) int {
-	if brd.endgame_counter + pc_value < ENDGAME_COUNT {
+	if brd.endgame_counter+pc_value < ENDGAME_COUNT {
 		return 1
 	} else {
 		return 0

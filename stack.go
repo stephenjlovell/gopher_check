@@ -24,55 +24,53 @@
 package main
 
 const (
-  MAX_STACK = 128
+	MAX_STACK = 128
 )
 
 type Stack []StackItem
 
 type StackItem struct {
-  sp    *SplitPoint
+	sp *SplitPoint
 
-  // pv_move      Move
-  // value int
-  // depth int
-  pv PV
+	// pv_move      Move
+	// value int
+	// depth int
+	pv PV
 
-  killers KEntry
-  eval  int
-  hash_key uint64 // use hash key to search for repetitions
-  in_check bool
+	killers  KEntry
+	eval     int
+	hash_key uint64 // use hash key to search for repetitions
+	in_check bool
 }
 
 func (this_stk *StackItem) Copy() *StackItem {
-  return &StackItem{
-    // sp: this_stk.sp,
-    pv: this_stk.pv,
+	return &StackItem{
+		// sp: this_stk.sp,
+		pv: this_stk.pv,
 
-    killers: this_stk.killers,
-    eval: this_stk.eval,
-    hash_key: this_stk.hash_key,
-    in_check: this_stk.in_check,
-  }
+		killers:  this_stk.killers,
+		eval:     this_stk.eval,
+		hash_key: this_stk.hash_key,
+		in_check: this_stk.in_check,
+	}
 }
 
-
 func NewStack() Stack {
-  return make(Stack, MAX_STACK, MAX_STACK)
+	return make(Stack, MAX_STACK, MAX_STACK)
 }
 
 func (stk Stack) CopyUpTo(other_stk Stack, ply int) {
-  for i := 0; i <= ply; i++ {
-    this_stk := &stk[i]
-    this_cpy := &other_stk[i]
-    
-    // this_cpy.sp = this_stk.sp
-    // this_cpy.value = this_stk.value
-    // this_cpy.eval = this_stk.eval
-    // this_cpy.pv_move = this_stk.pv_move
-    // this_cpy.killers = this_stk.killers
-    this_cpy.hash_key = this_stk.hash_key
-    // this_cpy.depth = this_stk.depth
-    // this_cpy.in_check = this_stk.in_check
-  }
-}
+	for i := 0; i <= ply; i++ {
+		this_stk := &stk[i]
+		this_cpy := &other_stk[i]
 
+		// this_cpy.sp = this_stk.sp
+		// this_cpy.value = this_stk.value
+		// this_cpy.eval = this_stk.eval
+		// this_cpy.pv_move = this_stk.pv_move
+		// this_cpy.killers = this_stk.killers
+		this_cpy.hash_key = this_stk.hash_key
+		// this_cpy.depth = this_stk.depth
+		// this_cpy.in_check = this_stk.in_check
+	}
+}
