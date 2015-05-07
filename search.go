@@ -66,9 +66,6 @@ func AbortSearch() {
 				close(cancel)
 		}
 	}
-	if print_info {
-		fmt.Println("Search aborted by GUI")
-	}
 }
 
 func search_timer(timer *time.Timer) {
@@ -249,9 +246,9 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 
 	selector = NewMoveSelector(brd, this_stk, in_check, first_move)
 
-	// if node_type == Y_PV { // remove any stored pv move from a previous iteration.
+	if node_type == Y_PV { // remove any stored pv move from a previous iteration.
 	this_stk.pv.m, this_stk.pv.next = NO_MOVE, nil
-	// }
+	}
 
 search_moves:
 
@@ -281,7 +278,8 @@ search_moves:
 		gives_check := is_in_check(brd)
 
 		if f_prune && stage >= STAGE_REMAINING && legal_searched > 0 && m.IsQuiet() &&
-			!is_passed_pawn(brd, m) && !brd.PawnsOnly() && !gives_check {
+			// !is_passed_pawn(brd, m) && !brd.PawnsOnly() && !gives_check {
+			m.Piece() != PAWN && !brd.PawnsOnly() && !gives_check {
 			unmake_move(brd, m, memento)
 			continue
 		}
@@ -293,7 +291,8 @@ search_moves:
 			r_depth = depth + 1 // extend winning promotions only
 			r_extensions = extensions_left - 1
 		} else if can_reduce && stage >= STAGE_REMAINING &&
-			((node_type == Y_ALL && legal_searched > 2) || legal_searched > 6) && !is_passed_pawn(brd, m) &&
+			// ((node_type == Y_ALL && legal_searched > 2) || legal_searched > 6) && !is_passed_pawn(brd, m) &&
+					((node_type == Y_ALL && legal_searched > 2) || legal_searched > 6) && m.Piece() != PAWN &&
 			!gives_check {
 			r_depth = depth - 1 // Late move reductions
 		}

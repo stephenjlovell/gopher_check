@@ -150,31 +150,18 @@ var knight_pawns = [16]int{-20, -16, -12, -8, -4, 0, 4, 8, 12}
 var rook_pawns = [16]int{16, 12, 8, 4, 2, 0, -2, -4, -8}
 
 // adjusts the value of bishop pairs based on number of enemy pawns in play.
-var bishop_pair_pawns = [16]int{10, 10, 8, 8, 6, 4, 2, 0, -2}
+var bishop_pair_pawns = [16]int{10, 10, 9, 8, 6, 4, 2, 0, -2}
 
-// max mobility bonus/penalty should be 2.5% of piece value:
-// 8.0, 8.325000000000001, 12.75, 22.0
-// max knight mobility = 8, avg 2
-// max bishop/rook mobility = 14, avg 3
-// max queen mobility = 28, avg 4
-
-// var knight_mobility = [16]int{-6, -3, 0, 1, 2, 3, 4, 5, 8, 0, 0, 0, 0, 0, 0}
 var knight_mobility = [16]int{-16, -12, -6, -3, 0, 1, 3, 5, 6, 0, 0, 0, 0, 0, 0}
 
 var bishop_mobility = [16]int{-24, -16, -8, -4, -2, 0, 2, 4, 6, 7, 8, 9, 10, 11, 12, 13}
 
-// var rook_mobility = [16]int{-3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8, 8}
 var rook_mobility = [16]int{-12, -8, -4, -2, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
 
-
-// var queen_mobility = [32]int{-10, -6, -3, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
-// 	12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16}
 var queen_mobility = [32]int{-24, -18, -12, -6, -3, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
 	12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 24, 24, 24}
 
-
-
-var highest_placement, lowest_placement int
+var queen_tropism_bonus = [8]int{0, 12, 9, 6, 3, 0, -3, -6}
 
 func is_passed_pawn(brd *Board, m Move) bool {
 	if m.Piece() != PAWN {
@@ -215,8 +202,6 @@ func tempo_bonus() int {
 		return -5
 	}
 }
-
-var queen_tropism_bonus = [8]int{0, 12, 9, 6, 3, 0, -3, -6}
 
 func net_major_placement(brd *Board) int {
 	return major_placement(brd, WHITE, BLACK) - major_placement(brd, BLACK, WHITE)
