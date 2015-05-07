@@ -61,6 +61,8 @@ const ( // direction codes (0...8)
 	DIR_INVALID
 )
 
+var opposite_dir = [16]int{SE, SW, NW, NE, SOUTH, WEST, NORTH, EAST, DIR_INVALID}
+
 type SafeCounter int64
 
 func (c *SafeCounter) Add(i int64) int64 {
@@ -71,7 +73,7 @@ func (c *SafeCounter) Get() int64 {
 	return atomic.LoadInt64((*int64)(c))
 }
 
-var opposite_dir = [16]int{SE, SW, NW, NE, SOUTH, WEST, NORTH, EAST, DIR_INVALID}
+
 
 var mask_of_length [65]uint64
 
@@ -80,14 +82,16 @@ var row_masks [8]BB
 var column_masks [8]BB
 var ray_masks [8][64]BB
 
-var pawn_isolated_masks, pawn_side_masks [64]BB
+var pawn_isolated_masks, pawn_side_masks, pawn_doubled_masks [64]BB
 
 var intervening [64][64]BB
 var castle_queenside_intervening, castle_kingside_intervening [2]BB
 
 var knight_masks, bishop_masks, rook_masks, queen_masks, king_masks, sq_mask_on, sq_mask_off [64]BB
 var pawn_attack_masks, pawn_blocked_masks, pawn_passed_masks, pawn_attack_spans, pawn_front_spans,
-	king_zone_masks, king_shield_masks [2][64]BB
+		king_zone_masks, king_shield_masks [2][64]BB
+
+var pawn_promote_sq [2][64]int
 
 const (
 	OFF_SINGLE = iota
@@ -152,9 +156,21 @@ func Square(row, column int) int { return (row * 8) + column }
 func manhattan_distance(from, to int) int {
 	return abs(row(from)-row(to)) + abs(column(from)-column(to))
 }
+
+var chebyshev_distance_table[64][64]int
+
 func chebyshev_distance(from, to int) int {
-	return max(abs(row(from)-row(to)), abs(column(from)-column(to)))
+	return chebyshev_distance_table[from][to]
 }
+
+func setup_chebyshev_distance() {
+	for from := 0; from < 64; from++ {
+		for to := 0; to < 64; to++ {
+			chebyshev_distance_table[from][to] = max(abs(row(from)-row(to)), abs(column(from)-column(to)))
+		}
+	}
+}
+
 
 func assert(statement bool, failure_message string) {
 	if !statement {
@@ -165,10 +181,9 @@ func assert(statement bool, failure_message string) {
 func setup() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	rand.Seed(4129246945) // keep the same seed each time for debugging purposes.
-
+	setup_chebyshev_distance()
 	setup_bitwise_ops()
 	setup_masks()
-
 	setup_eval()
 	setup_zobrist()
 	setup_main_tt()

@@ -229,8 +229,8 @@ func UCIPosition(uci_fields []string) *Board {
 	var brd *Board
 	if len(uci_fields) == 0 || uci_fields[0] == "startpos" {
 		brd = ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-		if len(uci_fields) > 2 {
-			PlayMoveSequence(brd, uci_fields[2:])
+		if len(uci_fields) > 1 {
+			PlayMoveSequence(brd, uci_fields[1:])
 		}
 	} else if uci_fields[0] == "fen" {
 		brd = ParseFENSlice(uci_fields[1:])

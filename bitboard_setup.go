@@ -38,9 +38,7 @@ func setup_square_masks() {
 func setup_pawn_masks() {
 	var sq int
 	for i := 0; i < 64; i++ {
-
 		pawn_side_masks[i] = (king_masks[i] & row_masks[row(i)])
-
 		if i < 56 {
 			for j := 0; j < 2; j++ {
 				sq = i + pawn_attack_offsets[j]
@@ -143,13 +141,13 @@ func setup_row_masks() {
 
 func setup_column_masks() {
 	column_masks[0] = 1
-	for i := 0; i < 8; i++ {
+	for i := 0; i < 8; i++ {  // create the first column
 		column_masks[0] |= column_masks[0] << 8
-	} // set the first column
-	for i := 1; i < 8; i++ {
+	}
+	for i := 1; i < 8; i++ { // create the remaining columns by transposing the first column rightward.
 		column_masks[i] = (column_masks[i-1] << 1)
-	} // create the remaining columns by transposing the
-} // previous column rightward.
+	} 
+} 
 
 func setup_directions() {
 	var ray BB
@@ -185,7 +183,7 @@ func setup_pawn_structure_masks() {
 			sq += 8
 		}
 		sq = i - 8
-		for sq > 0 {
+		for sq >= 0 {
 			pawn_passed_masks[BLACK][i] |= sq_mask_on[sq] // center row
 			sq -= 8
 		}
@@ -208,8 +206,16 @@ func setup_pawn_structure_masks() {
 
 		pawn_attack_spans[WHITE][i] = pawn_passed_masks[WHITE][i] & (^column_masks[col])
 		pawn_attack_spans[BLACK][i] = pawn_passed_masks[BLACK][i] & (^column_masks[col])
+
 		pawn_front_spans[WHITE][i] = pawn_passed_masks[WHITE][i] & (column_masks[col])
 		pawn_front_spans[BLACK][i] = pawn_passed_masks[BLACK][i] & (column_masks[col])
+
+		pawn_doubled_masks[i] = pawn_front_spans[WHITE][i]|pawn_front_spans[BLACK][i]
+
+		pawn_promote_sq[WHITE][i] = msb(pawn_front_spans[WHITE][i])
+		pawn_promote_sq[BLACK][i] = lsb(pawn_front_spans[BLACK][i])
+
+
 	}
 }
 

@@ -60,7 +60,11 @@ var cancel chan bool
 
 func AbortSearch() {
 	if cancel != nil {
-		close(cancel)
+		select {
+			case <-cancel: // If search was already aborted, don't try to close the closed channel.
+			default:
+				close(cancel)
+		}
 	}
 	if print_info {
 		fmt.Println("Search aborted by GUI")
