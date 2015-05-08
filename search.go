@@ -33,7 +33,7 @@ const (
 	MAX_DEPTH = 16
 	MAX_EXT   = 16
 	MAX_PLY   = MAX_DEPTH + MAX_EXT
-	SPLIT_MIN = 16 // set >= MAX_PLY to disable parallel search.
+	SPLIT_MIN = 3 // set >= MAX_PLY to disable parallel search.
 
 	F_PRUNE_MAX = 3 // should always be less than SPLIT_MIN
 	LMR_MIN     = 2
@@ -150,6 +150,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	var this_stk *StackItem
 	var in_check bool
 	var sp *SplitPoint
+	var pv *PV
 	var selector *MoveSelector
 
 	score, best, old_alpha := -INF, -INF, alpha
@@ -182,16 +183,14 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 
 	if depth <= 0 {
 		if node_type == Y_PV {
-			this_stk.pv.m = NO_MOVE
-			this_stk.pv.next = nil
+			this_stk.pv = nil
 		}
-		score, sum := quiescence(brd, stk, alpha, beta, depth, ply, MAX_Q_CHECKS) // q-search is always sequential.
-		return score, sum
+		return quiescence(brd, stk, alpha, beta, depth, ply, MAX_Q_CHECKS) // q-search is always sequential.
 	}
 
 	this_stk.hash_key = brd.hash_key
 	if stk.IsRepetition(ply) { // check for draw by threefold repetition
-		return -ply, 1
+		return -PAWN-ply, 1
 	}
 
 	in_check = this_stk.in_check
@@ -207,7 +206,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		if is_checkmate(brd, in_check) {
 			return ply - MATE, 1
 		} else {
-			return -ply, 1
+			return -PAWN-ply, 1
 		}
 	}
 
@@ -246,11 +245,13 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 
 	selector = NewMoveSelector(brd, this_stk, in_check, first_move)
 
-	if node_type == Y_PV { // remove any stored pv move from a previous iteration.
-	this_stk.pv.m, this_stk.pv.next = NO_MOVE, nil
-	}
-
 search_moves:
+
+	if node_type == Y_PV { // remove any stored pv move from a previous iteration.
+		// this_stk.pv.m, this_stk.pv.next = NO_MOVE, nil
+		this_stk.pv = nil
+		pv = &PV{}
+	}
 
 	if !in_check && ply > 0 && node_type != Y_PV && alpha > 100-MATE {
 		if depth <= F_PRUNE_MAX && eval+piece_values[BISHOP] < alpha {
@@ -356,9 +357,8 @@ search_moves:
 					sp.alpha = score
 
 					if node_type == Y_PV { // will need to update this for parallel search
-						// this_stk.pv_move, this_stk.value, this_stk.depth = m, score, depth
-						this_stk.pv.m, this_stk.pv.value, this_stk.pv.depth = m, score, depth
-						this_stk.pv.next = &stk[ply+1].pv
+						pv.m, pv.value, pv.depth, pv.next = m, score, depth, stk[ply+1].pv
+						this_stk.pv = pv
 					}
 
 					if score >= beta {
@@ -383,9 +383,8 @@ search_moves:
 			if score > best {
 				if score > alpha {
 					if node_type == Y_PV {
-						// this_stk.pv_move, this_stk.value, this_stk.depth = m, score, depth
-						this_stk.pv.m, this_stk.pv.value, this_stk.pv.depth = m, score, depth
-						this_stk.pv.next = &stk[ply+1].pv
+						pv.m, pv.value, pv.depth, pv.next = m, score, depth, stk[ply+1].pv
+						this_stk.pv = pv
 					}
 					if score >= beta {
 						store_cutoff(this_stk, m, brd.c, total) // what happens on refutation of main pv?
@@ -436,9 +435,8 @@ search_moves:
 
 	if legal_searched > 0 {
 		if node_type == Y_PV {
-			// this_stk.pv_move, this_stk.value, this_stk.depth = best_move, best, depth
-			this_stk.pv.m, this_stk.pv.value, this_stk.pv.depth = best_move, best, depth
-			this_stk.pv.next = &stk[ply+1].pv
+			pv.m, pv.value, pv.depth, pv.next = best_move, best, depth, stk[ply+1].pv
+			this_stk.pv = pv
 		}
 		if alpha > old_alpha {
 			main_tt.store(brd, best_move, depth, EXACT, best)
@@ -529,19 +527,27 @@ FlushIdle: // If there are any idle workers, assign them now.
 // making benefit of parallelism smaller and raising communication and synchronization overhead.
 func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining int) (int, int) {
 
+	select {
+	case <-cancel:
+		return NO_SCORE, 1
+	default:
+	}
+
 	this_stk := &stk[ply]
 
 	this_stk.hash_key = brd.hash_key
 	if stk.IsRepetition(ply) {
-		return -ply, 1
+		// fmt.Printf("$")
+		return -PAWN-ply, 1
 	}
 
 	in_check := this_stk.in_check
 	if brd.halfmove_clock >= 100 {
+		// fmt.Printf("!")
 		if is_checkmate(brd, in_check) {
 			return ply - MATE, 1
 		} else {
-			return -ply, 1
+			return -PAWN-ply, 1
 		}
 	}
 

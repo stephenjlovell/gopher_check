@@ -35,7 +35,7 @@ type StackItem struct {
 	// pv_move      Move
 	// value int
 	// depth int
-	pv PV
+	pv *PV
 
 	killers  KEntry
 	eval     int

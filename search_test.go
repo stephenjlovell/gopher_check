@@ -48,14 +48,13 @@ func TestPlayingStrength(t *testing.T) {
 
 	setup()
 	print_info = false
-	depth := 10
-	timeout := 30000
+	depth := 8
+	timeout := 1000
 	test := load_epd_file("test_suites/wac_300.epd")
 	var move_str string
 	sum, score := 0, 0
 
 	// defer profile.Start(profile.CPUProfile).Stop()
-
 	start := time.Now()
 	for i, epd := range test {
 		ResetAll()
