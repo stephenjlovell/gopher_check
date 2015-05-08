@@ -74,16 +74,25 @@ func sliding_attacks(piece Piece, occ BB, sq int) BB {
 	}
 }
 
-func queen_attacks(occ BB, sq int) BB {
-	return (bishop_attacks(occ, sq) | rook_attacks(occ, sq))
+func pawn_attacks(brd *Board, c uint8) (BB, BB) { // returns (left_attacks, right_attacks) separately
+	if c == WHITE { 
+		return ((brd.pieces[WHITE][PAWN]&(^column_masks[0]))<<7), ((brd.pieces[WHITE][PAWN]&(^column_masks[7]))<<9)		
+	} else {
+		return ((brd.pieces[BLACK][PAWN]&(^column_masks[7]))>>7), ((brd.pieces[BLACK][PAWN]&(^column_masks[0]))>>9)
+	}
+}
+
+
+func bishop_attacks(occ BB, sq int) BB {
+	return scan_up(occ, NW, sq) | scan_up(occ, NE, sq) | scan_down(occ, SE, sq) | scan_down(occ, SW, sq)
 }
 
 func rook_attacks(occ BB, sq int) BB {
 	return scan_up(occ, NORTH, sq) | scan_up(occ, EAST, sq) | scan_down(occ, SOUTH, sq) | scan_down(occ, WEST, sq)
 }
 
-func bishop_attacks(occ BB, sq int) BB {
-	return scan_up(occ, NW, sq) | scan_up(occ, NE, sq) | scan_down(occ, SE, sq) | scan_down(occ, SW, sq)
+func queen_attacks(occ BB, sq int) BB {
+	return (bishop_attacks(occ, sq) | rook_attacks(occ, sq))
 }
 
 func scan_down(occ BB, dir, sq int) BB {

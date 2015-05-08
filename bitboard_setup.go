@@ -40,6 +40,8 @@ func setup_pawn_masks() {
 	for i := 0; i < 64; i++ {
 		pawn_side_masks[i] = (king_masks[i] & row_masks[row(i)])
 		if i < 56 {
+			pawn_stop_masks[WHITE][i] = sq_mask_on[i]<<8
+			pawn_stop_sq[WHITE][i] = i+8
 			for j := 0; j < 2; j++ {
 				sq = i + pawn_attack_offsets[j]
 				if manhattan_distance(sq, i) == 2 {
@@ -48,6 +50,8 @@ func setup_pawn_masks() {
 			}
 		}
 		if i > 7 {
+			pawn_stop_masks[BLACK][i] = sq_mask_on[i]>>8
+			pawn_stop_sq[BLACK][i] = i-8
 			for j := 2; j < 4; j++ {
 				sq = i + pawn_attack_offsets[j]
 				if manhattan_distance(sq, i) == 2 {
@@ -136,7 +140,7 @@ func setup_row_masks() {
 	for i := 1; i < 8; i++ {
 		row_masks[i] = (row_masks[i-1] << 8) // create the remaining rows by shifting the previous
 	} // row up by 8 squares.
-	middle_rows = row_masks[2] | row_masks[3] | row_masks[4] | row_masks[5]
+	// middle_rows = row_masks[2] | row_masks[3] | row_masks[4] | row_masks[5]
 }
 
 func setup_column_masks() {
@@ -214,7 +218,6 @@ func setup_pawn_structure_masks() {
 
 		pawn_promote_sq[WHITE][i] = msb(pawn_front_spans[WHITE][i])
 		pawn_promote_sq[BLACK][i] = lsb(pawn_front_spans[BLACK][i])
-
 
 	}
 }

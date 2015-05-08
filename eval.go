@@ -183,7 +183,16 @@ func evaluate(brd *Board, alpha, beta int) int {
 		return score
 	}
 
-	score += net_major_placement(brd) + net_pawn_placement(brd)
+	// pentry := &PawnEntry{}
+	pentry := brd.worker.ptt.Probe(brd.pawn_hash_key)
+	if pentry.key != brd.pawn_hash_key {
+		set_pawn_structure(brd, pentry)
+	}
+
+	score += pentry.value 
+	score += net_passed_pawns(brd, pentry)
+
+	score += net_major_placement(brd, pentry)
 
 	if brd.c == BLACK { // score is calculated relative to white to move
 		return -score
@@ -203,21 +212,15 @@ func tempo_bonus() int {
 	}
 }
 
-func net_major_placement(brd *Board) int {
-	return major_placement(brd, WHITE, BLACK) - major_placement(brd, BLACK, WHITE)
+func net_major_placement(brd *Board, pentry *PawnEntry) int {
+	return major_placement(brd, pentry, WHITE, BLACK) - major_placement(brd, pentry, BLACK, WHITE)
 }
 
-func major_placement(brd *Board, c, e uint8) int {
+func major_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
 	friendly := brd.Placement(c)
 	occ := brd.AllOccupied()
 
-	// this could be stored in the pawn hash table.
-	var unguarded BB // a bitmap of squares undefended by enemy pawns
-	if c == WHITE {  // white to move
-		unguarded = ^(((brd.pieces[e][PAWN] & (^column_masks[0])) >> 9) | ((brd.pieces[e][PAWN] & (^column_masks[7])) >> 7))
-	} else { // black to move
-		unguarded = ^(((brd.pieces[e][PAWN] & (^column_masks[0])) << 7) | ((brd.pieces[e][PAWN] & (^column_masks[7])) << 9))
-	}
+	unguarded := ^(pentry.all_attacks[e])
 	available := (^friendly) & unguarded
 
 	var sq, mobility, placement, king_threats int
@@ -225,7 +228,8 @@ func major_placement(brd *Board, c, e uint8) int {
 	enemy_king_sq := furthest_forward(e, brd.pieces[e][KING])
 	enemy_king_zone := king_zone_masks[e][enemy_king_sq]
 	endgame := brd.InEndgame()
-	pawn_count := pop_count(brd.pieces[c][PAWN])
+
+	pawn_count := pentry.count[c]
 
 	for b = brd.pieces[c][KNIGHT]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
@@ -243,7 +247,7 @@ func major_placement(brd *Board, c, e uint8) int {
 	}
 	// bishop pairs
 	if pop_count(brd.pieces[c][BISHOP]) > 1 {
-		placement += 40 + bishop_pair_pawns[pop_count(brd.pieces[e][PAWN])]
+		placement += 40 + bishop_pair_pawns[pentry.count[e]]
 	}
 
 	for b = brd.pieces[c][ROOK]; b > 0; b.Clear(sq) {
@@ -308,36 +312,27 @@ var promote_row = [2][2]int{
 	{6, 5},
 }
 
-func net_pawn_placement(brd *Board) int {
-	var value int
-	var passed_pawns BB
-	entry := brd.worker.ptt.Probe(brd.pawn_hash_key)
-	if entry.key == brd.pawn_hash_key {
-		value = entry.value
-		passed_pawns = entry.passed_pawns
-	} else {
-		value, passed_pawns = net_pawn_structure(brd)
-		entry.Store(brd.pawn_hash_key, value, passed_pawns)
-	}
-	if passed_pawns == 0 {
-		return value
-	}
-	return value + net_passed_pawns(brd, passed_pawns)
-}
 
-func net_pawn_structure(brd *Board) (int, BB) {
-	var c_value, e_value int
-	var c_passed, e_passed BB
-	c_value, c_passed = pawn_structure(brd, WHITE, BLACK)
-	e_value, e_passed = pawn_structure(brd, BLACK, WHITE)
-	return (c_value - e_value), (c_passed | e_passed)
+func set_pawn_structure(brd *Board, pentry *PawnEntry) {
+	pentry.left_attacks[WHITE], pentry.right_attacks[WHITE] = pawn_attacks(brd, WHITE)
+	pentry.left_attacks[BLACK], pentry.right_attacks[BLACK] = pawn_attacks(brd, BLACK)
+
+	pentry.all_attacks[WHITE] = pentry.left_attacks[WHITE]|pentry.right_attacks[WHITE]
+	pentry.all_attacks[BLACK] = pentry.left_attacks[BLACK]|pentry.right_attacks[BLACK]
+
+	pentry.count[WHITE] = uint8(pop_count(brd.pieces[WHITE][PAWN]))
+	pentry.count[BLACK] = uint8(pop_count(brd.pieces[BLACK][PAWN]))
+
+	pentry.passed_pawns[WHITE], pentry.passed_pawns[BLACK] = 0, 0
+
+	pentry.key = brd.pawn_hash_key
+	pentry.value = (pawn_structure(brd, pentry, WHITE, BLACK)-pawn_structure(brd, pentry, BLACK, WHITE))
 }
 
 // Evaluation features that depend ONLY on the position of pawns go here.
 // Only pawn position is used for the pawn hash key.
-func pawn_structure(brd *Board, c, e uint8) (int, BB) {
+func pawn_structure(brd *Board, pentry *PawnEntry, c, e uint8) int {
 	var value, sq, sq_row int
-	var passed_pawns BB
 	own_pawns, enemy_pawns := brd.pieces[c][PAWN], brd.pieces[e][PAWN]
 
 	for b := own_pawns; b > 0; b.Clear(sq) {
@@ -356,33 +351,35 @@ func pawn_structure(brd *Board, c, e uint8) (int, BB) {
 
 		if pawn_passed_masks[c][sq]&enemy_pawns == 0 {	// passed pawns
 			value += passed_pawn_bonus[c][sq_row]
-			passed_pawns.Add(sq)
+			pentry.passed_pawns[c].Add(sq)		// note the passed pawn location in the pawn hash entry.
 		} else {  // don't penalize passed pawns for being isolated.
 			if pawn_isolated_masks[sq]&own_pawns == 0 { 
 				value -= ISOLATED_PENALTY  // isolated pawns
 			}
 		}
-		if pawn_attack_spans[e][get_offset(c, sq, 8)]&own_pawns == 0 && // backward pawns
-			pawn_front_spans[c][sq]&enemy_pawns > 0 {
+
+		if pawn_attack_spans[e][pawn_stop_sq[c][sq]]&own_pawns == 0 && // backward pawns
+			pawn_stop_masks[c][sq] & (enemy_pawns|pentry.all_attacks[e]) > 0 {
 			value -= BACKWARD_PENALTY
 		}
 	}
 	
-	return value, passed_pawns
+	return value
 }
 
 
 
-func net_passed_pawns(brd *Board, passed_pawns BB) int {
-	return eval_passed_pawns(brd, WHITE, BLACK, passed_pawns)-eval_passed_pawns(brd, BLACK, WHITE, passed_pawns)		
+func net_passed_pawns(brd *Board, pentry *PawnEntry) int {
+	return eval_passed_pawns(brd, WHITE, BLACK, pentry.passed_pawns[WHITE]) -
+				 eval_passed_pawns(brd, BLACK, WHITE, pentry.passed_pawns[BLACK])		
 }
 
 func eval_passed_pawns(brd *Board, c, e uint8, passed_pawns BB) int {
 	var value, sq int
 	enemy_king_sq := brd.KingSq(e)
 
-	for b := brd.pieces[c][PAWN] & passed_pawns; b > 0; b.Clear(sq) {
-		sq = furthest_forward(c, b)
+	for ; passed_pawns > 0; passed_pawns.Clear(sq) {
+		sq = furthest_forward(c, passed_pawns)
 		// Tarrasch rule: assign small bonus for friendly rook behind the passed pawn
 		if pawn_front_spans[e][sq] & brd.pieces[c][ROOK] > 0 {
 			value += tarrasch_bonus[c][row(sq)]

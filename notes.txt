@@ -104,6 +104,16 @@ Total score: 289/300
 Total score: 286/300
 12 ABF: 1.9649
 
+5/8/15
+
+60.7203m nodes searched in 113.6935s (0.5341m NPS)
+Total score: 283/300
+8 ABF: 2.2466
+
+268.0667m nodes searched in 478.4372s (0.5603m NPS)
+Total score: 287/300
+10 ABF: 2.2167
+
 
 Debugging:
 

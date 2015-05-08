@@ -74,24 +74,24 @@ func (c *SafeCounter) Get() int64 {
 }
 
 
+var middle_rows BB
 
 var mask_of_length [65]uint64
 
-var middle_rows BB
-var row_masks [8]BB
-var column_masks [8]BB
+var row_masks, column_masks [8]BB
 var ray_masks [8][64]BB
 
-var pawn_isolated_masks, pawn_side_masks, pawn_doubled_masks [64]BB
+var pawn_isolated_masks, pawn_side_masks, pawn_doubled_masks, knight_masks, bishop_masks, rook_masks, 
+		queen_masks, king_masks, sq_mask_on, sq_mask_off [64]BB
 
 var intervening [64][64]BB
 var castle_queenside_intervening, castle_kingside_intervening [2]BB
 
-var knight_masks, bishop_masks, rook_masks, queen_masks, king_masks, sq_mask_on, sq_mask_off [64]BB
-var pawn_attack_masks, pawn_blocked_masks, pawn_passed_masks, pawn_attack_spans, pawn_front_spans,
-		king_zone_masks, king_shield_masks [2][64]BB
 
-var pawn_promote_sq [2][64]int
+var pawn_attack_masks, pawn_blocked_masks, pawn_passed_masks, pawn_attack_spans, pawn_front_spans,
+		pawn_stop_masks, king_zone_masks, king_shield_masks [2][64]BB
+
+var pawn_stop_sq, pawn_promote_sq [2][64]int
 
 const (
 	OFF_SINGLE = iota
@@ -137,14 +137,6 @@ func abs(x int) int {
 		return -x
 	} else {
 		return x
-	}
-}
-
-func get_offset(c uint8, sq, n int) int {
-	if c == WHITE {
-		return sq + n
-	} else {
-		return sq - n
 	}
 }
 

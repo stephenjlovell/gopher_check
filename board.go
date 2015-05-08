@@ -167,13 +167,13 @@ func (brd *Board) ValidMove(m Move, in_check bool) bool {
 		} else if diff == 8 {
 			return brd.TypeAt(to) == EMPTY
 		} else if diff == 16 {
-			return brd.TypeAt(to) == EMPTY && brd.TypeAt(get_offset(c, from, 8)) == EMPTY
+			return brd.TypeAt(to) == EMPTY && brd.TypeAt(pawn_stop_sq[c][from]) == EMPTY
 		} else if captured_piece == EMPTY {
 			// fmt.Printf("Invalid pawn move!{%s}", m.ToString())
 			return false
 		} else {
 			if captured_piece == PAWN && brd.TypeAt(to) == EMPTY {
-				if brd.enp_target != SQ_INVALID && get_offset(c, to, -8) == int(brd.enp_target) {
+				if brd.enp_target != SQ_INVALID && pawn_stop_sq[e][to] == int(brd.enp_target) {
 					return true
 				} else {
 					// fmt.Printf("Invalid En-passant move!{%s}", m.ToString())
