@@ -29,11 +29,12 @@ import (
 )
 
 const (
+	SPLIT_MIN = 3 // set >= MAX_PLY to disable parallel search.
+	
 	MAX_TIME  = 120000 // default search time limit in milliseconds (2m)
 	MAX_DEPTH = 16
 	MAX_EXT   = 16
 	MAX_PLY   = MAX_DEPTH + MAX_EXT
-	SPLIT_MIN = 3 // set >= MAX_PLY to disable parallel search.
 
 	F_PRUNE_MAX = 3 // should always be less than SPLIT_MIN
 	LMR_MIN     = 2
@@ -248,7 +249,6 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 search_moves:
 
 	if node_type == Y_PV { // remove any stored pv move from a previous iteration.
-		// this_stk.pv.m, this_stk.pv.next = NO_MOVE, nil
 		this_stk.pv = nil
 		pv = &PV{}
 	}
@@ -267,10 +267,8 @@ search_moves:
 	for m, stage := selector.Next(sp_type); m != NO_MOVE; m, stage = selector.Next(sp_type) {
 
 		if sp_type == SP_SERVANT {
-			select {
-			case <-sp.cancel:
+			if brd.worker.IsCancelled() {
 				return NO_SCORE, 0
-			default:
 			}
 		}
 
@@ -320,14 +318,6 @@ search_moves:
 		unmake_move(brd, m, memento)
 
 		if sp_type != SP_NONE {
-
-			// if sp_type == SP_SERVANT {
-			// 	select {
-			// 	case <-sp.cancel:
-			// 		return NO_SCORE, total
-			// 	default:
-			// 	}
-			// }
 
 			sp.Lock()
 
@@ -401,25 +391,25 @@ search_moves:
 
 		// Determine if this would be a good location to begin searching in parallel.
 		if sp_type == SP_NONE && can_split(brd, ply, depth, node_type, legal_searched, stage) {
-			sp = setup_sp(brd, stk, selector, best_move, alpha, beta, best, depth, ply,
-				extensions_left, legal_searched, can_null, node_type, sum)
-			sp_type = SP_MASTER
+			if assign_sp(brd, stk, selector, best_move, alpha, beta, best, depth, ply,
+							 	  extensions_left, legal_searched, can_null, node_type, sum) {
+				sp_type = SP_MASTER				
+				sp = this_stk.sp
+			}
 		}
 
 	} // end of moves loop
 
 	switch sp_type {
 	case SP_MASTER:
-		brd.worker.RemoveSP() // Every move at this SP has been consumed. Remove the SP from the SP list, since
-		// no new workers should be assigned here.
+		brd.worker.RemoveSP() // Every move at this SP has been consumed. Remove the SP from the SP list, 
+													// since no new workers should be assigned here.
 
-		sp.wg.Wait() // If servants are still busy at this SP, wait here until they are all finished.
-
-		// To do: implement Helpful Master concept
-
-		// for servant_mask := sp.ServantMask(); servant_mask > 0 {
-
-		// }
+		// Helpful Master Concept: 
+		// All moves at this SP may have been consumed, but servant workers may still be busy evaluating 
+		// subtrees rooted at this SP.  If that's the case, offer to help only those workers assigned to this
+		// split point.
+		brd.worker.HelpServants(sp) 
 
 		sp.Lock()
 		best = sp.best
@@ -471,11 +461,58 @@ func can_split(brd *Board, ply, depth, node_type, legal_searched, stage int) boo
 	return false
 }
 
-func setup_sp(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, beta, best, depth, ply, extensions_left,
-	legal_searched int, can_null bool, node_type, sum int) *SplitPoint {
-	master := brd.worker
+func assign_sp(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, beta, best, depth, ply, 
+							extensions_left, legal_searched int, can_null bool, node_type, sum int) bool {
+	var sp *SplitPoint
+	master := brd.worker.master
+	assigned := false
 
-	load_balancer.Lock()
+	if master == nil {
+		FlushIdle:
+		for {
+			select {
+			case w := <-load_balancer.done:
+				if sp == nil {
+					sp = setup_sp(brd, stk, ms, best_move, alpha, beta, best, depth, ply, extensions_left, 
+									 			legal_searched, can_null, node_type, sum)
+				}
+				w.assign_sp <- sp
+				assigned = true
+			default:
+				break FlushIdle
+			}	
+		}
+	} else {
+		FlushAllIdle:
+		for {
+			select {
+			case w := <-load_balancer.done:
+				if sp == nil {
+					sp = setup_sp(brd, stk, ms, best_move, alpha, beta, best, depth, ply, extensions_left, 
+									 			legal_searched, can_null, node_type, sum)
+				}
+				w.assign_sp <- sp
+				assigned = true
+			case  <-master.idle:
+				if sp == nil { // 
+					sp = setup_sp(brd, stk, ms, best_move, alpha, beta, best, depth, ply, extensions_left, 
+									 			legal_searched, can_null, node_type, sum)
+				}
+				master.assign_sp <- sp
+				assigned = true
+			default:
+				break FlushAllIdle
+			}	
+		}
+	}
+
+	return assigned
+}
+
+
+func setup_sp(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, beta, best, depth, ply, 
+							extensions_left, legal_searched int, can_null bool, node_type, sum int) *SplitPoint {
+	master := brd.worker
 
 	brd_copy := brd.Copy()
 	stk_copy := stk[ply].Copy()
@@ -504,20 +541,15 @@ func setup_sp(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, be
 
 		node_count:     sum,
 		legal_searched: legal_searched,
-		cancel:         make(chan bool),
+		cancel:         false,
 	}
+
+	load_balancer.Lock()
+	
 	stk[ply].sp = sp
+	master.sp_list.Push(sp)
 	master.current_sp = sp
 
-FlushIdle: // If there are any idle workers, assign them now.
-	for {
-		select {
-		case w := <-load_balancer.done:
-			w.assign_sp <- sp
-		default:
-			break FlushIdle
-		}
-	}
 	load_balancer.Unlock()
 
 	return sp
@@ -537,13 +569,11 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 
 	this_stk.hash_key = brd.hash_key
 	if stk.IsRepetition(ply) {
-		// fmt.Printf("$")
 		return -PAWN-ply, 1
 	}
 
 	in_check := this_stk.in_check
 	if brd.halfmove_clock >= 100 {
-		// fmt.Printf("!")
 		if is_checkmate(brd, in_check) {
 			return ply - MATE, 1
 		} else {

@@ -58,7 +58,7 @@ type SplitPoint struct {
 
 	node_count     int // shared
 	legal_searched int
-	cancel         chan bool
+	cancel         bool
 }
 
 func (sp *SplitPoint) Order() int {
@@ -71,3 +71,36 @@ func (sp *SplitPoint) ServantMask() uint8 {
 	sp.Unlock()
 	return servant_mask
 }
+
+func (sp *SplitPoint) AddServant(w_mask uint8) {
+	sp.Lock()
+	sp.servant_mask |= w_mask
+	sp.Unlock()
+}
+
+func (sp *SplitPoint) RemoveServant(w_mask uint8) {
+	sp.Lock()
+	sp.servant_mask &= (^w_mask)
+	sp.Unlock()
+}
+
+
+type SPList []*SplitPoint 
+
+func (l *SPList) Push(sp *SplitPoint) {
+  *l = append(*l, sp)
+}
+
+func (l *SPList) Pop() *SplitPoint {
+  old := *l
+  n := len(old)
+  sp := old[n-1]
+  *l = old[0 : n-1]
+  return sp
+}
+
+
+
+
+
+

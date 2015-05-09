@@ -24,7 +24,7 @@
 package main
 
 import (
-	// "fmt"
+	"fmt"
 	"sync"
 )
 
@@ -69,11 +69,13 @@ func NewLoadBalancer() *Balancer {
 	}
 	for i := uint8(0); i < MAX_WORKER_GOROUTINES; i++ {
 		b.workers[i] = &Worker{
-			mask:      1 << i,
-			index:     i,
-			stk:       NewStack(),
-			ptt:       NewPawnTT(),
-			assign_sp: make(chan *SplitPoint, 1),
+			mask:      	1 << i,
+			index:     	i,
+			idle:				make(chan bool, 1),
+			sp_list:	 	make(SPList, 0, MAX_PLY),
+			stk:       	NewStack(),
+			ptt:       	NewPawnTT(),
+			assign_sp: 	make(chan *SplitPoint, 1),
 		}
 	}
 	return b
@@ -101,7 +103,12 @@ type Worker struct {
 	mask  uint8
 	index uint8
 
+	master *Worker
+	idle chan bool
+
+	sp_list		 SPList
 	current_sp *SplitPoint
+
 	stk        Stack
 	ptt        *PawnTT
 
@@ -114,67 +121,91 @@ type Worker struct {
 func (w *Worker) RemoveSP() {
 	load_balancer.Lock()
 
+	w.sp_list.Pop()
 	last_sp := w.current_sp.parent
-	close(w.current_sp.cancel)
+	w.current_sp.cancel = true
 	w.current_sp = last_sp
 
 	load_balancer.Unlock()
 }
 
+func (w *Worker) IsCancelled() bool {
+	load_balancer.Lock()
+	sp := w.current_sp
+	for sp != nil {
+		if sp.cancel {
+			load_balancer.Unlock()
+			return true
+		}
+		sp = sp.parent
+	}
+	load_balancer.Unlock()
+	return false
+}
+
+
+func (w *Worker) HelpServants(current_sp *SplitPoint) {
+	
+
+	// offer to help the servants of w until all servants are finished searching current_sp.
+
+	for mask := current_sp.servant_mask; mask > 0; mask = current_sp.servant_mask {
+
+		select {
+		case w.idle <- true:
+		default:
+		}
+
+		select {
+			case sp := <-w.assign_sp:
+				fmt.Printf("!")
+				w.SearchSP(sp)
+			default:
+		}
+	}
+
+
+}
+
 func (w *Worker) Help(b *Balancer) {
-
 	go func() {
-		var sp, best_sp *SplitPoint
-
+		var sp *SplitPoint
 		for {
-
-			// to do: Randomize the order of workers when looking for best SP
-
-			b.Lock()
-			sp, best_sp = nil, nil
-			for _, master := range b.workers { // try to find a good SP
-				if master.index == w.index {
-					continue
-				}
-				sp = master.current_sp
-				for sp != nil {
-					if best_sp == nil || sp.Order() > best_sp.Order() {
-						best_sp = sp
-					}
-					sp = sp.parent // walk the SP list in search of the best place to split
-				}
-			}
-			b.Unlock()
-
-			if best_sp == nil { // no SP was available.
-				b.done <- w
-				sp = <-w.assign_sp // wait for the next SP to be discovered.
-			} else {
-				sp = best_sp
-			}
-
-			brd := sp.brd.Copy()
-			brd.worker = w
-			sp.master.stk.CopyUpTo(w.stk, sp.ply)
-			w.stk[sp.ply].sp = sp
-
-			sp.wg.Add(1)
-			// sp.Lock()
-			// sp.servant_mask |= w.mask
-			// sp.Unlock()
-
-			// Once the SP is fully evaluated, The SP master will handle returning its value to parent node.
-			_, _ = ybw(brd, w.stk, sp.alpha, sp.beta, sp.depth, sp.ply,
-				sp.extensions_left, sp.can_null, sp.node_type, SP_SERVANT)
-
-			// At this point, any additional SPs found by the worker during the search rooted at a.sp
-			// should be fully resolved.  The SP list for this worker should be empty again.
-
-			sp.wg.Done()
-			// sp.Lock()
-			// sp.servant_mask &= (^w.mask)
-			// sp.Unlock()
-
+			b.done <- w  				// worker is completely idle and available to help any processor.
+			sp = <-w.assign_sp 	// wait for the next SP to be discovered.
+			w.SearchSP(sp)
 		}
 	}()
 }
+
+
+func (w *Worker) SearchSP(sp *SplitPoint) {
+	brd := sp.brd.Copy()
+	brd.worker = w
+	
+	w.master = sp.master
+
+	sp.master.stk.CopyUpTo(w.stk, sp.ply)
+	w.stk[sp.ply].sp = sp
+	w.current_sp = sp
+
+	sp.AddServant(w.mask)
+
+	// Once the SP is fully evaluated, The SP master will handle returning its value to parent node.
+	_, _ = ybw(brd, w.stk, sp.alpha, sp.beta, sp.depth, sp.ply,
+		sp.extensions_left, sp.can_null, sp.node_type, SP_SERVANT)
+
+	sp.RemoveServant(w.mask)
+
+	// w.current_sp = nil
+	
+	// At this point, any additional SPs found by the worker during the search rooted at sp
+	// should be fully resolved.  The SP list for this worker should be empty again.
+}
+
+
+
+
+
+
+

@@ -49,7 +49,7 @@ func TestPlayingStrength(t *testing.T) {
 	setup()
 	print_info = false
 	depth := 8
-	timeout := 1000
+	timeout := 3000
 	test := load_epd_file("test_suites/wac_300.epd")
 	var move_str string
 	sum, score := 0, 0

@@ -122,19 +122,15 @@ To Do:
 
 Run profiling.
 
-Make return of PV safe for parallelism
+Improve Null-move Pruning - add verification.
 
-Implement Magic Bitboards
+Implement Tapered Eval.
 
-Implement Helpful Master Concept
+Implement Helpful Master Concept.
 
 Implement Pondering.
 
-Improve Pawn Evaluation - 
-  Separate out hashable elements of pawn evaluation (elements that depend only on other pawns).
-  Implement Pawn Hashtable.  Update Make/Unmake.
-
-
+Implement Magic Bitboards?
 
 
 
