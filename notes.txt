@@ -126,6 +126,11 @@ Total score: 285/300
 Timeout: 4.0s
 
 
+284.6440m nodes searched in 249.6377s (1.1402m NPS)
+Total score: 286/300
+10 ABF: 2.1966
+
+
 Debugging:
 
 

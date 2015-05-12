@@ -167,7 +167,6 @@ func (s *MoveSelector) NextMove() (Move, int) {
 				return m, STAGE_REMAINING
 			}
 		default:
-			// fmt.Printf("?")
 		}
 	}
 }

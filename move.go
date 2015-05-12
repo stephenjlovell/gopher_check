@@ -68,6 +68,26 @@ func (m Move) IsPromotion() bool {
 	return m.PromotedTo() != EMPTY
 }
 
+func (m Move) IsPotentialPromotion(brd *Board) bool {
+	if m.Piece() != PAWN {
+		return false
+	}
+	if brd.c == WHITE {
+		return m.To() >= A5 || m.IsPassedPawn(brd)
+	} else {
+		return m.To() < A5 || m.IsPassedPawn(brd)
+	}
+
+}
+
+func (m Move) IsPassedPawn(brd *Board) bool {
+	if m.Piece() != PAWN {
+		return false
+	} else {
+		return pawn_passed_masks[brd.c][m.To()]&brd.pieces[brd.Enemy()][PAWN] == 0
+	}
+}
+
 func (m Move) IsQuiet() bool {
 	return !(m.IsCapture() || m.IsPromotion())
 }

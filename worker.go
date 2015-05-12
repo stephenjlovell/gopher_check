@@ -149,7 +149,7 @@ func (w *Worker) IsCancelled() bool {
 func (w *Worker) HelpServants(current_sp *SplitPoint) {
 	var best_sp *SplitPoint
 	var worker *Worker
-	// offer to help the servants of w until all servants are finished searching current_sp.
+	// Check for SPs underneath current_sp
 
 	for mask := current_sp.servant_mask; mask > 0; mask = current_sp.servant_mask {
 		best_sp = nil
@@ -162,7 +162,7 @@ func (w *Worker) HelpServants(current_sp *SplitPoint) {
 				// occurred at sp, or no moves are left to search. 
 				if !this_sp.servant_finished && (best_sp == nil || this_sp.Order() > best_sp.Order()) {
 					best_sp = this_sp
-					temp_mask |= this_sp.servant_mask
+					temp_mask |= this_sp.servant_mask // If this SP has servants of its own, check them as well.
 				}
 			}
 		}
@@ -174,10 +174,9 @@ func (w *Worker) HelpServants(current_sp *SplitPoint) {
 			w.SearchSP(best_sp)			
 		}
 	}
-
-	current_sp.wg.Wait() // If at any point we can't find another viable servant SP, wait for 
-											 // remaining servants to complete.  
-
+	// If at any point we can't find another viable servant SP, wait for remaining servants to complete. 
+	// This prevents us from continually acquiring the load balancer lock. 
+	current_sp.wg.Wait() 
 }
 
 func (w *Worker) Help(b *Balancer) {

@@ -156,7 +156,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	sum := 1
 	var best_move, first_move Move
 	var null_depth, hash_result, eval, subtotal, total, legal_searched, child_type, r_depth, r_extensions int
-	f_prune, can_reduce := false, false
+	can_prune, f_prune, can_reduce := false, false, false
 
 	select {
 	case <-cancel:
@@ -184,7 +184,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		if node_type == Y_PV {
 			this_stk.pv = nil
 		}
-		return quiescence(brd, stk, alpha, beta, depth, ply, MAX_Q_CHECKS) // q-search is always sequential.
+		return quiescence(brd, stk, alpha, beta, 0, ply, MAX_Q_CHECKS) // q-search is always sequential.
 	}
 
 	this_stk.hash_key = brd.hash_key
@@ -209,12 +209,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		}
 	}
 
-	if depth > 6 {
-		null_depth = depth - 3
-	} else {
-		null_depth = depth - 2
-	}
-
+	null_depth = depth - 4
 	first_move, hash_result = main_tt.probe(brd, depth, null_depth, alpha, beta, &score)
 
 	eval = evaluate(brd, alpha, beta)
@@ -223,11 +218,12 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	if node_type != Y_PV {
 		if (hash_result & CUTOFF_FOUND) > 0 { // Hash hit valid for current bounds.
 			return score, sum
-		} else if !in_check && can_null && hash_result != AVOID_NULL && depth > 2 && brd.InEndgame() == 0 &&
-			!brd.PawnsOnly() && eval >= beta {
+		} else if !in_check && can_null && hash_result != AVOID_NULL && depth > 2 &&
+			!brd.PawnsOnly() && eval >= beta {  // Null-move pruning
+
 			score, subtotal = null_make(brd, stk, beta, null_depth, ply, extensions_left)
 			sum += subtotal
-			if score >= beta {
+			if score >= beta && score < MATE-100 {
 				main_tt.store(brd, 0, depth, LOWER_BOUND, score)
 				return score, sum
 			}
@@ -235,11 +231,13 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	}
 
 	// skip IID when in check?
-	if !in_check && node_type == Y_PV && hash_result == NO_MATCH && can_null && depth >= IID_MIN {
+	if !in_check && node_type == Y_PV && hash_result == NO_MATCH && depth >= IID_MIN {
 		// No hash move available. Use IID to get a decent first move to try.
 		score, subtotal = ybw(brd, stk, alpha, beta, depth-2, ply, extensions_left, can_null, node_type, SP_NONE)
 		sum += subtotal
-		first_move = this_stk.pv.m
+		if this_stk.pv != nil {
+			first_move = this_stk.pv.m			
+		}
 	}
 
 	selector = NewMoveSelector(brd, this_stk, in_check, first_move)
@@ -250,9 +248,12 @@ search_moves:
 		pv = &PV{}
 	}
 
-	if !in_check && ply > 0 && node_type != Y_PV && alpha > 100-MATE {
-		if depth <= F_PRUNE_MAX && eval+piece_values[BISHOP] < alpha {
-			f_prune = true
+	if !in_check && ply > 0 && /* node_type != Y_PV && */ alpha > 100-MATE {
+		if depth <= F_PRUNE_MAX && !brd.PawnsOnly() { 
+			can_prune = true
+			if eval+piece_values[BISHOP] < alpha {
+				f_prune = true
+			}
 		}
 		if depth >= LMR_MIN {
 			can_reduce = true
@@ -263,12 +264,18 @@ search_moves:
 
 	for m, stage := selector.Next(sp_type); m != NO_MOVE; m, stage = selector.Next(sp_type) {
 
+		may_promote := m.IsPotentialPromotion(brd)
+		try_prune := can_prune && stage >= STAGE_REMAINING && legal_searched > 0 && !may_promote
+
+		if try_prune && get_see(brd, m.From(), m.To(), EMPTY) < 0 {
+			continue  // prune quiet moves that result in loss of moving piece			
+		}
+
 		make_move(brd, m)
 
 		gives_check := is_in_check(brd)
 
-		if f_prune && stage >= STAGE_REMAINING && legal_searched > 0 && m.IsQuiet() &&
-			m.Piece() != PAWN && !brd.PawnsOnly() && !gives_check {
+		if f_prune && try_prune && !gives_check {
 			unmake_move(brd, m, memento)
 			continue
 		}
@@ -279,9 +286,8 @@ search_moves:
 		if m.IsPromotion() && stage == STAGE_WINNING && extensions_left > 0 {
 			r_depth = depth + 1 // extend winning promotions only
 			r_extensions = extensions_left - 1
-		} else if can_reduce && stage >= STAGE_REMAINING &&
-			((node_type == Y_ALL && legal_searched > 2) || legal_searched > 6) && m.Piece() != PAWN &&
-			!gives_check {
+		} else if can_reduce && !may_promote && !gives_check && stage >= STAGE_REMAINING &&
+			((node_type == Y_ALL && legal_searched > 2) || legal_searched > 6)  {
 			r_depth = depth - 1 // Late move reductions
 		}
 
@@ -306,6 +312,7 @@ search_moves:
 
 		if sp_type != SP_NONE {
 			sp.Lock()
+
 			if brd.worker.IsCancelled() {
 				if sp_type == SP_SERVANT {
 					sp.Unlock()
@@ -328,6 +335,7 @@ search_moves:
 					return NO_SCORE, 0
 				}
 			}
+
 			alpha = sp.alpha // get the latest info
 			beta = sp.beta
 			best = sp.best
@@ -387,7 +395,7 @@ search_moves:
 			legal_searched += 1
 		}
 		// Determine if this would be a good location to begin searching in parallel.
-		if can_split(brd, ply, depth, node_type, sp_type, legal_searched, stage) {
+		if sp_type == SP_NONE && can_split(brd, ply, depth, node_type, legal_searched, stage) {
 			sp = setup_sp(brd, stk, selector, best_move, alpha, beta, best, depth, ply,
 										extensions_left, legal_searched, can_null, node_type, sum)
 			sp_type = SP_MASTER
@@ -442,15 +450,15 @@ search_moves:
 }
 
 // Determine if the current node is a good place to start searching in parallel.
-func can_split(brd *Board, ply, depth, node_type, sp_type, legal_searched, stage int) bool {
-	if depth >= SPLIT_MIN && sp_type == SP_NONE {
+func can_split(brd *Board, ply, depth, node_type, legal_searched, stage int) bool {
+	if depth >= SPLIT_MIN {
 		switch node_type {
 		case Y_PV:
 			return legal_searched > 0 && ply > 0
 		case Y_CUT:
 			return legal_searched > 6 && stage >= STAGE_REMAINING
 		case Y_ALL:
-			return legal_searched > 0
+			return legal_searched > 1
 		}
 	}
 	return false
@@ -622,8 +630,8 @@ func null_make(brd *Board, stk Stack, beta, null_depth, ply, extensions_left int
 	brd.hash_key ^= enp_zobrist(enp_target)
 	brd.enp_target = SQ_INVALID
 
-	stk[ply+1].in_check = is_in_check(brd)
-	score, sum := ybw(brd, stk, -beta, -beta+1, null_depth-1, ply+1, extensions_left, false, Y_CUT, SP_NONE)
+	stk[ply+1].in_check = false // Impossible to give check from a legal position by standing pat.
+	score, sum := ybw(brd, stk, -beta, -beta+1, null_depth-1, ply+1, extensions_left, true, Y_CUT, SP_NONE)
 
 	brd.c ^= 1
 	brd.hash_key = hash_key

@@ -173,13 +173,6 @@ var queen_mobility = [32]int{-24, -18, -12, -6, -3, 0, 2, 3, 4, 5, 6, 7, 8, 9, 1
 
 var queen_tropism_bonus = [8]int{0, 12, 9, 6, 3, 0, -3, -6}
 
-func is_passed_pawn(brd *Board, m Move) bool {
-	if m.Piece() != PAWN {
-		return false
-	} else {
-		return pawn_passed_masks[brd.c][m.From()]&brd.pieces[brd.Enemy()][PAWN] == 0
-	}
-}
 
 func evaluate(brd *Board, alpha, beta int) int {
 	score := int(brd.material[WHITE]-brd.material[BLACK]) + tempo_bonus()
