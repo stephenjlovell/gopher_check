@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	SPLIT_MIN = 3 // set >= MAX_PLY to disable parallel search.
+	SPLIT_MIN = 16 // set >= MAX_PLY to disable parallel search.
 
 	MAX_TIME  = 120000 // default search time limit in milliseconds (2m)
 	MAX_DEPTH = 16
@@ -40,7 +40,7 @@ const (
 	LMR_MIN     = 2
 	IID_MIN     = 4
 
-	MAX_Q_CHECKS = 2
+	MIN_CHECK_DEPTH = -2
 	COMMS_MIN    = 6 // minimum depth at which to send info to GUI.
 )
 
@@ -184,7 +184,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		if node_type == Y_PV {
 			this_stk.pv = nil
 		}
-		return quiescence(brd, stk, alpha, beta, 0, ply, MAX_Q_CHECKS) // q-search is always sequential.
+		return quiescence(brd, stk, alpha, beta, 0, ply) // q-search is always sequential.
 	}
 
 	this_stk.hash_key = brd.hash_key
@@ -517,7 +517,7 @@ FlushIdle: // If there are any idle workers, assign them now.
 
 // Q-Search will always be done sequentially: Q-search subtrees are taller and narrower than in the main search,
 // making benefit of parallelism smaller and raising communication and synchronization overhead.
-func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining int) (int, int) {
+func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) (int, int) {
 
 	select {
 	case <-cancel:
@@ -542,11 +542,8 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 	}
 
 	score, best, sum, total := -INF, -INF, 1, 0
-	r_checks_remaining := checks_remaining
 
-	if in_check {
-		r_checks_remaining = checks_remaining - 1
-	} else {
+	if !in_check {
 		score = evaluate(brd, alpha, beta) // stand pat
 		this_stk.eval = score
 		if score > best {
@@ -562,7 +559,7 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 
 	legal_moves := false
 	memento := brd.NewMemento()
-	selector := NewQMoveSelector(brd, this_stk, in_check, checks_remaining > 0)
+	selector := NewQMoveSelector(brd, this_stk, in_check, depth >= MIN_CHECK_DEPTH)
 
 	for m := selector.Next(false); m != NO_MOVE; m = selector.Next(false) {
 
@@ -578,7 +575,7 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply, checks_remaining
 
 		stk[ply+1].in_check = gives_check // avoid having to recalculate in_check at beginning of search.
 
-		score, total = quiescence(brd, stk, -beta, -alpha, depth-1, ply+1, r_checks_remaining)
+		score, total = quiescence(brd, stk, -beta, -alpha, depth-1, ply+1)
 		score = -score
 		sum += total
 		unmake_move(brd, m, memento)
