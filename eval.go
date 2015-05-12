@@ -29,21 +29,21 @@ import (
 
 const (
 	ENDGAME_COUNT    = 18
-	DOUBLED_PENALTY	 = 20
+	DOUBLED_PENALTY  = 20
 	ISOLATED_PENALTY = 12
 	BACKWARD_PENALTY = 4
 )
 
 var main_pst = [2][8][64]int{ // Black. White PST will be set in setup_eval.
 	{ // Pawn
-		{   0,  0, 0,   0,   0, 0,  0,   0,
-			-11,  1, 1,   1,   1, 1,  1, -11,
-			-12,  0, 1,   2,   2, 1,  0, -12,
-			-13, -1, 2,  10,  10, 2, -1, -13,
-			-14, -2, 4,  14,  14, 4, -2, -14,
-			-15, -3, 0,   9,   9, 0, -3, -15,
+		{0, 0, 0, 0, 0, 0, 0, 0,
+			-11, 1, 1, 1, 1, 1, 1, -11,
+			-12, 0, 1, 2, 2, 1, 0, -12,
+			-13, -1, 2, 10, 10, 2, -1, -13,
+			-14, -2, 4, 14, 14, 4, -2, -14,
+			-15, -3, 0, 9, 9, 0, -3, -15,
 			-16, -4, 0, -20, -20, 0, -4, -16,
-			  0,  0, 0,   0,   0, 0,  0,   0},
+			0, 0, 0, 0, 0, 0, 0, 0},
 
 		// {   0,  0,  0,   0,   0,  0,  0,   0,
 		// 	 26, 25, 24,  24,  24, 24, 25,  26,
@@ -54,48 +54,46 @@ var main_pst = [2][8][64]int{ // Black. White PST will be set in setup_eval.
 		// 	-18, -4,  0, -20, -20,  0, -4, -18,
 		// 	  0,  0,  0,   0,   0,  0,  0,   0},
 
-
-
 		// Knight
-		{  -8,  -8, -6, -6, -6, -6, -8,  -8,
-			 -8,   0,  0,  0,  0,  0,  0,  -8,
-			 -6,   0,  4,  4,  4,  4,  0,  -6,
-			 -6,   0,  4,  8,  8,  4,  0,  -6,
-			 -6,   0,  4,  8,  8,  4,  0,  -6,
-			 -6,   0,  4,  4,  4,  4,  0,  -6,
-			 -8,   0,  1,  2,  2,  1,  0,  -8,
+		{-8, -8, -6, -6, -6, -6, -8, -8,
+			-8, 0, 0, 0, 0, 0, 0, -8,
+			-6, 0, 4, 4, 4, 4, 0, -6,
+			-6, 0, 4, 8, 8, 4, 0, -6,
+			-6, 0, 4, 8, 8, 4, 0, -6,
+			-6, 0, 4, 4, 4, 4, 0, -6,
+			-8, 0, 1, 2, 2, 1, 0, -8,
 			-10, -12, -6, -6, -6, -6, -12, -10},
 		// Bishop
-		{ -3, -3,  -3, -3, -3,  -3, -3, -3,
-			-3,  0,   0,  0,  0,   0,  0, -3,
-			-3,  0,   2,  4,  4,   2,  0, -3,
-			-3,  0,   4,  5,  5,   4,  0, -3,
-			-3,  0,   4,  5,  5,   4,  0, -3,
-			-3,  1,   2,  4,  4,   2,  1, -3,
-			-3,  2,   1,  1,  1,   1,  2, -3,
+		{-3, -3, -3, -3, -3, -3, -3, -3,
+			-3, 0, 0, 0, 0, 0, 0, -3,
+			-3, 0, 2, 4, 4, 2, 0, -3,
+			-3, 0, 4, 5, 5, 4, 0, -3,
+			-3, 0, 4, 5, 5, 4, 0, -3,
+			-3, 1, 2, 4, 4, 2, 1, -3,
+			-3, 2, 1, 1, 1, 1, 2, -3,
 			-3, -3, -10, -3, -3, -10, -3, -3},
 		// Rook
-		{  4,  4,  4,  4,  4,  4,  4,  4,
+		{4, 4, 4, 4, 4, 4, 4, 4,
 			16, 16, 16, 16, 16, 16, 16, 16,
-			-4,  0,  0,  0,  0,  0,  0, -4,
-			-4,  0,  0,  0,  0,  0,  0, -4,
-			-4,  0,  0,  0,  0,  0,  0, -4,
-			-4,  0,  0,  0,  0,  0,  0, -4,
-			-4,  0,  0,  0,  0,  0,  0, -4,
-			 0,  0,  0,  2,  2,  0,  0,  0 },
+			-4, 0, 0, 0, 0, 0, 0, -4,
+			-4, 0, 0, 0, 0, 0, 0, -4,
+			-4, 0, 0, 0, 0, 0, 0, -4,
+			-4, 0, 0, 0, 0, 0, 0, -4,
+			-4, 0, 0, 0, 0, 0, 0, -4,
+			0, 0, 0, 2, 2, 0, 0, 0},
 		// Queen
-		{  0,  0,  0,  1,  1,  0,  0,  0,
-			 0,  0,  1,  2,  2,  1,  0,  0,
-			 0,  1,  2,  2,  2,  2,  1,  0,
-			 0,  1,  2,  3,  3,  2,  1,  0,
-			 0,  1,  2,  3,  3,  2,  1,  0,
-			 0,  1,  1,  2,  2,  1,  1,  0,
-			 0,  0,  1,  1,  1,  1,  0,  0,
+		{0, 0, 0, 1, 1, 0, 0, 0,
+			0, 0, 1, 2, 2, 1, 0, 0,
+			0, 1, 2, 2, 2, 2, 1, 0,
+			0, 1, 2, 3, 3, 2, 1, 0,
+			0, 1, 2, 3, 3, 2, 1, 0,
+			0, 1, 1, 2, 2, 1, 1, 0,
+			0, 0, 1, 1, 1, 1, 0, 0,
 			-6, -6, -6, -6, -6, -6, -6, -6},
 	},
 }
 
-var king_pst = [2][2][64]int{ // Black 
+var king_pst = [2][2][64]int{ // Black
 	{ // Early game
 		{
 			-52, -50, -50, -50, -50, -50, -50, -52, // In early game, encourage the king to stay on back
@@ -105,17 +103,17 @@ var king_pst = [2][2][64]int{ // Black
 			-44, -42, -42, -42, -42, -42, -42, -44,
 			-42, -40, -40, -40, -40, -40, -40, -42,
 			-16, -15, -20, -20, -20, -20, -15, -16,
-			  0,  20,  30, -30,  0,  -20,  30,  20,
+			0, 20, 30, -30, 0, -20, 30, 20,
 		},
 		{ // Endgame
-			-30, -20, -10,  0,  0, -10, -20, -30, // In end game (when few friendly pieces are available
-			-20, -10,   0, 10, 10,   0, -10, -20, // to protect king), the king should move toward the center
-			-10,   0,  10, 20, 20,  10,   0, -10, // and avoid getting trapped in corners.
-			  0,  10,  20, 30, 30,  20,  10,   0,
-			  0,  10,  20, 30, 30,  20,  10,   0,
-			-10,   0,  10, 20, 20,  10,   0, -10,
-			-20, -10,   0, 10, 10,   0, -10, -20,
-			-30, -20, -10,  0,  0, -10, -20, -30,
+			-30, -20, -10, 0, 0, -10, -20, -30, // In end game (when few friendly pieces are available
+			-20, -10, 0, 10, 10, 0, -10, -20, // to protect king), the king should move toward the center
+			-10, 0, 10, 20, 20, 10, 0, -10, // and avoid getting trapped in corners.
+			0, 10, 20, 30, 30, 20, 10, 0,
+			0, 10, 20, 30, 30, 20, 10, 0,
+			-10, 0, 10, 20, 20, 10, 0, -10,
+			-20, -10, 0, 10, 10, 0, -10, -20,
+			-30, -20, -10, 0, 0, -10, -20, -30,
 		},
 	},
 }
@@ -132,8 +130,8 @@ var square_mirror = [64]int{
 }
 
 var king_threat_bonus = [64]int{
-	0, 		 2, 	3, 	 5, 	9, 	15,  24,  37,
-	55, 	79, 111, 150, 195, 244, 293, 337,
+	0, 2, 3, 5, 9, 15, 24, 37,
+	55, 79, 111, 150, 195, 244, 293, 337,
 	370, 389, 389, 389, 389, 389, 389, 389,
 	389, 389, 389, 389, 389, 389, 389, 389,
 	389, 389, 389, 389, 389, 389, 389, 389,
@@ -201,7 +199,7 @@ func evaluate(brd *Board, alpha, beta int) int {
 		set_pawn_structure(brd, pentry)
 	}
 
-	score += pentry.value 
+	score += pentry.value
 	score += net_passed_pawns(brd, pentry)
 
 	score += net_major_placement(brd, pentry)
@@ -301,20 +299,20 @@ func major_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
 //   -Double/tripled pawns - Penalty for having multiple pawns on the same file.
 
 var passed_pawn_bonus = [2][8]int{
-	{0, 192, 96, 48, 24, 12,   6, 0},
-	{0,   6, 12, 24, 48, 96, 192, 0},
+	{0, 192, 96, 48, 24, 12, 6, 0},
+	{0, 6, 12, 24, 48, 96, 192, 0},
 }
 var tarrasch_bonus = [2][8]int{
-	{0,  12,  8,  4,  2,  0,   0,  0},
-	{0,   0,  0,  2,  4,  8,  12,  0},
+	{0, 12, 8, 4, 2, 0, 0, 0},
+	{0, 0, 0, 2, 4, 8, 12, 0},
 }
 var defense_bonus = [2][8]int{
-	{0,  12,  8,  6,  5,  4,   3,  0},
-	{0,   3,  4,  5,  6,  8,  12,  0},
+	{0, 12, 8, 6, 5, 4, 3, 0},
+	{0, 3, 4, 5, 6, 8, 12, 0},
 }
 var duo_bonus = [2][8]int{
-	{0,   0,  2,  1,  1,  1,   0,  0},
-	{0,   0,  1,  1,  1,  2,   0,  0},
+	{0, 0, 2, 1, 1, 1, 0, 0},
+	{0, 0, 1, 1, 1, 2, 0, 0},
 }
 
 var pawn_shield_bonus = [4]int{-9, -3, 3, 9}
@@ -324,13 +322,12 @@ var promote_row = [2][2]int{
 	{6, 5},
 }
 
-
 func set_pawn_structure(brd *Board, pentry *PawnEntry) {
 	pentry.left_attacks[WHITE], pentry.right_attacks[WHITE] = pawn_attacks(brd, WHITE)
 	pentry.left_attacks[BLACK], pentry.right_attacks[BLACK] = pawn_attacks(brd, BLACK)
 
-	pentry.all_attacks[WHITE] = pentry.left_attacks[WHITE]|pentry.right_attacks[WHITE]
-	pentry.all_attacks[BLACK] = pentry.left_attacks[BLACK]|pentry.right_attacks[BLACK]
+	pentry.all_attacks[WHITE] = pentry.left_attacks[WHITE] | pentry.right_attacks[WHITE]
+	pentry.all_attacks[BLACK] = pentry.left_attacks[BLACK] | pentry.right_attacks[BLACK]
 
 	pentry.count[WHITE] = uint8(pop_count(brd.pieces[WHITE][PAWN]))
 	pentry.count[BLACK] = uint8(pop_count(brd.pieces[BLACK][PAWN]))
@@ -338,7 +335,7 @@ func set_pawn_structure(brd *Board, pentry *PawnEntry) {
 	pentry.passed_pawns[WHITE], pentry.passed_pawns[BLACK] = 0, 0
 
 	pentry.key = brd.pawn_hash_key
-	pentry.value = (pawn_structure(brd, pentry, WHITE, BLACK)-pawn_structure(brd, pentry, BLACK, WHITE))
+	pentry.value = (pawn_structure(brd, pentry, WHITE, BLACK) - pawn_structure(brd, pentry, BLACK, WHITE))
 }
 
 // Evaluation features that depend ONLY on the position of pawns go here.
@@ -350,10 +347,10 @@ func pawn_structure(brd *Board, pentry *PawnEntry, c, e uint8) int {
 	for b := own_pawns; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
 		sq_row = row(sq)
-		
+
 		if (pawn_attack_masks[c][sq]|pawn_attack_masks[e][sq])&own_pawns > 0 { // defended pawns
 			value += defense_bonus[c][sq_row]
-		} else if (pawn_side_masks[sq]&own_pawns) > 0 { // pawn duos
+		} else if (pawn_side_masks[sq] & own_pawns) > 0 { // pawn duos
 			value += duo_bonus[c][sq_row]
 		}
 
@@ -361,29 +358,27 @@ func pawn_structure(brd *Board, pentry *PawnEntry, c, e uint8) int {
 			value -= DOUBLED_PENALTY
 		}
 
-		if pawn_passed_masks[c][sq]&enemy_pawns == 0 {	// passed pawns
+		if pawn_passed_masks[c][sq]&enemy_pawns == 0 { // passed pawns
 			value += passed_pawn_bonus[c][sq_row]
-			pentry.passed_pawns[c].Add(sq)		// note the passed pawn location in the pawn hash entry.
-		} else {  // don't penalize passed pawns for being isolated.
-			if pawn_isolated_masks[sq]&own_pawns == 0 { 
-				value -= ISOLATED_PENALTY  // isolated pawns
+			pentry.passed_pawns[c].Add(sq) // note the passed pawn location in the pawn hash entry.
+		} else { // don't penalize passed pawns for being isolated.
+			if pawn_isolated_masks[sq]&own_pawns == 0 {
+				value -= ISOLATED_PENALTY // isolated pawns
 			}
 		}
 
 		if pawn_attack_spans[e][pawn_stop_sq[c][sq]]&own_pawns == 0 && // backward pawns
-			pawn_stop_masks[c][sq] & (enemy_pawns|pentry.all_attacks[e]) > 0 {
+			pawn_stop_masks[c][sq]&(enemy_pawns|pentry.all_attacks[e]) > 0 {
 			value -= BACKWARD_PENALTY
 		}
 	}
-	
+
 	return value
 }
 
-
-
 func net_passed_pawns(brd *Board, pentry *PawnEntry) int {
 	return eval_passed_pawns(brd, WHITE, BLACK, pentry.passed_pawns[WHITE]) -
-				 eval_passed_pawns(brd, BLACK, WHITE, pentry.passed_pawns[BLACK])		
+		eval_passed_pawns(brd, BLACK, WHITE, pentry.passed_pawns[BLACK])
 }
 
 func eval_passed_pawns(brd *Board, c, e uint8, passed_pawns BB) int {
@@ -393,24 +388,23 @@ func eval_passed_pawns(brd *Board, c, e uint8, passed_pawns BB) int {
 	for ; passed_pawns > 0; passed_pawns.Clear(sq) {
 		sq = furthest_forward(c, passed_pawns)
 		// Tarrasch rule: assign small bonus for friendly rook behind the passed pawn
-		if pawn_front_spans[e][sq] & brd.pieces[c][ROOK] > 0 {
+		if pawn_front_spans[e][sq]&brd.pieces[c][ROOK] > 0 {
 			value += tarrasch_bonus[c][row(sq)]
 		}
 		// pawn race: Assign a bonus if the pawn is closer to its promote square than the enemy king.
 		promote_square := pawn_promote_sq[c][sq]
 		if side_to_move == c {
-			if chebyshev_distance(sq, promote_square) < (chebyshev_distance(enemy_king_sq, promote_square) ) {
-				value += passed_pawn_bonus[c][row(sq)]				
-			}			
+			if chebyshev_distance(sq, promote_square) < (chebyshev_distance(enemy_king_sq, promote_square)) {
+				value += passed_pawn_bonus[c][row(sq)]
+			}
 		} else {
-			if chebyshev_distance(sq, promote_square) < (chebyshev_distance(enemy_king_sq, promote_square)-1) {
-				value += passed_pawn_bonus[c][row(sq)]				
-			}		
+			if chebyshev_distance(sq, promote_square) < (chebyshev_distance(enemy_king_sq, promote_square) - 1) {
+				value += passed_pawn_bonus[c][row(sq)]
+			}
 		}
 	}
 	return value
 }
-
 
 func setup_eval() {
 	// Main PST

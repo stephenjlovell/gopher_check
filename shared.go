@@ -73,7 +73,6 @@ func (c *SafeCounter) Get() int64 {
 	return atomic.LoadInt64((*int64)(c))
 }
 
-
 var middle_rows BB
 
 var mask_of_length [65]uint64
@@ -81,15 +80,14 @@ var mask_of_length [65]uint64
 var row_masks, column_masks [8]BB
 var ray_masks [8][64]BB
 
-var pawn_isolated_masks, pawn_side_masks, pawn_doubled_masks, knight_masks, bishop_masks, rook_masks, 
-		queen_masks, king_masks, sq_mask_on, sq_mask_off [64]BB
+var pawn_isolated_masks, pawn_side_masks, pawn_doubled_masks, knight_masks, bishop_masks, rook_masks,
+	queen_masks, king_masks, sq_mask_on, sq_mask_off [64]BB
 
 var intervening [64][64]BB
 var castle_queenside_intervening, castle_kingside_intervening [2]BB
 
-
 var pawn_attack_masks, pawn_blocked_masks, pawn_passed_masks, pawn_attack_spans, pawn_front_spans,
-		pawn_stop_masks, king_zone_masks, king_shield_masks [2][64]BB
+	pawn_stop_masks, king_zone_masks, king_shield_masks [2][64]BB
 
 var pawn_stop_sq, pawn_promote_sq [2][64]int
 
@@ -149,7 +147,7 @@ func manhattan_distance(from, to int) int {
 	return abs(row(from)-row(to)) + abs(column(from)-column(to))
 }
 
-var chebyshev_distance_table[64][64]int
+var chebyshev_distance_table [64][64]int
 
 func chebyshev_distance(from, to int) int {
 	return chebyshev_distance_table[from][to]
@@ -162,7 +160,6 @@ func setup_chebyshev_distance() {
 		}
 	}
 }
-
 
 func assert(statement bool, failure_message string) {
 	if !statement {

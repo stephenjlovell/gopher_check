@@ -32,9 +32,6 @@ type Stack []StackItem
 type StackItem struct {
 	sp *SplitPoint
 
-	// pv_move      Move
-	// value int
-	// depth int
 	pv *PV
 
 	killers  KEntry

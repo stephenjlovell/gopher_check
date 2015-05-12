@@ -41,6 +41,7 @@ type SplitPoint struct {
 	parent       *SplitPoint
 	master       *Worker
 	servant_mask uint8
+	servant_finished bool
 
 	brd      *Board
 	this_stk *StackItem
@@ -62,7 +63,12 @@ type SplitPoint struct {
 }
 
 func (sp *SplitPoint) Order() int {
-	return (sp.depth << 11) | (sp.legal_searched << 3) | (sp.node_type)
+	searched := sp.legal_searched
+	if searched > 16 {
+		searched = 16
+	}
+	return (searched << 3) | sp.node_type
+
 }
 
 func (sp *SplitPoint) ServantMask() uint8 {
@@ -76,31 +82,27 @@ func (sp *SplitPoint) AddServant(w_mask uint8) {
 	sp.Lock()
 	sp.servant_mask |= w_mask
 	sp.Unlock()
+	sp.wg.Add(1)
 }
 
 func (sp *SplitPoint) RemoveServant(w_mask uint8) {
 	sp.Lock()
 	sp.servant_mask &= (^w_mask)
+	sp.servant_finished = true
 	sp.Unlock()
+	sp.wg.Done()
 }
 
-
-type SPList []*SplitPoint 
+type SPList []*SplitPoint
 
 func (l *SPList) Push(sp *SplitPoint) {
-  *l = append(*l, sp)
+	*l = append(*l, sp)
 }
 
 func (l *SPList) Pop() *SplitPoint {
-  old := *l
-  n := len(old)
-  sp := old[n-1]
-  *l = old[0 : n-1]
-  return sp
+	old := *l
+	n := len(old)
+	sp := old[n-1]
+	*l = old[0 : n-1]
+	return sp
 }
-
-
-
-
-
-

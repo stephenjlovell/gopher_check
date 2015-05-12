@@ -24,8 +24,9 @@
 package main
 
 import (
-	"fmt"
+	// "fmt"
 	"sync"
+	// "time"
 )
 
 // Each worker maintains a list of active split points for which it is responsible.
@@ -69,13 +70,12 @@ func NewLoadBalancer() *Balancer {
 	}
 	for i := uint8(0); i < MAX_WORKER_GOROUTINES; i++ {
 		b.workers[i] = &Worker{
-			mask:      	1 << i,
-			index:     	i,
-			idle:				make(chan bool, 1),
-			sp_list:	 	make(SPList, 0, MAX_PLY),
-			stk:       	NewStack(),
-			ptt:       	NewPawnTT(),
-			assign_sp: 	make(chan *SplitPoint, 1),
+			mask:      1 << i,
+			index:     i,
+			sp_list:   make(SPList, 0, MAX_PLY),
+			stk:       NewStack(),
+			ptt:       NewPawnTT(),
+			assign_sp: make(chan *SplitPoint, 1),
 		}
 	}
 	return b
@@ -103,22 +103,16 @@ type Worker struct {
 	mask  uint8
 	index uint8
 
-	master *Worker
-	idle chan bool
-
-	sp_list		 SPList
+	sp_list    SPList
 	current_sp *SplitPoint
 
-	stk        Stack
-	ptt        *PawnTT
-
-	// polling_order []int
+	stk Stack
+	ptt *PawnTT
 
 	assign_sp chan *SplitPoint
-	// cancel chan bool
 }
 
-func (w *Worker) RemoveSP() {
+func (w *Worker) CancelSP() { // Should only be called by the SP master
 	load_balancer.Lock()
 
 	w.sp_list.Pop()
@@ -129,79 +123,115 @@ func (w *Worker) RemoveSP() {
 	load_balancer.Unlock()
 }
 
+func (w *Worker) RemoveSP() { // Prevent new workers from being assigned to w.current_sp without
+	load_balancer.Lock() // cancelling any ongoing work at this SP.
+
+	w.sp_list.Pop()
+	last_sp := w.current_sp.parent
+	w.current_sp = last_sp
+
+	load_balancer.Unlock()
+}
+
 func (w *Worker) IsCancelled() bool {
-	load_balancer.Lock()
+	var cancel bool
 	sp := w.current_sp
 	for sp != nil {
-		if sp.cancel {
-			load_balancer.Unlock()
+		cancel = sp.cancel
+		if cancel {
 			return true
 		}
 		sp = sp.parent
 	}
-	load_balancer.Unlock()
 	return false
 }
 
-
 func (w *Worker) HelpServants(current_sp *SplitPoint) {
-	
-
+	var best_sp *SplitPoint
+	var worker *Worker
 	// offer to help the servants of w until all servants are finished searching current_sp.
 
 	for mask := current_sp.servant_mask; mask > 0; mask = current_sp.servant_mask {
+		best_sp = nil
 
-		select {
-		case w.idle <- true:
-		default:
+		load_balancer.Lock()
+		for temp_mask := mask; temp_mask > 0; temp_mask &= (^worker.mask) {
+			worker = load_balancer.workers[lsb(BB(temp_mask))]
+			for _, this_sp := range worker.sp_list {
+				// If a worker has already finished searching, then either a beta cutoff has already
+				// occurred at sp, or no moves are left to search. 
+				if !this_sp.servant_finished && (best_sp == nil || this_sp.Order() > best_sp.Order()) {
+					best_sp = this_sp
+					temp_mask |= this_sp.servant_mask
+				}
+			}
 		}
+		load_balancer.Unlock()
 
-		select {
-			case sp := <-w.assign_sp:
-				fmt.Printf("!")
-				w.SearchSP(sp)
-			default:
+		if best_sp == nil {
+			break
+		} else {
+			w.SearchSP(best_sp)			
 		}
 	}
 
+	current_sp.wg.Wait() // If at any point we can't find another viable servant SP, wait for 
+											 // remaining servants to complete.  
 
 }
 
 func (w *Worker) Help(b *Balancer) {
 	go func() {
-		var sp *SplitPoint
+		var best_sp *SplitPoint
 		for {
-			b.done <- w  				// worker is completely idle and available to help any processor.
-			sp = <-w.assign_sp 	// wait for the next SP to be discovered.
-			w.SearchSP(sp)
+
+			b.Lock()
+			best_sp = nil
+			for _, master := range b.workers { // try to find a good SP
+				if master.index == w.index {
+					continue
+				}
+				for _, this_sp := range master.sp_list {
+					if !this_sp.servant_finished && (best_sp == nil || this_sp.Order() > best_sp.Order()) {
+						best_sp = this_sp
+					}
+				}
+			}
+			b.Unlock()
+
+			if best_sp == nil { // No best SP was available.
+				b.done <- w             // worker is completely idle and available to help any processor.
+				best_sp = <-w.assign_sp // wait for the next SP to be discovered.
+			}
+
+			w.current_sp = best_sp
+			w.SearchSP(best_sp)
+			w.current_sp = nil
+
 		}
 	}()
 }
 
-
 func (w *Worker) SearchSP(sp *SplitPoint) {
 	brd := sp.brd.Copy()
 	brd.worker = w
-	
-	w.master = sp.master
 
 	sp.master.stk.CopyUpTo(w.stk, sp.ply)
 	w.stk[sp.ply].sp = sp
-	w.current_sp = sp
 
 	sp.AddServant(w.mask)
 
 	// Once the SP is fully evaluated, The SP master will handle returning its value to parent node.
 	_, _ = ybw(brd, w.stk, sp.alpha, sp.beta, sp.depth, sp.ply,
-		sp.extensions_left, sp.can_null, sp.node_type, SP_SERVANT)
+						 sp.extensions_left, sp.can_null, sp.node_type, SP_SERVANT)
 
 	sp.RemoveServant(w.mask)
-
-	// w.current_sp = nil
-	
 	// At this point, any additional SPs found by the worker during the search rooted at sp
 	// should be fully resolved.  The SP list for this worker should be empty again.
 }
+
+
+
 
 
 

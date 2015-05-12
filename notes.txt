@@ -106,6 +106,8 @@ Total score: 286/300
 
 5/8/15
 
+Sequential:
+
 60.7203m nodes searched in 113.6935s (0.5341m NPS)
 Total score: 283/300
 8 ABF: 2.2466
@@ -113,6 +115,15 @@ Total score: 283/300
 268.0667m nodes searched in 478.4372s (0.5603m NPS)
 Total score: 287/300
 10 ABF: 2.2167
+
+5/11/15
+
+Parallel:
+
+431.5114m nodes searched in 317.6734s (1.3583m NPS)
+Total score: 285/300
+10 ABF: 2.3101
+Timeout: 4.0s
 
 
 Debugging:
@@ -125,8 +136,6 @@ Run profiling.
 Improve Null-move Pruning - add verification.
 
 Implement Tapered Eval.
-
-Implement Helpful Master Concept.
 
 Implement Pondering.
 

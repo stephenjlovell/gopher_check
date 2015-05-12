@@ -40,8 +40,8 @@ func setup_pawn_masks() {
 	for i := 0; i < 64; i++ {
 		pawn_side_masks[i] = (king_masks[i] & row_masks[row(i)])
 		if i < 56 {
-			pawn_stop_masks[WHITE][i] = sq_mask_on[i]<<8
-			pawn_stop_sq[WHITE][i] = i+8
+			pawn_stop_masks[WHITE][i] = sq_mask_on[i] << 8
+			pawn_stop_sq[WHITE][i] = i + 8
 			for j := 0; j < 2; j++ {
 				sq = i + pawn_attack_offsets[j]
 				if manhattan_distance(sq, i) == 2 {
@@ -50,8 +50,8 @@ func setup_pawn_masks() {
 			}
 		}
 		if i > 7 {
-			pawn_stop_masks[BLACK][i] = sq_mask_on[i]>>8
-			pawn_stop_sq[BLACK][i] = i-8
+			pawn_stop_masks[BLACK][i] = sq_mask_on[i] >> 8
+			pawn_stop_sq[BLACK][i] = i - 8
 			for j := 2; j < 4; j++ {
 				sq = i + pawn_attack_offsets[j]
 				if manhattan_distance(sq, i) == 2 {
@@ -145,13 +145,13 @@ func setup_row_masks() {
 
 func setup_column_masks() {
 	column_masks[0] = 1
-	for i := 0; i < 8; i++ {  // create the first column
+	for i := 0; i < 8; i++ { // create the first column
 		column_masks[0] |= column_masks[0] << 8
 	}
 	for i := 1; i < 8; i++ { // create the remaining columns by transposing the first column rightward.
 		column_masks[i] = (column_masks[i-1] << 1)
-	} 
-} 
+	}
+}
 
 func setup_directions() {
 	var ray BB
@@ -214,7 +214,7 @@ func setup_pawn_structure_masks() {
 		pawn_front_spans[WHITE][i] = pawn_passed_masks[WHITE][i] & (column_masks[col])
 		pawn_front_spans[BLACK][i] = pawn_passed_masks[BLACK][i] & (column_masks[col])
 
-		pawn_doubled_masks[i] = pawn_front_spans[WHITE][i]|pawn_front_spans[BLACK][i]
+		pawn_doubled_masks[i] = pawn_front_spans[WHITE][i] | pawn_front_spans[BLACK][i]
 
 		pawn_promote_sq[WHITE][i] = msb(pawn_front_spans[WHITE][i])
 		pawn_promote_sq[BLACK][i] = lsb(pawn_front_spans[BLACK][i])
