@@ -48,7 +48,7 @@ func TestPlayingStrength(t *testing.T) {
 
 	setup()
 	print_info = false
-	depth := 10
+	depth := 11
 	timeout := 4000
 	test := load_epd_file("test_suites/kaufman.epd")
 	var move_str string
