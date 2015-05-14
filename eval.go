@@ -24,15 +24,27 @@
 package main
 
 import (
-// "fmt"
+	// "fmt"
+)
+
+
+const (
+	MAX_ENDGAME_COUNT   = 24
+	DOUBLED_PENALTY  		= 20
+	ISOLATED_PENALTY 		= 12
+	BACKWARD_PENALTY 		= 4
 )
 
 const (
-	ENDGAME_COUNT    = 18
-	DOUBLED_PENALTY  = 20
-	ISOLATED_PENALTY = 12
-	BACKWARD_PENALTY = 4
+	MIDGAME = iota
+	ENDGAME
 )
+
+var endgame_phase [32]int
+
+// piece values used to determine endgame status. 0-12 per side, 24 total.
+var endgame_count_values = [8]uint8{0, 1, 1, 2, 4} 
+
 
 var main_pst = [2][8][64]int{ // Black. White PST will be set in setup_eval.
 	{ // Pawn
@@ -44,15 +56,6 @@ var main_pst = [2][8][64]int{ // Black. White PST will be set in setup_eval.
 			-15, -3, 0, 9, 9, 0, -3, -15,
 			-16, -4, 0, -20, -20, 0, -4, -16,
 			0, 0, 0, 0, 0, 0, 0, 0},
-
-		// {   0,  0,  0,   0,   0,  0,  0,   0,
-		// 	 26, 25, 24,  24,  24, 24, 25,  26,
-		// 	 16, 20, 12,  10,  10, 12, 20,  16,
-		// 		6, 14,  6,  10,  10,  6, 14,   6,
-		// 	 -2,  8,  4,  12,  12,  4,  8,  -2,
-		// 	-10,  2,  2,   9,   9,  2,  2, -10,
-		// 	-18, -4,  0, -20, -20,  0, -4, -18,
-		// 	  0,  0,  0,   0,   0,  0,  0,   0},
 
 		// Knight
 		{-8, -8, -6, -6, -6, -6, -8, -8,
@@ -103,7 +106,7 @@ var king_pst = [2][2][64]int{ // Black
 			-44, -42, -42, -42, -42, -42, -42, -44,
 			-42, -40, -40, -40, -40, -40, -40, -42,
 			-16, -15, -20, -20, -20, -20, -15, -16,
-			0, 20, 30, -30, 0, -20, 30, 20,
+			  0,  20,  30, -30,   0, -20,  30,  20,
 		},
 		{ // Endgame
 			-30, -20, -10, 0, 0, -10, -20, -30, // In end game (when few friendly pieces are available
@@ -140,18 +143,16 @@ var king_threat_bonus = [64]int{
 	389, 389, 389, 389, 389, 389, 389, 389,
 }
 
-var king_saftey_base = [2][2][64]int{
+var king_saftey_base = [2][64]int{
 	{ // Black
-		{ // Early-game
-			4, 4, 4, 4, 4, 4, 4, 4,
-			4, 4, 4, 4, 4, 4, 4, 4,
-			4, 4, 4, 4, 4, 4, 4, 4,
-			4, 4, 4, 4, 4, 4, 4, 4,
-			4, 4, 4, 4, 4, 4, 4, 4,
-			4, 3, 3, 3, 3, 3, 3, 4,
-			3, 1, 1, 1, 1, 1, 1, 3,
-			2, 0, 0, 0, 0, 0, 0, 2,
-		},
+		4, 4, 4, 4, 4, 4, 4, 4,
+		4, 4, 4, 4, 4, 4, 4, 4,
+		4, 4, 4, 4, 4, 4, 4, 4,
+		4, 4, 4, 4, 4, 4, 4, 4,
+		4, 4, 4, 4, 4, 4, 4, 4,
+		4, 3, 3, 3, 3, 3, 3, 4,
+		3, 1, 1, 1, 1, 1, 1, 3,
+		2, 0, 0, 0, 0, 0, 0, 2,
 	},
 }
 
@@ -179,6 +180,7 @@ func evaluate(brd *Board, alpha, beta int) int {
 	// lazy evaluation: if material balance is already outside the search window by an amount that outweighs
 	// the largest likely placement evaluation, return the material as an approximate evaluation.
 	// This prevents the engine from wasting a lot of time evaluating unrealistic positions.
+	
 	if score+piece_values[BISHOP] < alpha || score-piece_values[BISHOP] > beta {
 		if brd.c == BLACK {
 			return -score
@@ -186,13 +188,13 @@ func evaluate(brd *Board, alpha, beta int) int {
 		return score
 	}
 
-	// pentry := &PawnEntry{}
 	pentry := brd.worker.ptt.Probe(brd.pawn_hash_key)
 	if pentry.key != brd.pawn_hash_key {
 		set_pawn_structure(brd, pentry)
 	}
 
 	score += pentry.value
+	
 	score += net_passed_pawns(brd, pentry)
 
 	score += net_major_placement(brd, pentry)
@@ -230,7 +232,6 @@ func major_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
 	var b, attacks BB
 	enemy_king_sq := furthest_forward(e, brd.pieces[e][KING])
 	enemy_king_zone := king_zone_masks[e][enemy_king_sq]
-	endgame := brd.InEndgame()
 
 	pawn_count := pentry.count[c]
 
@@ -272,12 +273,16 @@ func major_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
 	for b = brd.pieces[c][KING]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
 		attacks = king_masks[sq] & available
-		if endgame == 0 {
-			placement += pawn_shield_bonus[pop_count(brd.pieces[c][PAWN]&king_shield_masks[c][sq])]
-		}
+
+		placement += weight_score(brd.endgame_counter, 
+			pawn_shield_bonus[pop_count(brd.pieces[c][PAWN]&king_shield_masks[c][sq])], 0)
+
+		placement += weight_score(brd.endgame_counter, 
+			king_pst[c][MIDGAME][sq], king_pst[c][ENDGAME][sq])
 	}
 
-	placement += king_threat_bonus[king_threats+king_saftey_base[e][endgame][enemy_king_sq]]
+	placement += weight_score(brd.endgame_counter,
+		king_threat_bonus[king_threats+king_saftey_base[e][enemy_king_sq]], king_threat_bonus[king_threats])
 
 	return placement + mobility
 }
@@ -399,6 +404,17 @@ func eval_passed_pawns(brd *Board, c, e uint8, passed_pawns BB) int {
 	return value
 }
 
+// Tapered Evaluation: adjust the score based on how close we are to the endgame.  
+// This prevents 'evaluation discontinuity' where the score changes significantly when moving from
+// mid-game to end-game, causing the search to chase after changes in endgame status instead of real
+// positional gain.
+// Uses the scaling function first implemented in Fruit and described here: 
+// https://chessprogramming.wikispaces.com/Tapered+Eval
+func weight_score(endgame_count uint8, mg_score, eg_score int) int {
+	phase := endgame_phase[endgame_count]
+	return ((mg_score * (256 - phase)) + (eg_score * phase)) / 256
+}
+
 func setup_eval() {
 	// Main PST
 	for piece := PAWN; piece < KING; piece++ {
@@ -414,6 +430,11 @@ func setup_eval() {
 	}
 	// King saftey counters
 	for sq := 0; sq < 64; sq++ {
-		king_saftey_base[WHITE][0][sq] = king_saftey_base[BLACK][0][square_mirror[sq]]
+		king_saftey_base[WHITE][sq] = king_saftey_base[BLACK][square_mirror[sq]]
 	}
+	// Endgame phase scaling factor
+	for i := 0; i <= 24; i++ {
+		endgame_phase[i] = (((MAX_ENDGAME_COUNT - i) * 256) + (MAX_ENDGAME_COUNT/2)) / MAX_ENDGAME_COUNT
+		// fmt.Printf("endgame counter:%d,  phase:%d\n", i, endgame_phase[i])
+	}	
 }

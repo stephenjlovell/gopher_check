@@ -71,7 +71,7 @@ func Perft(brd *Board, stk Stack, depth, ply int) int {
 		return 1
 	}
 	sum := 0
-	in_check := is_in_check(brd)
+	in_check := brd.InCheck()
 	if in_check {
 		check_count += 1
 	}
@@ -99,7 +99,7 @@ func PerftValidation(brd *Board, stk Stack, depth, ply int) int {
 	// intentionally disregard whether king is in check while generating moves.
 	generator := NewMoveSelector(brd, &this_stk, false, NO_MOVE)
 	for m, _ := generator.Next(SP_NONE); m != NO_MOVE; m, _ = generator.Next(SP_NONE) {
-		in_check := is_in_check(brd)
+		in_check := brd.InCheck()
 		if !brd.ValidMove(m, in_check) || !brd.LegalMove(m, in_check) {
 			continue // rely on validation to prevent illegal moves...
 		}

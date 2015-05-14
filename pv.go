@@ -53,27 +53,37 @@ func (pv *PV) ToUCI() string {
 	return str
 }
 
-func (pv *PV) SavePV(brd *Board, depth int) {
-	copy := brd.Copy() // create a local copy of the board to avoid having to unmake moves.
+var pv_accuracy [2]int
+
+func (pv *PV) SavePV(brd *Board, value, depth int) {
+	var last_value int
 	var m Move
 	var in_check bool
+
+	copy := brd.Copy() // create a local copy of the board to avoid having to unmake moves.
 	for pv != nil {
 		m = pv.m
-		in_check = is_in_check(copy)
+		in_check = copy.InCheck()
 		if !m.IsMove() {
 			break
 		}
-
 		if !copy.ValidMove(m, in_check) || !copy.LegalMove(m, in_check) {
-			// fmt.Printf("!")
 			break
 		}
 
+		last_value = pv.value
 		main_tt.store(copy, m, pv.depth, EXACT, pv.value)
 
 		make_move(copy, m)
 		pv = pv.next
 	}
+
+	if abs(value) == abs(last_value) {
+		pv_accuracy[1] += 1
+	} else {
+		pv_accuracy[0] += 1
+	}
+
 }
 
 // Node criteria as defined by Onno Garms:

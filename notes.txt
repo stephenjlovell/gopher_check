@@ -141,6 +141,22 @@ Total score: 284/300
 10 ABF: 2.2140
 Timeout: 4.0s
 
+5/13/15 Add Tapered Eval:
+
+Sequential:
+
+130.5718m nodes searched in 266.9742s (0.4891m NPS)
+Total score: 287/300
+10 ABF: 2.0920
+Timeout: 4.0s
+
+Parallel:
+
+213.6926m nodes searched in 170.5303s (1.2531m NPS)
+Total score: 287/300
+10 ABF: 2.2373
+
+
 
 To Do:
 

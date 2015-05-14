@@ -50,7 +50,7 @@ func TestPlayingStrength(t *testing.T) {
 	print_info = false
 	depth := 10
 	timeout := 4000
-	test := load_epd_file("test_suites/wac_300.epd")
+	test := load_epd_file("test_suites/kaufman.epd")
 	var move_str string
 	sum, score := 0, 0
 
@@ -80,6 +80,8 @@ func TestPlayingStrength(t *testing.T) {
 		fmt.Printf("%d ABF: %.4f\n", d, branching)
 	}
 	fmt.Printf("Timeout: %.1fs\n", float64(timeout)/1000.0)
+	fmt.Printf("PV Accuracy: %d/%d (%.2f)", pv_accuracy[1], pv_accuracy[0]+pv_accuracy[1], 
+						 float64(pv_accuracy[1])/float64(pv_accuracy[0]+pv_accuracy[1]))
 }
 
 func correct_move(epd *EPD, move_str string) bool {

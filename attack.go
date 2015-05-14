@@ -234,15 +234,11 @@ func get_see(brd *Board, from, to int, captured_piece Piece) int {
 // make these methods of Board type.
 
 func side_in_check(brd *Board, c, e uint8) bool { // determines if specified side is in check
-	if brd.pieces[c][KING] == 0 {
-		return true
-	} else {
+	// if brd.pieces[c][KING] == 0 {
+	// 	return true
+	// } else {
 		return is_attacked_by(brd, brd.AllOccupied(), brd.KingSq(c), e, c)
-	}
-}
-
-func is_in_check(brd *Board) bool { // determines if side to move is in check
-	return side_in_check(brd, brd.c, brd.Enemy())
+	// }
 }
 
 func enemy_in_check(brd *Board) bool { // determines if other side is in check
@@ -258,9 +254,9 @@ func is_checkmate(brd *Board, in_check bool) bool {
 		return false
 	}
 	c := brd.c
-	if brd.pieces[c][KING] == 0 {
-		return true
-	}
+	// if brd.pieces[c][KING] == 0 {
+	// 	return true
+	// }
 	var to int
 	e := brd.Enemy()
 	from := brd.KingSq(c)

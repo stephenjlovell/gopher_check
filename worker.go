@@ -216,6 +216,7 @@ func (w *Worker) SearchSP(sp *SplitPoint) {
 	brd.worker = w
 
 	sp.master.stk.CopyUpTo(w.stk, sp.ply)
+	
 	w.stk[sp.ply].sp = sp
 
 	sp.AddServant(w.mask)

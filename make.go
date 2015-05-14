@@ -43,6 +43,8 @@ func make_move(brd *Board, move Move) {
 	brd.hash_key ^= enp_zobrist(enp_target) // XOR out old en passant target.
 	brd.enp_target = SQ_INVALID
 
+	assert(captured_piece != KING, "Illegal king capture detected")
+
 	switch piece {
 	case PAWN:
 		brd.halfmove_clock = 0 // All pawn moves are irreversible.
@@ -184,6 +186,9 @@ func make_move(brd *Board, move Move) {
 
 // Castle flag, enp target, hash key, pawn hash key, and halfmove clock are all restored during search
 func unmake_move(brd *Board, move Move, memento *BoardMemento) {
+
+
+
 	brd.c ^= 1 // flip the current side to move.
 
 	c := brd.c
@@ -345,11 +350,6 @@ func relocate_king(brd *Board, piece, captured_piece Piece, from, to int, c uint
 	brd.occupied[c] ^= from_to
 	brd.squares[from] = EMPTY
 	brd.squares[to] = piece
-
-	// engame counter has already been updated in case of capture
-	brd.material[c] += int32(king_pst[c][brd.InEndgame()][to] -
-		king_pst[c][brd.GivesEndgame(endgame_count_values[captured_piece])][from])
-
 	// XOR out the key for piece at from, and XOR in the key for piece at to.
 	brd.hash_key ^= (zobrist(piece, from, c) ^ zobrist(piece, to, c))
 }
@@ -359,9 +359,4 @@ func unmake_relocate_king(brd *Board, piece, captured_piece Piece, from, to int,
 	brd.occupied[c] ^= from_to
 	brd.squares[from] = EMPTY
 	brd.squares[to] = piece
-
-	// endgame counter hasn't been updated yet
-	brd.material[c] += int32(king_pst[c][brd.GivesEndgame(endgame_count_values[captured_piece])][to] -
-		king_pst[c][brd.InEndgame()][from])
-
 }

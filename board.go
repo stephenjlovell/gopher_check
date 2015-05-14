@@ -67,6 +67,10 @@ func (brd *Board) NewMemento() *BoardMemento {
 	}
 }
 
+func (brd *Board) InCheck() bool { // determines if side to move is in check
+	return side_in_check(brd, brd.c, brd.Enemy())
+}
+
 func (brd *Board) KingSq(c uint8) int {
 	return furthest_forward(c, brd.pieces[c][KING])
 }
@@ -105,15 +109,17 @@ func (brd *Board) PseudolegalAvoidsCheck(m Move) bool {
 func (brd *Board) EvadesCheck(m Move) bool {
 	piece, from, to := m.Piece(), m.From(), m.To()
 	c, e := brd.c, brd.Enemy()
-	if brd.pieces[c][KING] == 0 {
-		return false
-	}
+  
 	occ := brd.AllOccupied()
 	if piece == KING {
 		return !is_attacked_by(brd, occ_after_move(brd.AllOccupied(), from, to), to, e, c)
 	} else {
 		king_sq := brd.KingSq(c)
 		threats := color_attack_map(brd, occ, king_sq, e, c)
+
+		assert(king_sq >= 0 && king_sq < 64, "Invalid king sq")
+		assert(threats > 0, "Threat map should not be empty when in check")
+
 		if pop_count(threats) > 1 {
 			return false // only king moves can escape from double check.
 		}
@@ -136,7 +142,6 @@ func (brd *Board) ValidMove(m Move, in_check bool) bool {
 	if !m.IsMove() {
 		return false
 	}
-
 	c, e := brd.c, brd.Enemy()
 	piece, from, to, captured_piece := m.Piece(), m.From(), m.To(), m.CapturedPiece()
 
@@ -152,7 +157,6 @@ func (brd *Board) ValidMove(m Move, in_check bool) bool {
 		// fmt.Printf("King capture detected!{%s}", m.ToString())
 		return false
 	}
-
 	switch piece {
 	case PAWN:
 		var diff int
@@ -255,23 +259,6 @@ func (brd *Board) PawnsOnly() bool {
 
 func (brd *Board) ColorPawnsOnly(c uint8) bool {
 	return brd.occupied[c] == brd.pieces[c][PAWN]|brd.pieces[c][KING]
-}
-
-func (brd *Board) InEndgame() int {
-	if brd.endgame_counter < ENDGAME_COUNT {
-		return 1
-	} else {
-		return 0
-	}
-}
-
-// Determines if capturing the given piece would bring us into the endgame
-func (brd *Board) GivesEndgame(pc_value uint8) int {
-	if brd.endgame_counter+pc_value < ENDGAME_COUNT {
-		return 1
-	} else {
-		return 0
-	}
 }
 
 func (brd *Board) Copy() *Board {

@@ -98,7 +98,7 @@ const (
 	OFF_RIGHT
 )
 
-var endgame_count_values = [8]uint8{1, 3, 3, 5, 9} // piece values used to determine endgame status
+
 
 // var piece_values = [8]int{100, 325, 325, 500, 975}
 var piece_values = [8]int{100, 320, 333, 510, 880, 5000} // default piece values

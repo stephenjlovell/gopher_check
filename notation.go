@@ -189,7 +189,7 @@ func PawnSAN(brd *Board, m Move, san string) string {
 func GivesCheck(brd *Board, m Move) bool {
 	memento := brd.NewMemento()
 	make_move(brd, m)
-	in_check := is_in_check(brd)
+	in_check := brd.InCheck()
 	unmake_move(brd, m, memento)
 	return in_check
 }
@@ -267,9 +267,6 @@ func ParsePlacement(brd *Board, str string) {
 			}
 		}
 	}
-	// now that the endgame counter is accurate, add in king PST
-	brd.material[WHITE] += int32(king_pst[WHITE][brd.InEndgame()][brd.KingSq(WHITE)])
-	brd.material[BLACK] += int32(king_pst[BLACK][brd.InEndgame()][brd.KingSq(BLACK)])
 }
 
 func ParseSide(str string) uint8 {

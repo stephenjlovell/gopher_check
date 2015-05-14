@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	SPLIT_MIN = 16 // set >= MAX_PLY to disable parallel search.
+	SPLIT_MIN = 3 // set >= MAX_PLY to disable parallel search.
 
 	MAX_TIME  = 120000 // default search time limit in milliseconds (2m)
 	MAX_DEPTH = 16
@@ -109,7 +109,7 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 	c := brd.c
 	stk := brd.worker.stk
 	id_alpha, id_beta = -INF, INF // first iteration is always full-width.
-	in_check := is_in_check(brd)
+	in_check := brd.InCheck()
 
 	for d := 1; d <= depth; d++ {
 
@@ -125,7 +125,7 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 
 		if stk[0].pv.m.IsMove() {
 			id_move[c], id_score[c] = stk[0].pv.m, guess
-			stk[0].pv.SavePV(brd, d) // install PV to transposition table prior to next iteration.
+			stk[0].pv.SavePV(brd, d, guess) // install PV to transposition table prior to next iteration.
 		} else {
 			fmt.Printf("Nil PV returned to ID\n")
 		}
@@ -146,6 +146,14 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 }
 
 func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, can_null bool, node_type, sp_type int) (int, int) {
+	
+	// if depth <= 0 {
+	// 	if node_type == Y_PV {
+	// 		stk[ply].pv = nil
+	// 	}
+	// 	return quiescence(brd, stk, alpha, beta, 0, ply) // q-search is always sequential.
+	// }
+
 	var this_stk *StackItem
 	var in_check bool
 	var sp *SplitPoint
@@ -201,7 +209,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 		extensions_left -= 1
 	}
 
-	if brd.halfmove_clock >= 100 {
+	if brd.halfmove_clock >= 100 { // check for draw by halfmove rule
 		if is_checkmate(brd, in_check) {
 			return ply - MATE, 1
 		} else {
@@ -248,7 +256,7 @@ search_moves:
 		pv = &PV{}
 	}
 
-	if !in_check && ply > 0 && /* node_type != Y_PV && */ alpha > 100-MATE {
+	if !in_check && ply > 0 && alpha > 100-MATE {
 		if depth <= F_PRUNE_MAX && !brd.PawnsOnly() { 
 			can_prune = true
 			if eval+piece_values[BISHOP] < alpha {
@@ -273,7 +281,7 @@ search_moves:
 
 		make_move(brd, m)
 
-		gives_check := is_in_check(brd)
+		gives_check := brd.InCheck()
 
 		if f_prune && try_prune && !gives_check {
 			unmake_move(brd, m, memento)
@@ -565,7 +573,7 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) (int, int) {
 
 		make_move(brd, m)
 
-		gives_check := is_in_check(brd)
+		gives_check := brd.InCheck()
 
 		if !in_check && !gives_check && alpha > 100-MATE &&
 			best+m.CapturedPiece().Value()+m.PromotedTo().PromoteValue()+piece_values[ROOK] < alpha {
@@ -627,8 +635,10 @@ func null_make(brd *Board, stk Stack, beta, null_depth, ply, extensions_left int
 	brd.hash_key ^= enp_zobrist(enp_target)
 	brd.enp_target = SQ_INVALID
 
+	assert(brd.InCheck() == false, "Illegal position detected during null_make()")
+
 	stk[ply+1].in_check = false // Impossible to give check from a legal position by standing pat.
-	score, sum := ybw(brd, stk, -beta, -beta+1, null_depth-1, ply+1, extensions_left, true, Y_CUT, SP_NONE)
+	score, sum := ybw(brd, stk, -beta, -beta+1, null_depth-1, ply+1, extensions_left, false, Y_CUT, SP_NONE)
 
 	brd.c ^= 1
 	brd.hash_key = hash_key
