@@ -29,34 +29,17 @@ import (
 )
 
 // Root Sorting
-
 // At root, moves should be sorted based on subtree value rather than standard sorting.
 
 // bit pos. (LSB order)
-// 50
-// 39  Promotions and captures SEE >= 0  (11 bits)
-// 38  Killers  (1 bit)
-// 28  Promotions and captures SEE < 0  (10 bits)
+// 28  Winning promotions  (1 bits)
 // 22  MVV/LVA  (6 bits)  - Used to choose between captures of equal material gain/loss
 // 1   History heuristic : (21 bits)
 // 0 Castles  (1 bit)
 
 const (
-	SORT_CASTLE  = 1
-	SORT_KILLER  = (1 << 38)
-	SORT_WINNING = (1 << 39)
-	SORT_FIRST   = (1 << 50)
+	SORT_WINNING = (1 << 28)
 )
-
-// {-780, 1660}, 12 bits  promotions and captures
-
-func SortWinningCapture(see int, victim, attacker Piece) uint64 { // 11 bits
-	return (uint64(see|1) << 39) | mvv_lva(victim, attacker)
-}
-
-func SortLosingCapture(see int, victim, attacker Piece) uint64 { // 10 bits
-	return (uint64((see+780)|1) << 28) | mvv_lva(victim, attacker)
-}
 
 func mvv_lva(victim, attacker Piece) uint64 { // returns value between 0 and 64
 	return uint64(((victim+1)<<3)-attacker) << 22
@@ -76,9 +59,9 @@ func SortPromotion(brd *Board, m Move) uint64 {
 		val = promote_values[m.PromotedTo()] + m.CapturedPiece().Value()
 	}
 	if val >= 0 {
-		return SortWinningCapture(val, m.CapturedPiece(), PAWN) // in event of material tie with regular capture,
-	} else { // try the promotion first.
-		return SortLosingCapture(val, m.CapturedPiece(), PAWN)
+		return SORT_WINNING | mvv_lva(m.CapturedPiece(), PAWN) 
+	} else { 
+		return mvv_lva(m.CapturedPiece(), PAWN)
 	}
 }
 
