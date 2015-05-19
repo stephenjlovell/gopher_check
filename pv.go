@@ -64,9 +64,7 @@ func (pv *PV) SavePV(brd *Board, value, depth int) {
 	for pv != nil {
 		m = pv.m
 		in_check = copy.InCheck()
-		if !m.IsMove() {
-			break
-		}
+
 		if !copy.ValidMove(m, in_check) || !copy.LegalMove(m, in_check) {
 			break
 		}

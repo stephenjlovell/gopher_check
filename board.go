@@ -25,7 +25,10 @@ package main
 
 import (
 	"fmt"
+	"sync"
 )
+
+var print_mutex sync.Mutex
 
 type Piece uint8
 
@@ -68,7 +71,7 @@ func (brd *Board) NewMemento() *BoardMemento {
 }
 
 func (brd *Board) InCheck() bool { // determines if side to move is in check
-	return side_in_check(brd, brd.c, brd.Enemy())
+	return is_attacked_by(brd, brd.AllOccupied(), brd.KingSq(brd.c), brd.Enemy(), brd.c)
 }
 
 func (brd *Board) KingSq(c uint8) int {
@@ -116,6 +119,12 @@ func (brd *Board) EvadesCheck(m Move) bool {
 	} else {
 		king_sq := brd.KingSq(c)
 		threats := color_attack_map(brd, occ, king_sq, e, c)
+
+		if threats <= 0 {
+			brd.PrintDetails()
+			fmt.Printf("\nin check: %b\n", brd.InCheck())
+			m.Print()
+		}
 
 		assert(king_sq >= 0 && king_sq < 64, "Invalid king sq")
 		assert(threats > 0, "Threat map should not be empty when in check")
@@ -278,6 +287,7 @@ func (brd *Board) Copy() *Board {
 }
 
 func (brd *Board) PrintDetails() {
+	print_mutex.Lock()
 	fmt.Printf("hash_key: %d, pawn_hash_key: %d\n", brd.hash_key, brd.pawn_hash_key)
 	fmt.Printf("castle: %d, enp_target: %d, halfmove_clock: %d\noccupied:\n", brd.castle, brd.enp_target, brd.halfmove_clock)
 	for i := 0; i < 2; i++ {
@@ -288,11 +298,18 @@ func (brd *Board) PrintDetails() {
 			brd.pieces[i][pc].Print()
 		}
 	}
+	print_mutex.Unlock()
 	brd.Print()
 }
 
 func (brd *Board) Print() {
-	fmt.Printf("\n    A   B   C   D   E   F   G   H\n")
+	print_mutex.Lock()
+	if brd.c == WHITE {
+		fmt.Println("\nSide to move: WHITE")
+	} else {
+		fmt.Println("\nSide to move: BLACK")
+	}
+	fmt.Printf("    A   B   C   D   E   F   G   H\n")
 	fmt.Printf("  ---------------------------------\n")
 	row := brd.squares[56:]
 	fmt.Printf("8 ")
@@ -304,6 +321,7 @@ func (brd *Board) Print() {
 		brd.PrintRow(i, row)
 	}
 	fmt.Printf("    A   B   C   D   E   F   G   H\n")
+	print_mutex.Unlock()
 }
 
 func (brd *Board) PrintRow(start int, row []Piece) {

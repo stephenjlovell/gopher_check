@@ -78,6 +78,13 @@ func (sp *SplitPoint) ServantMask() uint8 {
 	return servant_mask
 }
 
+func (sp *SplitPoint) ServantFinished() bool {
+	sp.Lock()
+	finished := sp.servant_finished
+	sp.Unlock()
+	return finished
+}
+
 func (sp *SplitPoint) AddServant(w_mask uint8) {
 	sp.Lock()
 	sp.servant_mask |= w_mask

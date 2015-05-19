@@ -50,8 +50,8 @@ import (
 
 const (
 	MAX_WORKER_GOROUTINES = 8
-	MAX_SP_PER_WORKER     = 8
-	MAX_SP                = MAX_WORKER_GOROUTINES * MAX_SP_PER_WORKER
+	// MAX_SP_PER_WORKER     = 8
+	// MAX_SP                = MAX_WORKER_GOROUTINES * MAX_SP_PER_WORKER
 )
 
 var node_count [MAX_WORKER_GOROUTINES]SafeCounter
@@ -216,14 +216,12 @@ func (w *Worker) SearchSP(sp *SplitPoint) {
 	brd.worker = w
 
 	sp.master.stk.CopyUpTo(w.stk, sp.ply)
-	
 	w.stk[sp.ply].sp = sp
 
 	sp.AddServant(w.mask)
 
 	// Once the SP is fully evaluated, The SP master will handle returning its value to parent node.
-	_, _ = ybw(brd, w.stk, sp.alpha, sp.beta, sp.depth, sp.ply,
-						 sp.extensions_left, sp.can_null, sp.node_type, SP_SERVANT)
+	_, _ = ybw(brd, w.stk, sp.alpha, sp.beta, sp.depth, sp.ply, sp.extensions_left, sp.node_type, SP_SERVANT)
 
 	sp.RemoveServant(w.mask)
 	// At this point, any additional SPs found by the worker during the search rooted at sp

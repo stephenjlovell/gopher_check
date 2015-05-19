@@ -221,6 +221,7 @@ func net_major_placement(brd *Board, pentry *PawnEntry) int {
 	return major_placement(brd, pentry, WHITE, BLACK) - major_placement(brd, pentry, BLACK, WHITE)
 }
 
+
 func major_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
 	friendly := brd.Placement(c)
 	occ := brd.AllOccupied()
@@ -281,9 +282,14 @@ func major_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
 			king_pst[c][MIDGAME][sq], king_pst[c][ENDGAME][sq])
 	}
 
-	placement += weight_score(brd.endgame_counter,
-		king_threat_bonus[king_threats+king_saftey_base[e][enemy_king_sq]], king_threat_bonus[king_threats])
+	// king_pressure := weight_score(brd.endgame_counter,
+	// 	king_threat_bonus[king_threats+king_saftey_base[e][enemy_king_sq]], king_threat_bonus[king_threats])
 
+	king_pressure := weight_score(brd.endgame_counter,
+		king_threat_bonus[king_threats+king_saftey_base[e][enemy_king_sq]], 0)
+
+
+	placement += king_pressure
 	return placement + mobility
 }
 

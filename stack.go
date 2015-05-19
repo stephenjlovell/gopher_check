@@ -38,6 +38,7 @@ type StackItem struct {
 	eval     int
 	hash_key uint64 // use hash key to search for repetitions
 	in_check bool
+	can_null bool
 }
 
 func (this_stk *StackItem) Copy() *StackItem {
@@ -49,11 +50,16 @@ func (this_stk *StackItem) Copy() *StackItem {
 		eval:     this_stk.eval,
 		hash_key: this_stk.hash_key,
 		in_check: this_stk.in_check,
+		can_null: this_stk.can_null,
 	}
 }
 
 func NewStack() Stack {
-	return make(Stack, MAX_STACK, MAX_STACK)
+	stk := make(Stack, MAX_STACK, MAX_STACK)
+	for i := 0; i < MAX_STACK; i++ {
+		stk[i].can_null = true
+	}
+	return stk
 }
 
 func (stk Stack) CopyUpTo(other_stk Stack, ply int) {

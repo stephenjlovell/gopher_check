@@ -48,9 +48,9 @@ func TestPlayingStrength(t *testing.T) {
 
 	setup()
 	print_info = false
-	depth := 11
+	depth := 10
 	timeout := 4000
-	test := load_epd_file("test_suites/kaufman.epd")
+	test := load_epd_file("test_suites/wac_300.epd")
 	var move_str string
 	sum, score := 0, 0
 
@@ -58,6 +58,7 @@ func TestPlayingStrength(t *testing.T) {
 	start := time.Now()
 	for i, epd := range test {
 		ResetAll()
+		// epd.brd.Print()
 		move, count := Search(epd.brd, depth, timeout)
 		move_str = ToSAN(epd.brd, move)
 		if correct_move(epd, move_str) {

@@ -455,9 +455,7 @@ func get_winning_captures(brd *Board, winning *MoveList) {
 func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 	c, e := brd.c, brd.Enemy()
 
-	if brd.pieces[c][KING] == 0 {
-		return
-	}
+	assert(brd.pieces[c][KING] != 0, "Illegal position detected in get_evasions()")
 
 	var defense_map BB
 	var from, to, threat_sq_1, threat_sq_2 int

@@ -114,7 +114,7 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 	for d := 1; d <= depth; d++ {
 
 		stk[0].in_check = in_check
-		guess, total = ybw(brd, stk, id_alpha, id_beta, d, 0, MAX_EXT, true, Y_PV, SP_NONE)
+		guess, total = ybw(brd, stk, id_alpha, id_beta, d, 0, MAX_EXT, Y_PV, SP_NONE)
 		sum += total
 
 		select {
@@ -145,14 +145,20 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 	return id_move[c], sum
 }
 
-func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, can_null bool, node_type, sp_type int) (int, int) {
+func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left, node_type, sp_type int) (int, int) {
 	
-	// if depth <= 0 {
-	// 	if node_type == Y_PV {
-	// 		stk[ply].pv = nil
-	// 	}
-	// 	return quiescence(brd, stk, alpha, beta, 0, ply) // q-search is always sequential.
-	// }
+	select {
+	case <-cancel:
+		return NO_SCORE, 1
+	default:
+	}
+
+	if depth <= 0 {
+		if node_type == Y_PV {
+			stk[ply].pv = nil
+		}
+		return quiescence(brd, stk, alpha, beta, 0, ply) // q-search is always sequential.
+	}
 
 	var this_stk *StackItem
 	var in_check bool
@@ -165,12 +171,6 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	var best_move, first_move Move
 	var null_depth, hash_result, eval, subtotal, total, legal_searched, child_type, r_depth, r_extensions int
 	can_prune, f_prune, can_reduce := false, false, false
-
-	select {
-	case <-cancel:
-		return NO_SCORE, 1
-	default:
-	}
 
 	// if the is_sp flag is set, a worker has just been assigned to this split point.
 	// the SP master has already handled most of the pruning, so just read the latest values
@@ -187,13 +187,6 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	}
 
 	this_stk = &stk[ply]
-
-	if depth <= 0 {
-		if node_type == Y_PV {
-			this_stk.pv = nil
-		}
-		return quiescence(brd, stk, alpha, beta, 0, ply) // q-search is always sequential.
-	}
 
 	this_stk.hash_key = brd.hash_key
 	if stk.IsRepetition(ply) { // check for draw by threefold repetition
@@ -226,14 +219,23 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	if node_type != Y_PV {
 		if (hash_result & CUTOFF_FOUND) > 0 { // Hash hit valid for current bounds.
 			return score, sum
-		} else if !in_check && can_null && hash_result != AVOID_NULL && depth > 2 &&
+		} else if !in_check && this_stk.can_null && hash_result != AVOID_NULL && depth > 2 &&
 			!brd.PawnsOnly() && eval >= beta {  // Null-move pruning
 
 			score, subtotal = null_make(brd, stk, beta, null_depth, ply, extensions_left)
 			sum += subtotal
 			if score >= beta && score < MATE-100 {
-				main_tt.store(brd, 0, depth, LOWER_BOUND, score)
-				return score, sum
+				if depth >= 8 {  //  Null-move Verification search
+					this_stk.can_null = false
+					score, subtotal = ybw(brd, stk, beta-1, beta, null_depth-1, ply, extensions_left, node_type, SP_NONE)
+					this_stk.can_null = true
+					sum += subtotal
+					if score >= beta && score < MATE-100 {
+						return score, sum
+					}
+				} else {
+					return score, sum					
+				}
 			}
 		}
 	}
@@ -241,7 +243,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left int, ca
 	// skip IID when in check?
 	if !in_check && node_type == Y_PV && hash_result == NO_MATCH && depth >= IID_MIN {
 		// No hash move available. Use IID to get a decent first move to try.
-		score, subtotal = ybw(brd, stk, alpha, beta, depth-2, ply, extensions_left, can_null, node_type, SP_NONE)
+		score, subtotal = ybw(brd, stk, alpha, beta, depth-2, ply, extensions_left, Y_PV, SP_NONE)
 		sum += subtotal
 		if this_stk.pv != nil {
 			first_move = this_stk.pv.m			
@@ -295,23 +297,23 @@ search_moves:
 			r_depth = depth + 1 // extend winning promotions only
 			r_extensions = extensions_left - 1
 		} else if can_reduce && !may_promote && !gives_check && stage >= STAGE_REMAINING &&
-			((node_type == Y_ALL && legal_searched > 2) || legal_searched > 6)  {
+			((node_type == Y_ALL && legal_searched > 2) || legal_searched > 6) {
 			r_depth = depth - 1 // Late move reductions
 		}
 
 		stk[ply+1].in_check = gives_check // avoid having to recalculate in_check at beginning of search.
 		total = 0
 		if node_type == Y_PV && alpha > old_alpha {
-			score, subtotal = ybw(brd, stk, -alpha-1, -alpha, r_depth-1, ply+1, r_extensions, can_null, child_type, SP_NONE)
+			score, subtotal = ybw(brd, stk, -alpha-1, -alpha, r_depth-1, ply+1, r_extensions, child_type, SP_NONE)
 			score = -score
 			total += subtotal
 			if score > alpha {
-				score, subtotal = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, Y_PV, SP_NONE)
+				score, subtotal = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, r_extensions, Y_PV, SP_NONE)
 				score = -score
 				total += subtotal
 			}
 		} else {
-			score, subtotal = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, r_extensions, can_null, child_type, SP_NONE)
+			score, subtotal = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, r_extensions, child_type, SP_NONE)
 			score = -score
 			total += subtotal
 		}
@@ -405,7 +407,7 @@ search_moves:
 		// Determine if this would be a good location to begin searching in parallel.
 		if sp_type == SP_NONE && can_split(brd, ply, depth, node_type, legal_searched, stage) {
 			sp = setup_sp(brd, stk, selector, best_move, alpha, beta, best, depth, ply,
-										extensions_left, legal_searched, can_null, node_type, sum)
+										extensions_left, legal_searched, node_type, sum)
 			sp_type = SP_MASTER
 		}
 	} // end of moves loop
@@ -457,84 +459,12 @@ search_moves:
 	}
 }
 
-// Determine if the current node is a good place to start searching in parallel.
-func can_split(brd *Board, ply, depth, node_type, legal_searched, stage int) bool {
-	if depth >= SPLIT_MIN {
-		switch node_type {
-		case Y_PV:
-			return legal_searched > 0 && ply > 0
-		case Y_CUT:
-			return legal_searched > 6 && stage >= STAGE_REMAINING
-		case Y_ALL:
-			return legal_searched > 1
-		}
-	}
-	return false
-}
-
-func setup_sp(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, beta, best, depth, ply, extensions_left,
-	legal_searched int, can_null bool, node_type, sum int) *SplitPoint {
-	master := brd.worker
-
-	sp := &SplitPoint{
-		selector: ms,
-		master:   master,
-		parent:   master.current_sp,
-
-		brd:      brd.Copy(),
-		this_stk: stk[ply].Copy(),
-
-		depth:           depth,
-		ply:             ply,
-		extensions_left: extensions_left,
-		can_null:        can_null,
-		node_type:       node_type,
-
-		alpha:     alpha,
-		beta:      beta,
-		best:      best,
-		best_move: best_move,
-
-		node_count:     sum,
-		legal_searched: legal_searched,
-		cancel:         false,
-	}
-
-	ms.brd = sp.brd // make sure the move selector points to the static SP board.
-	ms.this_stk = sp.this_stk
-	stk[ply].sp = sp
-
-	load_balancer.Lock()
-
-	master.sp_list.Push(sp)
-	master.current_sp = sp
-
-	load_balancer.Unlock()
-
-FlushIdle: // If there are any idle workers, assign them now.
-	for {
-		select {
-		case w := <-load_balancer.done:
-			w.assign_sp <- sp
-		default:
-			break FlushIdle
-		}
-	}
-	return sp
-}
 
 // Q-Search will always be done sequentially: Q-search subtrees are taller and narrower than in the main search,
 // making benefit of parallelism smaller and raising communication and synchronization overhead.
 func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) (int, int) {
 
-	select {
-	case <-cancel:
-		return NO_SCORE, 1
-	default:
-	}
-
 	this_stk := &stk[ply]
-
 	this_stk.hash_key = brd.hash_key
 	if stk.IsRepetition(ply) {
 		return -PAWN - ply, 1
@@ -628,6 +558,78 @@ func determine_child_type(node_type, legal_searched int) int {
 	}
 }
 
+
+// Determine if the current node is a good place to start searching in parallel.
+func can_split(brd *Board, ply, depth, node_type, legal_searched, stage int) bool {
+	if depth >= SPLIT_MIN {
+		switch node_type {
+		case Y_PV:
+			if ply == 0 {
+				// return legal_searched > 2
+				return false
+			} else {
+				return legal_searched > 0
+			}
+		case Y_CUT:
+			return legal_searched > 6 && stage >= STAGE_REMAINING
+		case Y_ALL:
+			return legal_searched > 1
+		}
+	}
+	return false
+}
+
+func setup_sp(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, beta, best, depth, ply, 
+	extensions_left, legal_searched, node_type, sum int) *SplitPoint {
+	master := brd.worker
+
+	sp := &SplitPoint{
+		selector: ms,
+		master:   master,
+		parent:   master.current_sp,
+
+		brd:      brd.Copy(),
+		this_stk: stk[ply].Copy(),
+
+		depth:           depth,
+		ply:             ply,
+		extensions_left: extensions_left,
+
+		node_type:       node_type,
+
+		alpha:     alpha,
+		beta:      beta,
+		best:      best,
+		best_move: best_move,
+
+		node_count:     sum,
+		legal_searched: legal_searched,
+		cancel:         false,
+	}
+
+	ms.brd = sp.brd // make sure the move selector points to the static SP board.
+	ms.this_stk = sp.this_stk
+	stk[ply].sp = sp
+
+	load_balancer.Lock()
+
+	master.sp_list.Push(sp)
+	master.current_sp = sp
+
+	load_balancer.Unlock()
+
+FlushIdle: // If there are any idle workers, assign them now.
+	for {
+		select {
+		case w := <-load_balancer.done:
+			w.assign_sp <- sp
+		default:
+			break FlushIdle
+		}
+	}
+	return sp
+}
+
 func null_make(brd *Board, stk Stack, beta, null_depth, ply, extensions_left int) (int, int) {
 	hash_key, enp_target := brd.hash_key, brd.enp_target
 	brd.c ^= 1
@@ -635,10 +637,12 @@ func null_make(brd *Board, stk Stack, beta, null_depth, ply, extensions_left int
 	brd.hash_key ^= enp_zobrist(enp_target)
 	brd.enp_target = SQ_INVALID
 
-	assert(brd.InCheck() == false, "Illegal position detected during null_make()")
+	// assert(brd.InCheck() == false, "Illegal position detected during null_make()")
 
 	stk[ply+1].in_check = false // Impossible to give check from a legal position by standing pat.
-	score, sum := ybw(brd, stk, -beta, -beta+1, null_depth-1, ply+1, extensions_left, false, Y_CUT, SP_NONE)
+	stk[ply+1].can_null = false
+	score, sum := ybw(brd, stk, -beta, -beta+1, null_depth-1, ply+1, extensions_left, Y_CUT, SP_NONE)
+	stk[ply+1].can_null = true
 
 	brd.c ^= 1
 	brd.hash_key = hash_key

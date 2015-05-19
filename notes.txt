@@ -164,7 +164,7 @@ Run profiling.
 
 Improve Null-move Pruning - add verification.
 
-Implement Tapered Eval.
+Tune Tapered Eval.
 
 Implement Pondering.
 
