@@ -72,6 +72,9 @@ func (m Move) IsPotentialPromotion(brd *Board) bool {
 	if m.Piece() != PAWN {
 		return false
 	}
+	if m.IsPromotion() {
+		return true
+	}
 	if brd.c == WHITE {
 		return m.To() >= A5 || m.IsPassedPawn(brd)
 	} else {

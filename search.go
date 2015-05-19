@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	SPLIT_MIN = 3 // set >= MAX_PLY to disable parallel search.
+	SPLIT_MIN = 16 // set >= MAX_PLY to disable parallel search.
 
 	MAX_TIME  = 120000 // default search time limit in milliseconds (2m)
 	MAX_DEPTH = 16
@@ -224,13 +224,13 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left, node_t
 
 			score, subtotal = null_make(brd, stk, beta, null_depth, ply, extensions_left)
 			sum += subtotal
-			if score >= beta && score < MATE-100 {
+			if score >= beta && score < MIN_MATE {
 				if depth >= 8 {  //  Null-move Verification search
 					this_stk.can_null = false
 					score, subtotal = ybw(brd, stk, beta-1, beta, null_depth-1, ply, extensions_left, node_type, SP_NONE)
 					this_stk.can_null = true
 					sum += subtotal
-					if score >= beta && score < MATE-100 {
+					if score >= beta && score < MIN_MATE {
 						return score, sum
 					}
 				} else {
@@ -258,7 +258,7 @@ search_moves:
 		pv = &PV{}
 	}
 
-	if !in_check && ply > 0 && alpha > 100-MATE {
+	if !in_check && ply > 0 && alpha > -MIN_MATE {
 		if depth <= F_PRUNE_MAX && !brd.PawnsOnly() { 
 			can_prune = true
 			if eval+piece_values[BISHOP] < alpha {
@@ -499,14 +499,17 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) (int, int) {
 	memento := brd.NewMemento()
 	selector := NewQMoveSelector(brd, this_stk, in_check, depth >= MIN_CHECK_DEPTH)
 
+	var may_promote, gives_check bool
 	for m := selector.Next(false); m != NO_MOVE; m = selector.Next(false) {
+
+		may_promote = m.IsPotentialPromotion(brd)
 
 		make_move(brd, m)
 
-		gives_check := brd.InCheck()
+		gives_check = brd.InCheck()
 
-		if !in_check && !gives_check && alpha > 100-MATE &&
-			best+m.CapturedPiece().Value()+m.PromotedTo().PromoteValue()+piece_values[ROOK] < alpha {
+		if !in_check && !gives_check && !may_promote && alpha > -MIN_MATE && 
+			best+m.CapturedPiece().Value()+piece_values[ROOK] < alpha {
 			unmake_move(brd, m, memento)
 			continue
 		}
