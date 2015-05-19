@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	SPLIT_MIN = 16 // set >= MAX_PLY to disable parallel search.
+	SPLIT_MIN = 3 // set >= MAX_PLY to disable parallel search.
 
 	MAX_TIME  = 120000 // default search time limit in milliseconds (2m)
 	MAX_DEPTH = 16
@@ -168,9 +168,11 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left, node_t
 
 	score, best, old_alpha := -INF, -INF, alpha
 	sum := 1
-	var best_move, first_move Move
-	var null_depth, hash_result, eval, subtotal, total, legal_searched, child_type, r_depth, r_extensions int
+
+	var null_depth, hash_result, hash_score, eval, subtotal, total, legal_searched, child_type, 
+			r_depth, r_extensions int
 	can_prune, f_prune, can_reduce := false, false, false
+	best_move, first_move := NO_MOVE, NO_MOVE
 
 	// if the is_sp flag is set, a worker has just been assigned to this split point.
 	// the SP master has already handled most of the pruning, so just read the latest values
@@ -212,6 +214,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, extensions_left, node_t
 
 	null_depth = depth - 4
 	first_move, hash_result = main_tt.probe(brd, depth, null_depth, alpha, beta, &score)
+	hash_score = score
 
 	eval = evaluate(brd, alpha, beta)
 	this_stk.eval = eval
@@ -270,15 +273,40 @@ search_moves:
 		}
 	}
 
+	singular_node := ply > 0 && node_type == Y_CUT && (hash_result & BETA_FOUND) > 0 && 
+		first_move != NO_MOVE && depth > 6 && this_stk.can_null
+
 	memento := brd.NewMemento()
 
 	for m, stage := selector.Next(sp_type); m != NO_MOVE; m, stage = selector.Next(sp_type) {
+
+		if m == this_stk.singular_move {
+			continue
+		}
 
 		may_promote := m.IsPotentialPromotion(brd)
 		try_prune := can_prune && stage >= STAGE_REMAINING && legal_searched > 0 && !may_promote
 
 		if try_prune && get_see(brd, m.From(), m.To(), EMPTY) < 0 {
 			continue  // prune quiet moves that result in loss of moving piece			
+		}
+
+		total = 0
+		r_depth, r_extensions = depth, extensions_left
+		
+		// Singular extension
+		if singular_node && sp_type == SP_NONE && extensions_left > 0 && m == first_move {
+			s_beta := hash_score - (2 * depth)
+			this_stk.singular_move = m
+			this_stk.can_null = false
+			score, total = ybw(brd, stk, s_beta-1, s_beta, depth/2, ply, r_extensions, Y_CUT, SP_NONE)
+			this_stk.singular_move = NO_MOVE
+			this_stk.can_null = true
+
+			if score < s_beta {
+				r_depth = depth + 1 // extend moves that are expected to be the only move searched.
+				r_extensions = extensions_left - 1
+			}
 		}
 
 		make_move(brd, m)
@@ -292,8 +320,7 @@ search_moves:
 
 		child_type = determine_child_type(node_type, legal_searched)
 
-		r_depth, r_extensions = depth, extensions_left
-		if m.IsPromotion() && stage == STAGE_WINNING && extensions_left > 0 {
+		if m.IsPromotion() && stage == STAGE_WINNING && extensions_left > 0 && r_depth == depth {
 			r_depth = depth + 1 // extend winning promotions only
 			r_extensions = extensions_left - 1
 		} else if can_reduce && !may_promote && !gives_check && stage >= STAGE_REMAINING &&
@@ -302,7 +329,7 @@ search_moves:
 		}
 
 		stk[ply+1].in_check = gives_check // avoid having to recalculate in_check at beginning of search.
-		total = 0
+
 		if node_type == Y_PV && alpha > old_alpha {
 			score, subtotal = ybw(brd, stk, -alpha-1, -alpha, r_depth-1, ply+1, r_extensions, child_type, SP_NONE)
 			score = -score

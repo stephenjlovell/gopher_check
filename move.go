@@ -80,7 +80,6 @@ func (m Move) IsPotentialPromotion(brd *Board) bool {
 	} else {
 		return m.To() < A5 || m.IsPassedPawn(brd)
 	}
-
 }
 
 func (m Move) IsPassedPawn(brd *Board) bool {

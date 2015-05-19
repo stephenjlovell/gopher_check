@@ -35,7 +35,7 @@ import (
 // 28  Winning promotions  (1 bits)
 // 22  MVV/LVA  (6 bits)  - Used to choose between captures of equal material gain/loss
 // 1   History heuristic : (21 bits)
-// 0 Castles  (1 bit)
+// 0 	 Castles  (1 bit)
 
 const (
 	SORT_WINNING = (1 << 28)
@@ -54,9 +54,9 @@ func mvv_lva(victim, attacker Piece) uint64 { // returns value between 0 and 64
 func SortPromotion(brd *Board, m Move) uint64 {
 	var val int
 	if is_attacked_by(brd, brd.AllOccupied()&sq_mask_off[m.From()], m.To(), brd.Enemy(), brd.c) {
-		val = get_see(brd, m.From(), m.To(), m.CapturedPiece())
+		val = get_see(brd, m.From(), m.To(), m.CapturedPiece())  // defended
 	} else {
-		val = promote_values[m.PromotedTo()] + m.CapturedPiece().Value()
+		val = m.PromotedTo().PromoteValue() + m.CapturedPiece().Value() // undefended
 	}
 	if val >= 0 {
 		return SORT_WINNING | mvv_lva(m.CapturedPiece(), PAWN) 
@@ -64,8 +64,6 @@ func SortPromotion(brd *Board, m Move) uint64 {
 		return mvv_lva(m.CapturedPiece(), PAWN)
 	}
 }
-
-// "Promising" moves (winning captures, promotions, and killers) are searched sequentially.
 
 type SortItem struct {
 	move  Move

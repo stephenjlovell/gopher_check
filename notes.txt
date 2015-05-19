@@ -156,7 +156,11 @@ Parallel:
 Total score: 287/300
 10 ABF: 2.2373
 
+5/19/15 Add Singular Extension:
 
+788.9265m nodes searched in 636.2776s (1.2399m NPS)
+Total score: 291/300
+Timeout: 6.0s
 
 To Do:
 
