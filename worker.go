@@ -26,7 +26,6 @@ package main
 import (
 	// "fmt"
 	"sync"
-	// "time"
 )
 
 // Each worker maintains a list of active split points for which it is responsible.
@@ -94,6 +93,14 @@ func (b *Balancer) Start() {
 	}
 }
 
+func (b *Balancer) Overhead() int {
+	overhead := 0
+	for _, w := range b.workers {
+		overhead += w.search_overhead
+	}
+	return overhead
+}
+
 func (b *Balancer) RootWorker() *Worker {
 	return b.workers[0]
 }
@@ -102,6 +109,8 @@ type Worker struct {
 	sync.Mutex
 	mask  uint8
 	index uint8
+
+	search_overhead int
 
 	sp_list    SPList
 	current_sp *SplitPoint
@@ -134,14 +143,10 @@ func (w *Worker) RemoveSP() { // Prevent new workers from being assigned to w.cu
 }
 
 func (w *Worker) IsCancelled() bool {
-	var cancel bool
-	sp := w.current_sp
-	for sp != nil {
-		cancel = sp.cancel
-		if cancel {
+	for sp := w.current_sp; sp != nil; sp = sp.parent {
+		if sp.cancel {
 			return true
 		}
-		sp = sp.parent
 	}
 	return false
 }
@@ -221,7 +226,8 @@ func (w *Worker) SearchSP(sp *SplitPoint) {
 	sp.AddServant(w.mask)
 
 	// Once the SP is fully evaluated, The SP master will handle returning its value to parent node.
-	_, _ = ybw(brd, w.stk, sp.alpha, sp.beta, sp.depth, sp.ply, sp.extensions_left, sp.node_type, SP_SERVANT)
+	_, total := ybw(brd, w.stk, sp.alpha, sp.beta, sp.depth, sp.ply, sp.node_type, SP_SERVANT, sp.checked)
+	w.search_overhead += total
 
 	sp.RemoveServant(w.mask)
 	// At this point, any additional SPs found by the worker during the search rooted at sp

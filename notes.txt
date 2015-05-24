@@ -162,6 +162,21 @@ Total score: 287/300
 Total score: 291/300
 Timeout: 6.0s
 
+5/24/15 Improve cancellation on cutoff:
+
+219.5798m nodes searched in 147.9855s (1.4838m NPS)
+Total score: 287/300
+10 ABF: 2.2038
+Overhead: 0.3955m
+Timeout: 6.0s
+
+826.4264m nodes searched in 545.6666s (1.5145m NPS)
+Total score: 291/300
+12 ABF: 2.1051
+Overhead: 2.2782m
+
+
+
 To Do:
 
 Run profiling.

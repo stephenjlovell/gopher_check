@@ -50,6 +50,7 @@ type SplitPoint struct {
 	ply             int
 	extensions_left int
 	can_null        bool
+	checked					bool
 	node_type       int
 
 	alpha     int  // shared
@@ -60,6 +61,7 @@ type SplitPoint struct {
 	node_count     int // shared
 	legal_searched int
 	cancel         bool
+
 }
 
 func (sp *SplitPoint) Order() int {
@@ -78,12 +80,12 @@ func (sp *SplitPoint) ServantMask() uint8 {
 	return servant_mask
 }
 
-func (sp *SplitPoint) ServantFinished() bool {
-	sp.Lock()
-	finished := sp.servant_finished
-	sp.Unlock()
-	return finished
-}
+// func (sp *SplitPoint) ServantFinished() bool {
+// 	sp.Lock()
+// 	finished := sp.servant_finished
+// 	sp.Unlock()
+// 	return finished
+// }
 
 func (sp *SplitPoint) AddServant(w_mask uint8) {
 	sp.Lock()

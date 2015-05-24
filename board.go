@@ -120,14 +120,16 @@ func (brd *Board) EvadesCheck(m Move) bool {
 		king_sq := brd.KingSq(c)
 		threats := color_attack_map(brd, occ, king_sq, e, c)
 
-		if threats <= 0 {
-			brd.PrintDetails()
-			fmt.Printf("\nin check: %b\n", brd.InCheck())
-			m.Print()
+		if threats == 0 {
+			return true  // no threats to evade.
 		}
-
-		assert(king_sq >= 0 && king_sq < 64, "Invalid king sq")
-		assert(threats > 0, "Threat map should not be empty when in check")
+		// if threats <= 0 {
+		// 	brd.PrintDetails()
+		// 	fmt.Printf("\nin check: %b\n", brd.InCheck())
+		// 	m.Print()
+		// }
+		// assert(king_sq >= 0 && king_sq < 64, "Invalid king sq")
+		// assert(threats > 0, "Threat map should not be empty when in check")
 
 		if pop_count(threats) > 1 {
 			return false // only king moves can escape from double check.
