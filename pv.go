@@ -35,20 +35,15 @@ type PV struct {
 }
 
 func (pv *PV) ToUCI() string {
-	var m Move
-	str := ""
-	m = pv.m
-	if !m.IsMove() {
-		return str
+	if pv == nil || !pv.m.IsMove() {
+		return ""
 	}
-	str = pv.m.ToUCI()
-	for pv != nil {
-		m = pv.m
-		if !m.IsMove() {
+	str := pv.m.ToUCI()
+	for curr_pv := pv.next; curr_pv != nil; curr_pv = curr_pv.next {
+		if !curr_pv.m.IsMove() {
 			break
 		}
-		str += " " + m.ToUCI()
-		pv = pv.next
+		str += " " + curr_pv.m.ToUCI()
 	}
 	return str
 }

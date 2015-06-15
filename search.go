@@ -29,12 +29,13 @@ import (
 )
 
 const (
-	SPLIT_MIN = 3 // set >= MAX_PLY to disable parallel search.
 
 	MAX_TIME  = 120000 // default search time limit in milliseconds (2m)
+
+	SPLIT_MIN = 16 // set >= MAX_PLY to disable parallel search.
+	
 	MAX_DEPTH = 16
-	MAX_EXT   = 16
-	MAX_PLY   = MAX_DEPTH + MAX_EXT
+	MAX_PLY   = MAX_DEPTH * 2
 
 	F_PRUNE_MAX = 2 // should always be less than SPLIT_MIN
 	LMR_MIN     = 1
@@ -179,10 +180,10 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, node_type, sp_type int,
 	if sp_type == SP_SERVANT {
 		sp = stk[ply].sp
 		sp.Lock()
-		this_stk = sp.this_stk
-		eval = sp.this_stk.eval
-		in_check = this_stk.in_check
 		selector = sp.selector
+		this_stk = sp.this_stk
+		eval = this_stk.eval
+		in_check = this_stk.in_check
 		sp.Unlock()
 		goto search_moves
 	}
@@ -197,8 +198,8 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, node_type, sp_type int,
 	}
 
 	this_stk.hash_key = brd.hash_key
-	if stk.IsRepetition(ply) { // check for draw by threefold repetition
-		return -PAWN - ply, 1
+	if stk.IsRepetition(ply, brd.halfmove_clock) { // check for draw by threefold repetition
+		return 0-ply, 1
 	}
 
 	in_check = this_stk.in_check
@@ -260,7 +261,9 @@ search_moves:
 		pv = &PV{}
 	}
 
-	if !in_check && ply > 0 && alpha > -MIN_MATE {
+	if in_check {
+		checked = true // Don't extend on the first check in the current variation.
+	}	else if ply > 0 && alpha > -MIN_MATE {
 		if depth <= F_PRUNE_MAX && !brd.PawnsOnly() {
 			can_prune = true
 			if eval+piece_values[BISHOP] < alpha {
@@ -270,10 +273,6 @@ search_moves:
 		if depth >= LMR_MIN {
 			can_reduce = true
 		}
-	}
-
-	if in_check {
-		checked = true // Don't extend on the first check in the current variation.
 	}
 
 	singular_node := ply > 0 && node_type == Y_CUT && (hash_result&BETA_FOUND) > 0 &&
@@ -300,12 +299,9 @@ search_moves:
 		// Singular extension
 		if singular_node && sp_type == SP_NONE && m == first_move {
 			s_beta := hash_score - (2 * depth)
-			this_stk.singular_move = m
-			this_stk.can_null = false
+			this_stk.singular_move, this_stk.can_null = m, false
 			score, total = ybw(brd, stk, s_beta-1, s_beta, depth/2, ply, Y_CUT, SP_NONE, checked)
-			this_stk.singular_move = NO_MOVE
-			this_stk.can_null = true
-
+			this_stk.singular_move, this_stk.can_null = NO_MOVE, true
 			if score < s_beta {
 				r_depth = depth + 1 // extend moves that are expected to be the only move searched.
 			}
@@ -365,9 +361,7 @@ search_moves:
 				if sp.cancel {
 					brd.worker.RemoveSP()
 					sp.Lock()
-					best = sp.best
-					best_move = sp.best_move
-					sum = sp.node_count
+					best, best_move, sum = sp.best, sp.best_move, sp.node_count
 					sp.Unlock()
 					// the servant that found the cutoff has already stored the cutoff info.
 					main_tt.store(brd, best_move, depth, LOWER_BOUND, best)
@@ -382,29 +376,16 @@ search_moves:
 		}
 
 		if sp_type != SP_NONE {
-
-			sp.Lock()
-
-			alpha = sp.alpha // get the latest info
-			beta = sp.beta
-			best = sp.best
-			best_move = sp.best_move
-			legal_searched = sp.legal_searched
-			sum = sp.node_count
+			sp.Lock() // get the latest info under lock protection
+			alpha, beta, best, best_move = sp.alpha, sp.beta, sp.best, sp.best_move
 			sp.legal_searched += 1
-			legal_searched += 1
 			sp.node_count += total
-			sum += total
+			legal_searched, sum = sp.legal_searched, sp.node_count
 
 			if score > best {
-				best_move = m
-				sp.best_move = m
-				best = score
-				sp.best = score
-
+				best_move, sp.best_move, best, sp.best = m, m, score, score
 				if score > alpha {
-					alpha = score
-					sp.alpha = score
+					alpha, sp.alpha = score, score
 					if node_type == Y_PV { // will need to update this for parallel search
 						pv.m, pv.value, pv.depth, pv.next = m, score, depth, stk[ply+1].pv
 						this_stk.pv = pv
@@ -441,16 +422,16 @@ search_moves:
 					}
 					alpha = score
 				}
-				best_move = m
-				best = score
+				best_move, best = m, score
 			}
 			legal_searched += 1
-		}
-		// Determine if this would be a good location to begin searching in parallel.
-		if sp_type == SP_NONE && can_split(brd, ply, depth, node_type, legal_searched, stage) {
-			sp = setup_sp(brd, stk, selector, best_move, alpha, beta, best, depth, ply,
-				legal_searched, node_type, sum, checked)
-			sp_type = SP_MASTER
+			// Determine if this would be a good location to begin searching in parallel.
+			if can_split(brd, ply, depth, node_type, legal_searched, stage) {
+				sp = setup_sp(brd, stk, selector, best_move, alpha, beta, best, depth, ply,
+					legal_searched, node_type, sum, checked)
+				this_stk = sp.this_stk
+				sp_type = SP_MASTER
+			}
 		}
 	} // end of moves loop
 
@@ -467,10 +448,8 @@ search_moves:
 		}
 
 		sp.Lock()
-		best = sp.best
-		best_move = sp.best_move
-		alpha = sp.alpha
-		sum = sp.node_count
+		alpha, best, best_move = sp.alpha, sp.best, sp.best_move
+		sum, legal_searched = sp.node_count, sp.legal_searched
 		sp.Unlock()
 
 	case SP_SERVANT:
@@ -506,9 +485,10 @@ search_moves:
 func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) (int, int) {
 
 	this_stk := &stk[ply]
+
 	this_stk.hash_key = brd.hash_key
-	if stk.IsRepetition(ply) {
-		return -PAWN - ply, 1
+	if stk.IsRepetition(ply, brd.halfmove_clock) { // check for draw by threefold repetition
+		return 0-ply, 1
 	}
 
 	in_check := this_stk.in_check
@@ -633,6 +613,7 @@ func setup_sp(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, be
 
 		brd:      brd.Copy(),
 		this_stk: stk[ply].Copy(),
+		// this_stk: &stk[ply],
 
 		depth: depth,
 		ply:   ply,
