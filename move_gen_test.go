@@ -58,7 +58,7 @@ func legal_movegen(fn func(brd *Board, stk Stack, depth, ply int) int) {
 
 	CompareBoards(copy, brd)
 	assert(*brd == *copy, "move generation did not return to initial board state.")
-	assert(sum == legal_max_tree[depth], "Expected " + strconv.Itoa(legal_max_tree[depth])+
+	assert(sum == legal_max_tree[depth], "Expected "+strconv.Itoa(legal_max_tree[depth])+
 		" nodes, got "+strconv.Itoa(sum))
 }
 

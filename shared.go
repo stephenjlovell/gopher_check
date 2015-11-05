@@ -24,6 +24,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"math/rand"
 	"runtime"
@@ -31,10 +32,10 @@ import (
 )
 
 const (
-	INF      = 10000        // an arbitrarily large score used to signal checkmate.
-	NO_SCORE = INF - 1      // score used to signal
-	MATE     = NO_SCORE - 1 // maximum checkmate score (i.e. mate in 0)
-	MIN_MATE = MATE - MAX_STACK  // minimum possible checkmate score (mate in MAX_STACK)
+	INF      = 10000            // an arbitrarily large score used to signal checkmate.
+	NO_SCORE = INF - 1          // score used to signal
+	MATE     = NO_SCORE - 1     // maximum checkmate score (i.e. mate in 0)
+	MIN_MATE = MATE - MAX_STACK // minimum possible checkmate score (mate in MAX_STACK)
 ) // total value of all starting pieces for one side: 9006
 
 const ( // color
@@ -98,8 +99,6 @@ const (
 	OFF_LEFT
 	OFF_RIGHT
 )
-
-
 
 // var piece_values = [8]int{100, 325, 325, 500, 975}
 var piece_values = [8]int{100, 320, 333, 510, 880, 5000} // default piece values
@@ -184,7 +183,15 @@ func setup() {
 	fmt.Println("------------------------------------------------------------------\n")
 }
 
+var profile_flag = flag.Bool("profile", false, "Set profile=true to run profiler on test suite.")
+
 func main() {
 	setup()
-	ReadUCICommand()
+	flag.Parse()
+
+	if *profile_flag {
+		RunProfiledTestSuite()
+	} else {
+		ReadUCICommand()
+	}
 }

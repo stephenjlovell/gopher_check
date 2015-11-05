@@ -30,28 +30,27 @@ const (
 type Stack []StackItem
 
 type StackItem struct {
-	sp 							*SplitPoint
-	pv 							*PV
+	sp *SplitPoint
+	pv *PV
 
-	killers  				KEntry
-	singular_move 	Move
-	eval     				int
-	hash_key 				uint64 // use hash key to search for repetitions
-	in_check 				bool
-	can_null 				bool
-
+	killers       KEntry
+	singular_move Move
+	eval          int
+	hash_key      uint64 // use hash key to search for repetitions
+	in_check      bool
+	can_null      bool
 }
 
 func (this_stk *StackItem) Copy() *StackItem {
 	return &StackItem{
 		// sp: this_stk.sp,
-		pv: this_stk.pv,
-		killers:  this_stk.killers,
+		pv:            this_stk.pv,
+		killers:       this_stk.killers,
 		singular_move: this_stk.singular_move,
-		eval:     this_stk.eval,
-		hash_key: this_stk.hash_key,
-		in_check: this_stk.in_check,
-		can_null: this_stk.can_null,
+		eval:          this_stk.eval,
+		hash_key:      this_stk.hash_key,
+		in_check:      this_stk.in_check,
+		can_null:      this_stk.can_null,
 	}
 }
 

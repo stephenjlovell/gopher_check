@@ -29,11 +29,10 @@ import (
 )
 
 const (
-
-	MAX_TIME  = 120000 // default search time limit in milliseconds (2m)
+	MAX_TIME = 120000 // default search time limit in milliseconds (2m)
 
 	SPLIT_MIN = 16 // set >= MAX_PLY to disable parallel search.
-	
+
 	MAX_DEPTH = 16
 	MAX_PLY   = MAX_DEPTH * 2
 
@@ -199,7 +198,7 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, node_type, sp_type int,
 
 	this_stk.hash_key = brd.hash_key
 	if stk.IsRepetition(ply, brd.halfmove_clock) { // check for draw by threefold repetition
-		return 0-ply, 1
+		return 0 - ply, 1
 	}
 
 	in_check = this_stk.in_check
@@ -263,7 +262,7 @@ search_moves:
 
 	if in_check {
 		checked = true // Don't extend on the first check in the current variation.
-	}	else if ply > 0 && alpha > -MIN_MATE {
+	} else if ply > 0 && alpha > -MIN_MATE {
 		if depth <= F_PRUNE_MAX && !brd.PawnsOnly() {
 			can_prune = true
 			if eval+piece_values[BISHOP] < alpha {
@@ -369,7 +368,7 @@ search_moves:
 				} else {
 					brd.worker.CancelSP()
 					return NO_SCORE, 0
-				}		
+				}
 			case SP_SERVANT:
 				return NO_SCORE, total
 			}
@@ -488,7 +487,7 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) (int, int) {
 
 	this_stk.hash_key = brd.hash_key
 	if stk.IsRepetition(ply, brd.halfmove_clock) { // check for draw by threefold repetition
-		return 0-ply, 1
+		return 0 - ply, 1
 	}
 
 	in_check := this_stk.in_check

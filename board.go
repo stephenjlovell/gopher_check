@@ -112,7 +112,7 @@ func (brd *Board) PseudolegalAvoidsCheck(m Move) bool {
 func (brd *Board) EvadesCheck(m Move) bool {
 	piece, from, to := m.Piece(), m.From(), m.To()
 	c, e := brd.c, brd.Enemy()
-  
+
 	occ := brd.AllOccupied()
 	if piece == KING {
 		return !is_attacked_by(brd, occ_after_move(brd.AllOccupied(), from, to), to, e, c)
@@ -122,7 +122,7 @@ func (brd *Board) EvadesCheck(m Move) bool {
 
 		if threats == 0 {
 			fmt.Println("EvadesCheck() called from non-check position!")
-			return true  // no threats to evade.
+			return true // no threats to evade.
 		}
 
 		if pop_count(threats) > 1 {
@@ -338,7 +338,7 @@ func (brd *Board) PrintRow(start int, row []Piece) {
 
 func EmptyBoard() *Board {
 	brd := &Board{
-		enp_target: 	SQ_INVALID,
+		enp_target: SQ_INVALID,
 	}
 	for sq := 0; sq < 64; sq++ {
 		brd.squares[sq] = EMPTY

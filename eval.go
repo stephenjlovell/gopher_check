@@ -24,15 +24,14 @@
 package main
 
 import (
-	// "fmt"
+// "fmt"
 )
 
-
 const (
-	MAX_ENDGAME_COUNT   = 24
-	DOUBLED_PENALTY  		= 20
-	ISOLATED_PENALTY 		= 12
-	BACKWARD_PENALTY 		= 4
+	MAX_ENDGAME_COUNT = 24
+	DOUBLED_PENALTY   = 20
+	ISOLATED_PENALTY  = 12
+	BACKWARD_PENALTY  = 4
 )
 
 const (
@@ -43,8 +42,7 @@ const (
 var endgame_phase [32]int
 
 // piece values used to determine endgame status. 0-12 per side, 24 total.
-var endgame_count_values = [8]uint8{0, 1, 1, 2, 4} 
-
+var endgame_count_values = [8]uint8{0, 1, 1, 2, 4}
 
 var main_pst = [2][8][64]int{ // Black. White PST will be set in setup_eval.
 	{ // Pawn
@@ -106,7 +104,7 @@ var king_pst = [2][2][64]int{ // Black
 			-44, -42, -42, -42, -42, -42, -42, -44,
 			-42, -40, -40, -40, -40, -40, -40, -42,
 			-16, -15, -20, -20, -20, -20, -15, -16,
-			  0,  20,  30, -30,   0, -20,  30,  20,
+			0, 20, 30, -30, 0, -20, 30, 20,
 		},
 		{ // Endgame
 			-30, -20, -10, 0, 0, -10, -20, -30, // In end game (when few friendly pieces are available
@@ -174,13 +172,12 @@ var queen_mobility = [32]int{-24, -18, -12, -6, -3, 0, 2, 3, 4, 5, 6, 7, 8, 9, 1
 
 var queen_tropism_bonus = [8]int{0, 12, 9, 6, 3, 0, -3, -6}
 
-
 func evaluate(brd *Board, alpha, beta int) int {
 	score := int(brd.material[WHITE]-brd.material[BLACK]) + tempo_bonus()
 	// lazy evaluation: if material balance is already outside the search window by an amount that outweighs
 	// the largest likely placement evaluation, return the material as an approximate evaluation.
 	// This prevents the engine from wasting a lot of time evaluating unrealistic positions.
-	
+
 	if score+piece_values[BISHOP] < alpha || score-piece_values[BISHOP] > beta {
 		if brd.c == BLACK {
 			return -score
@@ -194,7 +191,7 @@ func evaluate(brd *Board, alpha, beta int) int {
 	}
 
 	score += pentry.value
-	
+
 	score += net_passed_pawns(brd, pentry)
 
 	score += net_major_placement(brd, pentry)
@@ -220,7 +217,6 @@ func tempo_bonus() int {
 func net_major_placement(brd *Board, pentry *PawnEntry) int {
 	return major_placement(brd, pentry, WHITE, BLACK) - major_placement(brd, pentry, BLACK, WHITE)
 }
-
 
 func major_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
 	friendly := brd.Placement(c)
@@ -275,10 +271,10 @@ func major_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
 		sq = furthest_forward(c, b)
 		attacks = king_masks[sq] & available
 
-		placement += weight_score(brd.endgame_counter, 
+		placement += weight_score(brd.endgame_counter,
 			pawn_shield_bonus[pop_count(brd.pieces[c][PAWN]&king_shield_masks[c][sq])], 0)
 
-		placement += weight_score(brd.endgame_counter, 
+		placement += weight_score(brd.endgame_counter,
 			king_pst[c][MIDGAME][sq], king_pst[c][ENDGAME][sq])
 	}
 
@@ -287,7 +283,6 @@ func major_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
 
 	king_pressure := weight_score(brd.endgame_counter,
 		king_threat_bonus[king_threats+king_saftey_base[e][enemy_king_sq]], 0)
-
 
 	placement += king_pressure
 	return placement + mobility
@@ -410,11 +405,11 @@ func eval_passed_pawns(brd *Board, c, e uint8, passed_pawns BB) int {
 	return value
 }
 
-// Tapered Evaluation: adjust the score based on how close we are to the endgame.  
+// Tapered Evaluation: adjust the score based on how close we are to the endgame.
 // This prevents 'evaluation discontinuity' where the score changes significantly when moving from
 // mid-game to end-game, causing the search to chase after changes in endgame status instead of real
 // positional gain.
-// Uses the scaling function first implemented in Fruit and described here: 
+// Uses the scaling function first implemented in Fruit and described here:
 // https://chessprogramming.wikispaces.com/Tapered+Eval
 func weight_score(endgame_count uint8, mg_score, eg_score int) int {
 	phase := endgame_phase[endgame_count]
@@ -440,7 +435,7 @@ func setup_eval() {
 	}
 	// Endgame phase scaling factor
 	for i := 0; i <= 24; i++ {
-		endgame_phase[i] = (((MAX_ENDGAME_COUNT - i) * 256) + (MAX_ENDGAME_COUNT/2)) / MAX_ENDGAME_COUNT
+		endgame_phase[i] = (((MAX_ENDGAME_COUNT - i) * 256) + (MAX_ENDGAME_COUNT / 2)) / MAX_ENDGAME_COUNT
 		// fmt.Printf("endgame counter:%d,  phase:%d\n", i, endgame_phase[i])
-	}	
+	}
 }

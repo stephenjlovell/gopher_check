@@ -255,7 +255,7 @@ func unmake_move(brd *Board, move Move, memento *BoardMemento) {
 			unmake_add_piece(brd, captured_piece, to, brd.Enemy())
 		}
 	}
-	
+
 	brd.hash_key, brd.pawn_hash_key = memento.hash_key, memento.pawn_hash_key
 	brd.castle, brd.enp_target = memento.castle, memento.enp_target
 	brd.halfmove_clock = memento.halfmove_clock

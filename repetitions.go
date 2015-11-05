@@ -24,7 +24,7 @@
 package main
 
 import (
-	// "fmt"
+// "fmt"
 )
 
 func (stk Stack) IsRepetition(ply int, halfmove_clock uint8) bool {
@@ -43,15 +43,3 @@ func (stk Stack) IsRepetition(ply int, halfmove_clock uint8) bool {
 	}
 	return false
 }
-
-
-
-
-
-
-
-
-
-
-
-

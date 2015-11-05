@@ -129,7 +129,7 @@ func setup_king_masks() {
 		// the enemy side.
 		king_zone_masks[WHITE][i] = center | (center << 8)
 		king_zone_masks[BLACK][i] = center | (center >> 8)
-		
+
 		king_shield_masks[WHITE][i] = pawn_attack_masks[WHITE][i] | (sq_mask_on[i] << 8)
 		king_shield_masks[BLACK][i] = pawn_attack_masks[BLACK][i] | (sq_mask_on[i] >> 8)
 	}

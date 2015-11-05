@@ -231,7 +231,6 @@ func get_see(brd *Board, from, to int, captured_piece Piece) int {
 	return piece_list[0]
 }
 
-
 func pinned_can_move(brd *Board, from, to int, c, e uint8) bool {
 	return is_pinned(brd, from, brd.c, brd.Enemy())&sq_mask_on[to] > 0
 }

@@ -37,10 +37,10 @@ type SplitPoint struct {
 	sync.Mutex
 	wg sync.WaitGroup
 
-	selector     *MoveSelector
-	parent       *SplitPoint
-	master       *Worker
-	servant_mask uint8
+	selector         *MoveSelector
+	parent           *SplitPoint
+	master           *Worker
+	servant_mask     uint8
 	servant_finished bool
 
 	brd      *Board
@@ -50,7 +50,7 @@ type SplitPoint struct {
 	ply             int
 	extensions_left int
 	can_null        bool
-	checked					bool
+	checked         bool
 	node_type       int
 
 	alpha     int  // shared
@@ -61,7 +61,6 @@ type SplitPoint struct {
 	node_count     int // shared
 	legal_searched int
 	cancel         bool
-
 }
 
 func (sp *SplitPoint) Order() int {

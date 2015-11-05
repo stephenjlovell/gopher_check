@@ -54,13 +54,13 @@ func mvv_lva(victim, attacker Piece) uint64 { // returns value between 0 and 64
 func SortPromotion(brd *Board, m Move) uint64 {
 	var val int
 	if is_attacked_by(brd, brd.AllOccupied()&sq_mask_off[m.From()], m.To(), brd.Enemy(), brd.c) {
-		val = get_see(brd, m.From(), m.To(), m.CapturedPiece())  // defended
+		val = get_see(brd, m.From(), m.To(), m.CapturedPiece()) // defended
 	} else {
 		val = m.PromotedTo().PromoteValue() + m.CapturedPiece().Value() // undefended
 	}
 	if val >= 0 {
-		return SORT_WINNING | mvv_lva(m.CapturedPiece(), PAWN) 
-	} else { 
+		return SORT_WINNING | mvv_lva(m.CapturedPiece(), PAWN)
+	} else {
 		return mvv_lva(m.CapturedPiece(), PAWN)
 	}
 }

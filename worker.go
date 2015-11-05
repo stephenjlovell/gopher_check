@@ -164,7 +164,7 @@ func (w *Worker) HelpServants(current_sp *SplitPoint) {
 			worker = load_balancer.workers[lsb(BB(temp_mask))]
 			for _, this_sp := range worker.sp_list {
 				// If a worker has already finished searching, then either a beta cutoff has already
-				// occurred at sp, or no moves are left to search. 
+				// occurred at sp, or no moves are left to search.
 				if !this_sp.servant_finished && (best_sp == nil || this_sp.Order() > best_sp.Order()) {
 					best_sp = this_sp
 					temp_mask |= this_sp.servant_mask // If this SP has servants of its own, check them as well.
@@ -176,12 +176,12 @@ func (w *Worker) HelpServants(current_sp *SplitPoint) {
 		if best_sp == nil {
 			break
 		} else {
-			w.SearchSP(best_sp)			
+			w.SearchSP(best_sp)
 		}
 	}
-	// If at any point we can't find another viable servant SP, wait for remaining servants to complete. 
-	// This prevents us from continually acquiring the load balancer lock. 
-	current_sp.wg.Wait() 
+	// If at any point we can't find another viable servant SP, wait for remaining servants to complete.
+	// This prevents us from continually acquiring the load balancer lock.
+	current_sp.wg.Wait()
 }
 
 func (w *Worker) Help(b *Balancer) {
@@ -233,13 +233,3 @@ func (w *Worker) SearchSP(sp *SplitPoint) {
 	// At this point, any additional SPs found by the worker during the search rooted at sp
 	// should be fully resolved.  The SP list for this worker should be empty again.
 }
-
-
-
-
-
-
-
-
-
-
