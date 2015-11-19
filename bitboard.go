@@ -82,11 +82,11 @@ func pawn_attacks(brd *Board, c uint8) (BB, BB) { // returns (left_attacks, righ
 	}
 }
 
-func bishop_attacks(occ BB, sq int) BB {
+func generate_bishop_attacks(occ BB, sq int) BB {
 	return scan_up(occ, NW, sq) | scan_up(occ, NE, sq) | scan_down(occ, SE, sq) | scan_down(occ, SW, sq)
 }
 
-func rook_attacks(occ BB, sq int) BB {
+func generate_rook_attacks(occ BB, sq int) BB {
 	return scan_up(occ, NORTH, sq) | scan_up(occ, EAST, sq) | scan_down(occ, SOUTH, sq) | scan_down(occ, WEST, sq)
 }
 
@@ -102,7 +102,7 @@ func scan_down(occ BB, dir, sq int) BB {
 	}
 	return ray
 }
- 
+
 // func scan_down(occ BB, dir, sq int) BB {
 // 	// ray := ray_masks[dir][sq]
 // 	// blockers := (ray & occ)
