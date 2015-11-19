@@ -102,6 +102,31 @@ func scan_down(occ BB, dir, sq int) BB {
 	}
 	return ray
 }
+ 
+// func scan_down(occ BB, dir, sq int) BB {
+// 	// ray := ray_masks[dir][sq]
+// 	// blockers := (ray & occ)
+// 	if ray_masks[dir][sq] & occ > 0 {
+// 		return ray_masks[dir][sq] ^ ray_masks[dir][msb(ray_masks[dir][sq] & occ)] // chop off end of ray after first blocking piece.
+// 	} else {
+// 		return ray_masks[dir][sq]
+// 	}
+//
+// }
+
+
+//
+// func scan_down(occ BB, dir, sq int) BB {
+// 	ray := ray_masks[dir][sq]
+// 	if (ray & occ) > 0 {
+// 		blocked := msb(ray & occ)
+// 		return intervening[sq][blocked]|sq_mask_on[blocked]
+// 	} else {
+// 		return ray
+// 	}
+// }
+
+
 
 func scan_up(occ BB, dir, sq int) BB {
 	ray := ray_masks[dir][sq]

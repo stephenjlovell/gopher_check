@@ -27,19 +27,78 @@ import (
 	"testing"
 )
 
-var result int // hack to make sure compiler doesn't eliminate func under test.
+var result int // hacks to make sure compiler doesn't eliminate func under test.
+var bb_result BB
+//
+// func BenchmarkScanDown(b *testing.B) {
+// 	setup()
+// 	test := load_epd_file("test_suites/wac_300.epd")
+//
+// 	b.ResetTimer()
+// 	var sq int
+// 	for _, epd := range test {
+// 		occ := epd.brd.AllOccupied()
+// 		sq = epd.brd.KingSq(epd.brd.c)
+// 		for i := 0; i < b.N; i++ {
+// 			bb_result = scan_down(occ, SW, sq)
+// 			bb_result = scan_down(occ, SOUTH, sq)
+// 			bb_result = scan_down(occ, SE, sq)
+// 		}
+// 	}
+// }
+//
+// func BenchmarkScanUp(b *testing.B) {
+// 	setup()
+// 	test := load_epd_file("test_suites/wac_300.epd")
+//
+// 	b.ResetTimer()
+// 	var sq int
+// 	for _, epd := range test {
+// 		occ := epd.brd.AllOccupied()
+// 		sq = epd.brd.KingSq(epd.brd.c)
+// 		for i := 0; i < b.N; i++ {
+// 			bb_result = scan_up(occ, NW, sq)
+// 			bb_result = scan_up(occ, NORTH, sq)
+// 			bb_result = scan_up(occ, NE, sq)
+// 		}
+// 	}
+// }
+//
+
 
 func BenchmarkPopCount(b *testing.B) {
-	bb := BB(random_key64())
-	for i := 0; i < b.N; i++ {
-		result = pop_count(bb)
+	var bb BB
+	setup()
+	test := load_epd_file("test_suites/wac_300.epd")
+	b.ResetTimer()
+
+	for _, epd := range test {
+		bb = epd.brd.occupied[WHITE]
+		for i := 0; i < b.N; i++ {
+			result = pop_count(bb)
+		}
 	}
+
 }
 
 func BenchmarkLSB(b *testing.B) {
-	setup_bitwise_ops()
-	bb := BB(random_key64())
-	for i := 0; i < b.N; i++ {
-		result = lsb(bb)
+	var bb BB
+	setup()
+	test := load_epd_file("test_suites/wac_300.epd")
+	b.ResetTimer()
+
+	for _, epd := range test {
+		bb = epd.brd.occupied[WHITE]
+		for i := 0; i < b.N; i++ {
+			result = lsb(bb)
+		}
 	}
+}
+
+func BenchmarkLSBRand(b *testing.B) {
+		setup()
+		bb := BB(random_key64())
+		for i := 0; i < b.N; i++ {
+			result = lsb(bb)
+		}
 }

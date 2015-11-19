@@ -30,9 +30,9 @@ import (
 // "fmt"
 )
 
-// const (
-// 	DEBRUIJN = 285870213051386505
-// )
+const (
+	DEBRUIJN = 285870213051386505
+)
 
 func furthest_forward(c uint8, b BB) int {
 	if c == WHITE {
@@ -43,69 +43,51 @@ func furthest_forward(c uint8, b BB) int {
 }
 
 func msb(b BB) int {
-	if b>>48 > 0 {
-		return msb_table[b>>48] + 48
-	}
-	if (b>>32)&65535 > 0 {
-		return msb_table[(b>>32)&65535] + 32
-	}
-	if (b>>16)&65535 > 0 {
-		return msb_table[(b>>16)&65535] + 16
-	}
-	return msb_table[b&65535]
+	b |= b >> 1
+	b |= b >> 2
+	b |= b >> 4
+	b |= b >> 8
+	b |= b >> 16
+	b |= b >> 32
+	return debruijn_msb_table[(b * DEBRUIJN) >> 58];
 }
 
 func lsb(b BB) int {
-	if b&65535 > 0 {
-		return lsb_table[b&65535]
-	}
-	if (b>>16)&65535 > 0 {
-		return lsb_table[(b>>16)&65535] + 16
-	}
-	if (b>>32)&65535 > 0 {
-		return lsb_table[(b>>32)&65535] + 32
-	}
-	return lsb_table[b>>48] + 48
+	return debruijn_lsb_table[((b & -b) * DEBRUIJN) >> 58]
 }
-
-// func debruijn_lsb(b BB) int {
-// 	return lsb_table[lsb_index(b)] LSB by Debruijn multiplication is actually slower...
-// }
-
-// func lsb_index(b BB) BB {
-// 	return ((b^(b-1)) * DEBRUIJN) >> 58
-// }
 
 func pop_count(b BB) int {
-	b = (b & 6148914691236517205) + ((b >> 1) & 6148914691236517205)
-	b = (b & 3689348814741910323) + ((b >> 2) & 3689348814741910323)
-	b = (b & 1085102592571150095) + ((b >> 4) & 1085102592571150095)
-	b = (b & 71777214294589695) + ((b >> 8) & 71777214294589695)
-	b = (b & 70367670468607) + ((b >> 16) & 70367670468607)
-	return int((b & 4294967295) + ((b >> 32) & 4294967295))
+	b = b - ((b >> 1) & 0x5555555555555555)
+	b = (b & 0x3333333333333333) + ((b >> 2) & 0x3333333333333333)
+	b = (b + (b >> 4)) & 0x0f0f0f0f0f0f0f0f
+	b = b + (b >> 8)
+	b = b + (b >> 16)
+	b = b + (b >> 32)
+	return int(b & 0x7f);
 }
 
-var msb_table [65536]int
-var debruijn_lsb_table [64]int
+var debruijn_lsb_table = [64]int{
+    0,  1, 48,  2, 57, 49, 28,  3,
+   61, 58, 50, 42, 38, 29, 17,  4,
+   62, 55, 59, 36, 53, 51, 43, 22,
+   45, 39, 33, 30, 24, 18, 12,  5,
+   63, 47, 56, 27, 60, 41, 37, 16,
+   54, 35, 52, 21, 44, 32, 23, 11,
+   46, 26, 40, 15, 34, 20, 31, 10,
+   25, 14, 19,  9, 13,  8,  7,  6,
+}
 
-var lsb_table [65536]int
+var debruijn_msb_table = [64]int{
+    0, 47,  1, 56, 48, 27,  2, 60,
+   57, 49, 41, 37, 28, 16,  3, 61,
+   54, 58, 35, 52, 50, 42, 21, 44,
+   38, 32, 29, 23, 17, 11,  4, 62,
+   46, 55, 26, 59, 40, 36, 15, 53,
+   34, 51, 20, 43, 31, 22, 10, 45,
+   25, 39, 14, 33, 19, 30,  9, 24,
+   13, 18,  8, 12,  7,  6,  5, 63,
+}
 
 func setup_bitwise_ops() {
-	// for i := 0; i < 64; i++ {
-	// 	debruijn_lsb_table[lsb_index(1<<uint64(i))] = i
-	// }
 
-	msb_table[0] = 64
-	lsb_table[0] = 16
-	for i := 1; i < 65536; i++ {
-		lsb_table[i] = 16
-		for j := 0; j < 16; j++ {
-			if (1<<uint(j))&i > 0 {
-				msb_table[i] = j
-				if lsb_table[i] == 16 {
-					lsb_table[i] = j
-				}
-			}
-		}
-	}
 }

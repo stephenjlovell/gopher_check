@@ -177,7 +177,9 @@ func setup() {
 	setup_zobrist()
 	setup_main_tt()
 	setup_load_balancer()
+}
 
+func print_name() {
 	fmt.Println("\n------------------------------------------------------------------")
 	fmt.Println("\u265B GopherCheck \u265B\nCopyright \u00A9 2014 Stephen J. Lovell")
 	fmt.Println("------------------------------------------------------------------\n")
@@ -187,6 +189,7 @@ var profile_flag = flag.Bool("profile", false, "Set profile=true to run profiler
 
 func main() {
 	setup()
+	print_name()
 	flag.Parse()
 
 	if *profile_flag {
