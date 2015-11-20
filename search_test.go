@@ -25,7 +25,7 @@ package main
 
 import (
 	// "fmt"
-	"testing"
+	// "testing"
 	// "github.com/davecheney/profile"
 )
 
@@ -41,8 +41,8 @@ import (
 // 	}
 // }
 
-func TestPlayingStrength(t *testing.T) {
-	setup()
-	print_name()
-	RunTestSuite("test_suites/wac_300.epd")
-}
+// func TestPlayingStrength(t *testing.T) {
+// 	setup()
+// 	print_name()
+// 	RunTestSuite("test_suites/wac_300.epd")
+// }

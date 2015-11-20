@@ -24,7 +24,7 @@
 package main
 
 import (
-	// "fmt"
+	"fmt"
 )
 
 const (
@@ -59,7 +59,7 @@ func setup_magics_for_piece(magic_masks, masks, magics *[64]BB, moves *[64][MAGI
 	edge_mask := column_masks[0]|column_masks[7]|row_masks[0]|row_masks[7]
 
 
-	var mask, magic BB
+	var mask BB
 	for sq := 0; sq < 64; sq++ {
 		ref, occupied := [MAGIC_DB_SIZE]BB{}, [MAGIC_DB_SIZE]BB{}
 		mask = masks[sq]&(^edge_mask)
@@ -68,17 +68,26 @@ func setup_magics_for_piece(magic_masks, masks, magics *[64]BB, moves *[64][MAGI
 		// Enumerate all subsets of the mask using the Carry-Rippler technique:
 		// https://chessprogramming.wikispaces.com/Traversing+Subsets+of+a+Set#Enumerating%20All%20Subsets-All%20Subsets%20of%20any%20Set
 		n := 0
-		for occ := BB(0); occ != 0; occ = (occ-mask) & mask {
+		for occ := BB(0); occ != 0 || n == 0; occ = (occ-mask) & mask {
 			ref[n] = gen_fn(occ, sq) // save the attack bitboard for each subset for later use.
 			occupied[n] = occ
+			// occ.Print()
+			// ref[n].Print()
+			// fmt.Println("-----------------------------------------------")
 			n++
 		}
 
+		fmt.Printf("domain n = %d. calculating magic for square %d\n", n, sq)
 		// Calculate a magic for the current square
-		for i := 0; i < n; {
+		i := 0
+		for i < n {
 			// try random numbers until a suitable candidate is found.
-			for magics[sq] = random_magic(0); pop_count((mask*magic)>>56) < 6; magics[sq] = random_magic(0) {
+
+			for magics[sq] = random_magic(0); pop_count((mask*magics[sq])>>56) < 6; {
+				magics[sq] = random_magic(0)
 			}
+			// fmt.Println("  ...Candidate found.")
+
 			for i = 0; i < n; i++ {
 				// verify the candidate magic will correctly index for each possible occupancy subset
 				attack := &moves[sq][magic_index(occupied[i], mask, magics[sq])]
@@ -90,6 +99,8 @@ func setup_magics_for_piece(magic_masks, masks, magics *[64]BB, moves *[64][MAGI
 			}
 		}
 
+		fmt.Printf("  ...magic found for sq: %d, magic: %x\n", sq, magics[sq])
+		magics[sq].Print()
 	}
 }
 
