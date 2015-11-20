@@ -173,6 +173,7 @@ func setup() {
 	setup_chebyshev_distance()
 	setup_bitwise_ops()
 	setup_masks()
+	setup_magic_move_gen()
 	setup_eval()
 	setup_zobrist()
 	setup_main_tt()
