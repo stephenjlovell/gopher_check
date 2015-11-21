@@ -25,7 +25,6 @@ package main
 
 import (
 	"fmt"
-	// "math/rand"
 )
 
 const (
@@ -64,48 +63,38 @@ func setup_magics_for_piece(magic_masks, masks, magics *[64]BB, moves *[64][MAGI
 		fmt.Printf(".")
 		edge_mask := (column_masks[0]|column_masks[7])&(^column_masks[column(sq)]) |
 			(row_masks[0]|row_masks[7])&(^row_masks[row(sq)])
-		sq_mask := masks[sq] & (^edge_mask)
-
-		magic_masks[sq] = sq_mask
+		magic_masks[sq] = masks[sq] & (^edge_mask)
 
 		// Enumerate all subsets of the sq_mask using the Carry-Rippler technique:
 		// https://chessprogramming.wikispaces.com/Traversing+Subsets+of+a+Set#Enumerating%20All%20Subsets-All%20Subsets%20of%20any%20Set
 		ref_attacks, occupied := [MAGIC_DB_SIZE]BB{}, [MAGIC_DB_SIZE]BB{}
 		n := 0
-		for occ := BB(0); occ != 0 || n == 0; occ = (occ - sq_mask) & sq_mask {
+		for occ := BB(0); occ != 0 || n == 0; occ = (occ - magic_masks[sq]) & magic_masks[sq] {
 
 			ref_attacks[n] = gen_fn(occ, sq) // save the attack bitboard for each subset for later use.
 			occupied[n] = occ
 			n++
 		}
 
-		// fmt.Printf("domain n = %d. calculating magic for square %d", n, sq)
 		// Calculate a magic for the current square
 		i := 0
 		for i < n {
 			// try random numbers until a suitable candidate is found.
-			for magics[sq] = rand_generator.RandomMagic(sq); pop_count((sq_mask*magics[sq])>>(64-MAGIC_INDEX_SIZE)) < MAGIC_INDEX_SIZE; {
+			for magics[sq] = rand_generator.RandomMagic(sq); pop_count((magic_masks[sq]*magics[sq])>>(64-MAGIC_INDEX_SIZE)) < MAGIC_INDEX_SIZE; {
 				magics[sq] = rand_generator.RandomMagic(sq)
 			}
-
-			// fmt.Printf(".")
-
 			// if the last candidate magic failed, clear out any attack maps already placed in the moves DB
 			moves[sq] = [MAGIC_DB_SIZE]BB{}
-
 			for i = 0; i < n; i++ {
 				// verify the candidate magic will index each possible occupancy subset to either a new slot,
 				// or a slot with the same attack map (only useful collisions are allowed).
-				attack := &moves[sq][magic_index(occupied[i], sq_mask, magics[sq])]
+				attack := &moves[sq][magic_index(occupied[i], magic_masks[sq], magics[sq])]
 
 				if *attack != BB(0) && *attack != ref_attacks[i] {
-					break
+					break // keep going unless we hit a harmful collision
 				}
 				*attack = ref_attacks[i] // populate the moves DB so we can detect collisions.
 			}
 		}
-
-		// fmt.Printf("\n   magic found for sq: %d, magic: %x\n", sq, magics[sq])
-		// magics[sq].Print()
 	}
 }
