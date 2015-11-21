@@ -26,15 +26,15 @@ package main
 import (
 	"fmt"
 	"strconv"
-	"testing"
+	// "testing"
 	"time"
 )
 
 var legal_max_tree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860, 84998978956, 2439530234167}
 
-func TestLegalMoveGen(t *testing.T) {
-	legal_movegen(Perft)
-}
+// func TestLegalMoveGen(t *testing.T) {
+// 	legal_movegen(Perft)
+// }
 
 // func TestMoveValidation(t *testing.T) {
 // 	legal_movegen(PerftValidation)

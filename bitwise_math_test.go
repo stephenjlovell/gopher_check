@@ -29,6 +29,7 @@ import (
 
 var result int // hacks to make sure compiler doesn't eliminate func under test.
 var bb_result BB
+
 //
 // func BenchmarkScanDown(b *testing.B) {
 // 	setup()
@@ -65,7 +66,6 @@ var bb_result BB
 // }
 //
 
-
 func BenchmarkPopCount(b *testing.B) {
 	var bb BB
 	setup()
@@ -96,9 +96,9 @@ func BenchmarkLSB(b *testing.B) {
 }
 
 func BenchmarkLSBRand(b *testing.B) {
-		setup()
-		bb := BB(random_key64())
-		for i := 0; i < b.N; i++ {
-			result = lsb(bb)
-		}
+	setup()
+	bb := BB(random_key64())
+	for i := 0; i < b.N; i++ {
+		result = lsb(bb)
+	}
 }

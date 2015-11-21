@@ -114,7 +114,6 @@ func scan_down(occ BB, dir, sq int) BB {
 //
 // }
 
-
 //
 // func scan_down(occ BB, dir, sq int) BB {
 // 	ray := ray_masks[dir][sq]
@@ -125,8 +124,6 @@ func scan_down(occ BB, dir, sq int) BB {
 // 		return ray
 // 	}
 // }
-
-
 
 func scan_up(occ BB, dir, sq int) BB {
 	ray := ray_masks[dir][sq]

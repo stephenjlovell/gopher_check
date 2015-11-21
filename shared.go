@@ -189,8 +189,8 @@ func print_name() {
 var profile_flag = flag.Bool("profile", false, "Set profile=true to run profiler on test suite.")
 
 func main() {
-	setup()
 	print_name()
+	setup()
 	flag.Parse()
 
 	if *profile_flag {

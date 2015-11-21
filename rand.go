@@ -24,25 +24,56 @@
 package main
 
 import (
-	// "fmt"
-	"testing"
-	// "github.com/davecheney/profile"
+	"math/rand"
 )
 
-// func BenchmarkSearch(b *testing.B) {
-// 	setup()
-// 	print_info = false
-// 	depth := MAX_DEPTH
-// 	for n := 0; n < b.N; n++ {
-// 		brd := ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-// 		ResetAll()
-// 		Search(brd, depth, 4000)
-// 		fmt.Printf(".")
-// 	}
-// }
+func random_key64() uint64 { // create a pseudorandom 64-bit unsigned int key
+	return (uint64(rand.Int63n(MAX_RAND)) << 32) | uint64(rand.Int63n(MAX_RAND))
+}
 
-func TestPlayingStrength(t *testing.T) {
-	print_name()
-	setup()
-	RunTestSuite("test_suites/wac_300.epd")
+func random_key32() uint32 {
+	return uint32(rand.Int63n(MAX_RAND))
+}
+
+// RngKiss uses Bob Jenkins' pseudorandom number approach, which is well-suited for generating
+// magic number candidates:  https://chessprogramming.wikispaces.com/Bob+Jenkins
+type RngKiss struct {
+	a        BB
+	b        BB
+	c        BB
+	d        BB
+	boosters [8]BB
+}
+
+func NewRngKiss(seed int) *RngKiss {
+	r := &RngKiss{}
+	r.Setup(seed)
+	return r
+}
+
+func (r *RngKiss) Setup(seed int) {
+	r.boosters = [8]BB{3101, 552, 3555, 926, 834, 26, 2131, 1117}
+	r.a = 0xF1EA5EED
+	r.b, r.c, r.d = 0xD4E12C77, 0xD4E12C77, 0xD4E12C77
+	for i := 0; i < seed; i++ {
+		_ = r.rand()
+	}
+}
+
+func (r *RngKiss) RandomMagic(sq int) BB {
+	s := r.boosters[row(sq)]
+	return r.rotate((r.rotate(r.rand(), s&63) & r.rand()), ((s >> 6) & 63 & r.rand()))
+}
+
+func (r *RngKiss) rand() BB {
+	e := r.a - r.rotate(r.b, 7)
+	r.a = r.b ^ r.rotate(r.c, 13)
+	r.b = r.c + r.rotate(r.d, 37)
+	r.c = r.d + e
+	r.d = e + r.a
+	return r.d
+}
+
+func (r *RngKiss) rotate(x, k BB) BB {
+	return (x << k) | (x >> (64 - k))
 }

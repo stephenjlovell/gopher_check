@@ -25,18 +25,17 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
+	// "math/rand"
 )
 
 const (
-	MAGIC_INDEX_SIZE = 11
-	MAGIC_DB_SIZE = 1 << MAGIC_INDEX_SIZE
+	MAGIC_INDEX_SIZE = 12
+	MAGIC_DB_SIZE    = 1 << MAGIC_INDEX_SIZE
 )
 
 var bishop_magic_moves, rook_magic_moves [64][MAGIC_DB_SIZE]BB
 var bishop_magics, rook_magics [64]BB
 var bishop_magic_masks, rook_magic_masks [64]BB
-
 
 func bishop_attacks(occ BB, sq int) BB {
 	return bishop_magic_moves[sq][magic_index(occ, bishop_magic_masks[sq], bishop_magics[sq])]
@@ -47,48 +46,52 @@ func rook_attacks(occ BB, sq int) BB {
 }
 
 func magic_index(occ, sq_mask, magic BB) int {
-	return int(((occ&sq_mask)*magic) >> (64-MAGIC_INDEX_SIZE))
+	return int(((occ & sq_mask) * magic) >> (64 - MAGIC_INDEX_SIZE))
 }
-
 
 func setup_magic_move_gen() {
+	fmt.Printf("Calculating magics")
 	setup_magics_for_piece(&bishop_magic_masks, &bishop_masks, &bishop_magics, &bishop_magic_moves, generate_bishop_attacks)
 	setup_magics_for_piece(&rook_magic_masks, &rook_masks, &rook_magics, &rook_magic_moves, generate_rook_attacks)
+	fmt.Printf("\n")
 }
 
-func setup_magics_for_piece(magic_masks, masks, magics *[64]BB, moves *[64][MAGIC_DB_SIZE]BB,  gen_fn func(BB, int) BB) {
-	edge_mask := column_masks[0]|column_masks[7]|row_masks[0]|row_masks[7]
+func setup_magics_for_piece(magic_masks, masks, magics *[64]BB, moves *[64][MAGIC_DB_SIZE]BB, gen_fn func(BB, int) BB) {
 
+	rand_generator := NewRngKiss(73)
 
-	var sq_mask BB
 	for sq := 0; sq < 64; sq++ {
-		ref_attacks, occupied := [MAGIC_DB_SIZE]BB{}, [MAGIC_DB_SIZE]BB{}
-		sq_mask = masks[sq]&(^edge_mask)
+		fmt.Printf(".")
+		edge_mask := (column_masks[0]|column_masks[7])&(^column_masks[column(sq)]) |
+			(row_masks[0]|row_masks[7])&(^row_masks[row(sq)])
+		sq_mask := masks[sq] & (^edge_mask)
+
 		magic_masks[sq] = sq_mask
 
 		// Enumerate all subsets of the sq_mask using the Carry-Rippler technique:
 		// https://chessprogramming.wikispaces.com/Traversing+Subsets+of+a+Set#Enumerating%20All%20Subsets-All%20Subsets%20of%20any%20Set
+		ref_attacks, occupied := [MAGIC_DB_SIZE]BB{}, [MAGIC_DB_SIZE]BB{}
 		n := 0
-		for occ := BB(0); occ != 0 || n == 0; occ = (occ-sq_mask) & sq_mask {
+		for occ := BB(0); occ != 0 || n == 0; occ = (occ - sq_mask) & sq_mask {
+
 			ref_attacks[n] = gen_fn(occ, sq) // save the attack bitboard for each subset for later use.
 			occupied[n] = occ
-			// occ.Print()
-			// ref_attacks[n].Print()
-			// fmt.Println("-----------------------------------------------")
 			n++
 		}
 
-		fmt.Printf("domain n = %d. calculating magic for square %d", n, sq)
+		// fmt.Printf("domain n = %d. calculating magic for square %d", n, sq)
 		// Calculate a magic for the current square
 		i := 0
 		for i < n {
 			// try random numbers until a suitable candidate is found.
-			for magics[sq] = random_magic(0); pop_count((sq_mask*magics[sq])>>(64-MAGIC_INDEX_SIZE)) < MAGIC_INDEX_SIZE; {
-				magics[sq] = random_magic(0)
-				// if the last candidate magic failed, clear out any attack maps already placed in the moves DB
-				moves[sq] = [MAGIC_DB_SIZE]BB{}
+			for magics[sq] = rand_generator.RandomMagic(sq); pop_count((sq_mask*magics[sq])>>(64-MAGIC_INDEX_SIZE)) < MAGIC_INDEX_SIZE; {
+				magics[sq] = rand_generator.RandomMagic(sq)
 			}
-			fmt.Printf(".")
+
+			// fmt.Printf(".")
+
+			// if the last candidate magic failed, clear out any attack maps already placed in the moves DB
+			moves[sq] = [MAGIC_DB_SIZE]BB{}
 
 			for i = 0; i < n; i++ {
 				// verify the candidate magic will index each possible occupancy subset to either a new slot,
@@ -98,20 +101,11 @@ func setup_magics_for_piece(magic_masks, masks, magics *[64]BB, moves *[64][MAGI
 				if *attack != BB(0) && *attack != ref_attacks[i] {
 					break
 				}
-				*attack = ref_attacks[i];
+				*attack = ref_attacks[i] // populate the moves DB so we can detect collisions.
 			}
 		}
 
-		fmt.Printf("\n   magic found for sq: %d, magic: %x\n", sq, magics[sq])
-		magics[sq].Print()
+		// fmt.Printf("\n   magic found for sq: %d, magic: %x\n", sq, magics[sq])
+		// magics[sq].Print()
 	}
-}
-
-func random_magic(b BB) BB {
-	// generate a random sparsely-populated bitboard.
-	pop := rand.Int31n(15)
-	for i := int32(0); i < pop; i++ {
-		b.Add(int(rand.Int31n(63)))
-	}
-	return b
 }
