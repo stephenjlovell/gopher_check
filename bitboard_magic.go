@@ -25,6 +25,7 @@ package main
 
 import (
 	"fmt"
+	"sync"
 )
 
 const (
@@ -50,17 +51,18 @@ func magic_index(occ, sq_mask, magic BB) int {
 
 func setup_magic_move_gen() {
 	fmt.Printf("Calculating magics")
-	setup_magics_for_piece(&bishop_magic_masks, &bishop_masks, &bishop_magics, &bishop_magic_moves, generate_bishop_attacks)
-	setup_magics_for_piece(&rook_magic_masks, &rook_masks, &rook_magics, &rook_magic_moves, generate_rook_attacks)
+	var wg sync.WaitGroup
+	wg.Add(64 * 2)
+	setup_magics_for_piece(&wg, &bishop_magic_masks, &bishop_masks, &bishop_magics, &bishop_magic_moves, generate_bishop_attacks)
+	setup_magics_for_piece(&wg, &rook_magic_masks, &rook_masks, &rook_magics, &rook_magic_moves, generate_rook_attacks)
+	wg.Wait()
 	fmt.Printf("done!\n\n")
 }
 
-func setup_magics_for_piece(magic_masks, masks, magics *[64]BB, moves *[64][MAGIC_DB_SIZE]BB, gen_fn func(BB, int) BB) {
-
-	rand_generator := NewRngKiss(73)
+func setup_magics_for_piece(wg *sync.WaitGroup, magic_masks, masks, magics *[64]BB,
+	moves *[64][MAGIC_DB_SIZE]BB, gen_fn func(BB, int) BB) {
 
 	for sq := 0; sq < 64; sq++ {
-		fmt.Printf(".")
 		edge_mask := (column_masks[0]|column_masks[7])&(^column_masks[column(sq)]) |
 			(row_masks[0]|row_masks[7])&(^row_masks[row(sq)])
 		magic_masks[sq] = masks[sq] & (^edge_mask)
@@ -77,28 +79,30 @@ func setup_magics_for_piece(magic_masks, masks, magics *[64]BB, moves *[64][MAGI
 		}
 
 		// May want to run these in parallel for each square...
-
-		// Calculate a magic for the current square
-		i := 0
-		for i < n {
-			// try random numbers until a suitable candidate is found.
-			for magics[sq] = rand_generator.RandomMagic(sq); pop_count((magic_masks[sq]*magics[sq])>>(64-MAGIC_INDEX_SIZE)) < MAGIC_INDEX_SIZE; {
-				magics[sq] = rand_generator.RandomMagic(sq)
-			}
-			// if the last candidate magic failed, clear out any attack maps already placed in the moves DB
-			moves[sq] = [MAGIC_DB_SIZE]BB{}
-			for i = 0; i < n; i++ {
-				// verify the candidate magic will index each possible occupancy subset to either a new slot,
-				// or a slot with the same attack map (only useful collisions are allowed).
-				attack := &moves[sq][magic_index(occupied[i], magic_masks[sq], magics[sq])]
-
-				if *attack != BB(0) && *attack != ref_attacks[i] {
-					break // keep going unless we hit a harmful collision
+		go func(n, sq int) { // Calculate a magic for square sq
+			rand_generator := NewRngKiss(73)
+			i := 0
+			for i < n {
+				// try random numbers until a suitable candidate is found.
+				for magics[sq] = rand_generator.RandomMagic(sq); pop_count((magic_masks[sq]*magics[sq])>>(64-MAGIC_INDEX_SIZE)) < MAGIC_INDEX_SIZE; {
+					magics[sq] = rand_generator.RandomMagic(sq)
 				}
-				*attack = ref_attacks[i] // populate the moves DB so we can detect collisions.
-			}
-		}
+				// if the last candidate magic failed, clear out any attack maps already placed in the moves DB
+				moves[sq] = [MAGIC_DB_SIZE]BB{}
+				for i = 0; i < n; i++ {
+					// verify the candidate magic will index each possible occupancy subset to either a new slot,
+					// or a slot with the same attack map (only useful collisions are allowed).
+					attack := &moves[sq][magic_index(occupied[i], magic_masks[sq], magics[sq])]
 
+					if *attack != BB(0) && *attack != ref_attacks[i] {
+						break // keep going unless we hit a harmful collision
+					}
+					*attack = ref_attacks[i] // populate the moves DB so we can detect collisions.
+				}
+			}
+			fmt.Printf(".")
+			wg.Done()
+		}(n, sq)
 
 	}
 }
