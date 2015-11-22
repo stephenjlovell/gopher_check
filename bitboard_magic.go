@@ -52,7 +52,7 @@ func setup_magic_move_gen() {
 	fmt.Printf("Calculating magics")
 	setup_magics_for_piece(&bishop_magic_masks, &bishop_masks, &bishop_magics, &bishop_magic_moves, generate_bishop_attacks)
 	setup_magics_for_piece(&rook_magic_masks, &rook_masks, &rook_magics, &rook_magic_moves, generate_rook_attacks)
-	fmt.Printf("\n")
+	fmt.Printf("done!\n\n")
 }
 
 func setup_magics_for_piece(magic_masks, masks, magics *[64]BB, moves *[64][MAGIC_DB_SIZE]BB, gen_fn func(BB, int) BB) {
@@ -76,6 +76,8 @@ func setup_magics_for_piece(magic_masks, masks, magics *[64]BB, moves *[64][MAGI
 			n++
 		}
 
+		// May want to run these in parallel for each square...
+
 		// Calculate a magic for the current square
 		i := 0
 		for i < n {
@@ -96,5 +98,7 @@ func setup_magics_for_piece(magic_masks, masks, magics *[64]BB, moves *[64][MAGI
 				*attack = ref_attacks[i] // populate the moves DB so we can detect collisions.
 			}
 		}
+
+
 	}
 }

@@ -37,7 +37,7 @@ func RunProfiledTestSuite() {
 
 func RunTestSuite(test_suite string) {
 	print_info = false
-	depth := 6
+	depth := 10
 	timeout := 6000
 	test := load_epd_file(test_suite)
 	var move_str string
@@ -70,7 +70,7 @@ func RunTestSuite(test_suite string) {
 	}
 	fmt.Printf("Overhead: %.4fm\n", float64(load_balancer.Overhead())/1000000.0)
 	fmt.Printf("Timeout: %.1fs\n", float64(timeout)/1000.0)
-	fmt.Printf("PV Accuracy: %d/%d (%.2f)", pv_accuracy[1], pv_accuracy[0]+pv_accuracy[1],
+	fmt.Printf("PV Accuracy: %d/%d (%.2f)\n\n", pv_accuracy[1], pv_accuracy[0]+pv_accuracy[1],
 		float64(pv_accuracy[1])/float64(pv_accuracy[0]+pv_accuracy[1]))
 }
 
