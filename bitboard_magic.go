@@ -33,7 +33,10 @@ const (
 	MAGIC_DB_SIZE    = 1 << MAGIC_INDEX_SIZE
 )
 
+// In testing, homogenous array move DB actually outperformed a 'Fancy'
+// magic bitboard approach implemented using slices.
 var bishop_magic_moves, rook_magic_moves [64][MAGIC_DB_SIZE]BB
+
 var bishop_magics, rook_magics [64]BB
 var bishop_magic_masks, rook_magic_masks [64]BB
 
@@ -45,6 +48,10 @@ func rook_attacks(occ BB, sq int) BB {
 	return rook_magic_moves[sq][magic_index(occ, rook_magic_masks[sq], rook_magics[sq])]
 }
 
+func queen_attacks(occ BB, sq int) BB {
+	return (bishop_attacks(occ, sq) | rook_attacks(occ, sq))
+}
+
 func magic_index(occ, sq_mask, magic BB) int {
 	return int(((occ & sq_mask) * magic) >> (64 - MAGIC_INDEX_SIZE))
 }
@@ -53,8 +60,10 @@ func setup_magic_move_gen() {
 	fmt.Printf("Calculating magics")
 	var wg sync.WaitGroup
 	wg.Add(64 * 2)
-	setup_magics_for_piece(&wg, &bishop_magic_masks, &bishop_masks, &bishop_magics, &bishop_magic_moves, generate_bishop_attacks)
-	setup_magics_for_piece(&wg, &rook_magic_masks, &rook_masks, &rook_magics, &rook_magic_moves, generate_rook_attacks)
+	setup_magics_for_piece(&wg, &bishop_magic_masks, &bishop_masks, &bishop_magics,
+		&bishop_magic_moves, generate_bishop_attacks)
+	setup_magics_for_piece(&wg, &rook_magic_masks, &rook_masks, &rook_magics,
+		&rook_magic_moves, generate_rook_attacks)
 	wg.Wait()
 	fmt.Printf("done!\n\n")
 }
@@ -72,14 +81,12 @@ func setup_magics_for_piece(wg *sync.WaitGroup, magic_masks, masks, magics *[64]
 		ref_attacks, occupied := [MAGIC_DB_SIZE]BB{}, [MAGIC_DB_SIZE]BB{}
 		n := 0
 		for occ := BB(0); occ != 0 || n == 0; occ = (occ - magic_masks[sq]) & magic_masks[sq] {
-
 			ref_attacks[n] = gen_fn(occ, sq) // save the attack bitboard for each subset for later use.
 			occupied[n] = occ
 			n++
 		}
 
-		// May want to run these in parallel for each square...
-		go func(n, sq int) { // Calculate a magic for square sq
+		go func(n, sq int) { // Calculate a magic for square sq in parallel
 			rand_generator := NewRngKiss(73)
 			i := 0
 			for i < n {
@@ -91,15 +98,15 @@ func setup_magics_for_piece(wg *sync.WaitGroup, magic_masks, masks, magics *[64]
 				moves[sq] = [MAGIC_DB_SIZE]BB{}
 				for i = 0; i < n; i++ {
 					// verify the candidate magic will index each possible occupancy subset to either a new slot,
-					// or a slot with the same attack map (only useful collisions are allowed).
+					// or a slot with the same attack map (only benign collisions are allowed).
 					attack := &moves[sq][magic_index(occupied[i], magic_masks[sq], magics[sq])]
 
 					if *attack != BB(0) && *attack != ref_attacks[i] {
-						break // keep going unless we hit a harmful collision
+						break  // keep going unless we hit a harmful collision
 					}
 					*attack = ref_attacks[i] // populate the moves DB so we can detect collisions.
 				}
-			}
+			} // if every possible occupancy has been mapped to the correct attack set, we are done.
 			fmt.Printf(".")
 			wg.Done()
 		}(n, sq)

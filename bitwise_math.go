@@ -87,7 +87,3 @@ var debruijn_msb_table = [64]int{
 	25, 39, 14, 33, 19, 30, 9, 24,
 	13, 18, 8, 12, 7, 6, 5, 63,
 }
-
-func setup_bitwise_ops() {
-
-}

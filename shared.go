@@ -171,7 +171,6 @@ func setup() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	rand.Seed(4129246945) // keep the same seed each time for debugging purposes.
 	setup_chebyshev_distance()
-	setup_bitwise_ops()
 	setup_masks()
 	setup_magic_move_gen()
 	setup_eval()

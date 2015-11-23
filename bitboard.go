@@ -43,7 +43,6 @@ func (b *BB) Add(sq int) {
 
 func (b BB) Print() {
 	row, sq := "", ""
-
 	fmt.Printf("%d\n", b)
 	for i := 63; i >= 0; i-- {
 		if sq_mask_on[i]&b > 0 {
@@ -51,7 +50,6 @@ func (b BB) Print() {
 		} else {
 			sq = " 0"
 		}
-
 		row = sq + row
 		if i%8 == 0 {
 			fmt.Printf("%s\n", row)
@@ -90,10 +88,6 @@ func generate_rook_attacks(occ BB, sq int) BB {
 	return scan_up(occ, NORTH, sq) | scan_up(occ, EAST, sq) | scan_down(occ, SOUTH, sq) | scan_down(occ, WEST, sq)
 }
 
-func queen_attacks(occ BB, sq int) BB {
-	return (bishop_attacks(occ, sq) | rook_attacks(occ, sq))
-}
-
 func scan_down(occ BB, dir, sq int) BB {
 	ray := ray_masks[dir][sq]
 	blockers := (ray & occ)
@@ -103,28 +97,6 @@ func scan_down(occ BB, dir, sq int) BB {
 	return ray
 }
 
-// func scan_down(occ BB, dir, sq int) BB {
-// 	// ray := ray_masks[dir][sq]
-// 	// blockers := (ray & occ)
-// 	if ray_masks[dir][sq] & occ > 0 {
-// 		return ray_masks[dir][sq] ^ ray_masks[dir][msb(ray_masks[dir][sq] & occ)] // chop off end of ray after first blocking piece.
-// 	} else {
-// 		return ray_masks[dir][sq]
-// 	}
-//
-// }
-
-//
-// func scan_down(occ BB, dir, sq int) BB {
-// 	ray := ray_masks[dir][sq]
-// 	if (ray & occ) > 0 {
-// 		blocked := msb(ray & occ)
-// 		return intervening[sq][blocked]|sq_mask_on[blocked]
-// 	} else {
-// 		return ray
-// 	}
-// }
-
 func scan_up(occ BB, dir, sq int) BB {
 	ray := ray_masks[dir][sq]
 	blockers := (ray & occ)
@@ -133,21 +105,3 @@ func scan_up(occ BB, dir, sq int) BB {
 	}
 	return ray
 }
-
-// func major_piece_mask(piece Piece, sq int) BB {
-// 	switch piece {
-// 	case KNIGHT:
-// 		return knight_masks[sq]
-// 	case BISHOP:
-// 		return bishop_masks[sq]
-// 	case ROOK:
-// 		return rook_masks[sq]
-// 	case QUEEN:
-// 		return queen_masks[sq]
-// 	case KING:
-// 		return king_masks[sq]
-// 	default:
-// 		fmt.Println("Invalid major piece type.")
-// 		return BB(0)
-// 	}
-// }

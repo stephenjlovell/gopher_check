@@ -333,7 +333,7 @@ search_moves:
 			score, subtotal = ybw(brd, stk, -alpha-1, -alpha, r_depth-1, ply+1, child_type, SP_NONE, checked)
 			score = -score
 			total += subtotal
-			if score > alpha { // research with full-window on fail high
+			if score > alpha { // re-search with full-window on fail high
 				score, subtotal = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, Y_PV, SP_NONE, checked)
 				score = -score
 				total += subtotal
@@ -342,7 +342,7 @@ search_moves:
 			score, subtotal = ybw(brd, stk, -beta, -alpha, r_depth-1, ply+1, child_type, SP_NONE, checked)
 			score = -score
 			total += subtotal
-			// Re-search reduced moves that fail high at full depth.
+			// re-search reduced moves that fail high at full depth.
 			if r_depth < depth && score > alpha {
 				score, subtotal = ybw(brd, stk, -beta, -alpha, depth-1, ply+1, child_type, SP_NONE, checked)
 				score = -score
