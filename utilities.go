@@ -37,7 +37,7 @@ func RunProfiledTestSuite() {
 
 func RunTestSuite(test_suite string) {
 	print_info = false
-	depth := 8
+	depth := 10
 	timeout := 6000
 	test := load_epd_file(test_suite)
 	var move_str string
