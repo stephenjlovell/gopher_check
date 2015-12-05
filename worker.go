@@ -48,25 +48,28 @@ import (
 // each child SP.
 
 const (
-
+	MAX_WORKERS = 8
 )
+
+var num_workers int
 
 var node_count []SafeCounter
 
 var load_balancer *Balancer
 
 func setup_load_balancer() {
-	node_count = make([]SafeCounter, num_cpu, num_cpu)
+	num_workers = min(num_cpu, MAX_WORKERS)
+	node_count = make([]SafeCounter, num_workers, num_workers)
 	load_balancer = NewLoadBalancer()
 	load_balancer.Start()
 }
 
 func NewLoadBalancer() *Balancer {
 	b := &Balancer{
-		workers: make([]*Worker, num_cpu),
-		done:    make(chan *Worker, num_cpu),
+		workers: make([]*Worker, num_workers),
+		done:    make(chan *Worker, num_workers),
 	}
-	for i := uint8(0); i < num_cpu; i++ {
+	for i := uint8(0); i < uint8(num_workers); i++ {
 		b.workers[i] = &Worker{
 			mask:      1 << i,
 			index:     i,
