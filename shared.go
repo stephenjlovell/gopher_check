@@ -170,10 +170,8 @@ func assert(statement bool, failure_message string) {
 	}
 }
 
-var num_cpu int
-
 func setup() {
-	num_cpu = runtime.NumCPU()
+	num_cpu := runtime.NumCPU()
 	runtime.GOMAXPROCS(num_cpu)
 	rand.Seed(4129246945) // keep the same seed each time for debugging purposes.
 	setup_chebyshev_distance()
@@ -182,7 +180,7 @@ func setup() {
 	setup_eval()
 	setup_zobrist()
 	setup_main_tt()
-	setup_load_balancer()
+	setup_load_balancer(num_cpu)
 }
 
 func print_name() {

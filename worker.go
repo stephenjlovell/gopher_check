@@ -51,20 +51,18 @@ const (
 	MAX_WORKERS = 8
 )
 
-var num_workers int
-
 var node_count []SafeCounter
 
 var load_balancer *Balancer
 
-func setup_load_balancer() {
-	num_workers = min(num_cpu, MAX_WORKERS)
+func setup_load_balancer(num_cpu int) {
+	num_workers := uint8(min(num_cpu, MAX_WORKERS))
 	node_count = make([]SafeCounter, num_workers, num_workers)
-	load_balancer = NewLoadBalancer()
+	load_balancer = NewLoadBalancer(num_workers)
 	load_balancer.Start()
 }
 
-func NewLoadBalancer() *Balancer {
+func NewLoadBalancer(num_workers uint8) *Balancer {
 	b := &Balancer{
 		workers: make([]*Worker, num_workers),
 		done:    make(chan *Worker, num_workers),
