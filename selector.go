@@ -29,7 +29,7 @@ package main
 // 3. Evasions or Winning captures/promotions via get_best_moves(). No pruning - extensions only.
 // 4. All other moves via get_remaining_moves().  Futility pruning and Late-move reductions applied.
 // Q-search stages
-// 1. Evasions or winning captures/promotions get_best_moves(). Specialized futility prunins.
+// 1. Evasions or winning captures/promotions get_best_moves(). Specialized futility pruning.
 // 2. Non-captures that give check via get_checks().
 
 import (

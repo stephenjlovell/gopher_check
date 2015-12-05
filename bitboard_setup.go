@@ -165,9 +165,10 @@ func setup_directions() {
 		for j := 0; j < 64; j++ {
 			for dir := 0; dir < 8; dir++ {
 				ray = ray_masks[dir][i]
-				if sq_mask_on[j]&ray != 0 {
+				if sq_mask_on[j]&ray > 0 {
 					directions[i][j] = dir
 					intervening[i][j] = ray ^ (ray_masks[dir][j] | sq_mask_on[j])
+					line_masks[i][j] = ray | ray_masks[opposite_dir[dir]][j]
 				}
 			}
 		}

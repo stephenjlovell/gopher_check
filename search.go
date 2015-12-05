@@ -169,7 +169,8 @@ func ybw(brd *Board, stk Stack, alpha, beta, depth, ply, node_type, sp_type int,
 	score, best, old_alpha := -INF, -INF, alpha
 	sum := 1
 
-	var null_depth, hash_result, hash_score, eval, subtotal, total, legal_searched, child_type, r_depth int
+	var null_depth, hash_result, eval, subtotal, total, legal_searched, child_type, r_depth int
+	var hash_score int
 	can_prune, f_prune, can_reduce := false, false, false
 	best_move, first_move := NO_MOVE, NO_MOVE
 
@@ -432,6 +433,7 @@ search_moves:
 				sp_type = SP_MASTER
 			}
 		}
+
 	} // end of moves loop
 
 	switch sp_type {
@@ -603,12 +605,11 @@ func can_split(brd *Board, ply, depth, node_type, legal_searched, stage int) boo
 
 func setup_sp(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, beta, best, depth, ply,
 	legal_searched, node_type, sum int, checked bool) *SplitPoint {
-	master := brd.worker
 
 	sp := &SplitPoint{
 		selector: ms,
-		master:   master,
-		parent:   master.current_sp,
+		master:   brd.worker,
+		parent:   brd.worker.current_sp,
 
 		brd:      brd.Copy(),
 		this_stk: stk[ply].Copy(),
@@ -637,8 +638,8 @@ func setup_sp(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, be
 
 	load_balancer.Lock()
 
-	master.sp_list.Push(sp)
-	master.current_sp = sp
+	brd.worker.sp_list.Push(sp)
+	brd.worker.current_sp = sp
 
 	load_balancer.Unlock()
 

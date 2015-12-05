@@ -80,12 +80,15 @@ var middle_rows BB
 var mask_of_length [65]uint64
 
 var row_masks, column_masks [8]BB
+
 var ray_masks [8][64]BB
+
 
 var pawn_isolated_masks, pawn_side_masks, pawn_doubled_masks, knight_masks, bishop_masks, rook_masks,
 	queen_masks, king_masks, sq_mask_on, sq_mask_off [64]BB
 
-var intervening [64][64]BB
+var intervening, line_masks [64][64]BB
+
 var castle_queenside_intervening, castle_kingside_intervening [2]BB
 
 var pawn_attack_masks, pawn_blocked_masks, pawn_passed_masks, pawn_attack_spans, pawn_front_spans,
@@ -167,8 +170,11 @@ func assert(statement bool, failure_message string) {
 	}
 }
 
+var num_cpu int
+
 func setup() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
+	num_cpu = runtime.NumCPU()
+	runtime.GOMAXPROCS(num_cpu)
 	rand.Seed(4129246945) // keep the same seed each time for debugging purposes.
 	setup_chebyshev_distance()
 	setup_masks()

@@ -81,35 +81,26 @@ func is_attacked_by(brd *Board, occ BB, sq int, attacker, defender uint8) bool {
 // 2. Scan toward the king to see if there are any other pieces blocking this route to the king.
 // 3. Scan in the opposite direction to see detect any potential threats along this ray.
 
-// NW NE SE SW NORTH EAST SOUTH WEST DIR_INVALID
 
+// Return a bitboard of locations the piece at sq can move to without leaving the king in check.
 func is_pinned(brd *Board, sq int, c, e uint8) BB {
 	occ := brd.AllOccupied()
-	var threat, guarded_king, pin_area BB
-	dir := directions[sq][brd.KingSq(c)] // get direction toward king
-	threat_dir := opposite_dir[dir]
-	switch dir {
-	case NW, NE:
-		pin_area = scan_down(occ, threat_dir, sq) | scan_up(occ, dir, sq)
-		threat = pin_area & (brd.pieces[e][BISHOP] | brd.pieces[e][QUEEN])
-		guarded_king = pin_area & (brd.pieces[c][KING])
-	case SE, SW:
-		pin_area = scan_up(occ, threat_dir, sq) | scan_down(occ, dir, sq)
-		threat = pin_area & (brd.pieces[e][BISHOP] | brd.pieces[e][QUEEN])
-		guarded_king = pin_area & (brd.pieces[c][KING])
-	case NORTH, EAST:
-		pin_area = scan_down(occ, threat_dir, sq) | scan_up(occ, dir, sq)
-		threat = pin_area & (brd.pieces[e][ROOK] | brd.pieces[e][QUEEN])
-		guarded_king = pin_area & (brd.pieces[c][KING])
-	case SOUTH, WEST:
-		pin_area = scan_up(occ, threat_dir, sq) | scan_down(occ, dir, sq)
-		threat = pin_area & (brd.pieces[e][ROOK] | brd.pieces[e][QUEEN])
-		guarded_king = pin_area & (brd.pieces[c][KING])
-	case DIR_INVALID: // can only be pinned along a valid ray to the king.
-		return BB(ANY_SQUARE_MASK)
-	}
-	if threat > 0 && guarded_king > 0 {
-		return pin_area
+	var line, attacks, threat BB
+	king_sq := brd.KingSq(c)
+	dir := directions[sq][king_sq] // get direction toward king
+
+	line = line_masks[sq][king_sq]
+	if line > 0 { // can only be pinned if on a ray to the king.
+		if dir < NORTH {
+			attacks = bishop_attacks(occ, sq)
+			threat = line & attacks & (brd.pieces[e][BISHOP] | brd.pieces[e][QUEEN])
+		} else {
+			attacks = rook_attacks(occ, sq)
+			threat = line & attacks & (brd.pieces[e][ROOK] | brd.pieces[e][QUEEN])
+		}
+		if threat > 0 && (attacks & brd.pieces[c][KING]) > 0  {
+			return line & attacks
+		}
 	}
 	return BB(ANY_SQUARE_MASK)
 }

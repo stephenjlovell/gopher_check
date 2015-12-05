@@ -3,7 +3,7 @@ Performance:
 
 9/26/14 PerftParallel()
   12.7224 m NPS
-  119601101 nodes at depth 6. 
+  119601101 nodes at depth 6.
   33731 total nodes in check
   2886936 total capture nodes
   9299 total goroutines spawned
@@ -175,18 +175,23 @@ Total score: 291/300
 12 ABF: 2.1051
 Overhead: 2.2782m
 
+12/1/15 Implemented magic bitboards:
+
+Serial:
+
+138.6715m nodes searched in 174.3927s (0.7952m NPS)
+Total score: 288/300
+10 ABF: 2.1265
+Timeout: 6.0s
+
+
+
+
+
+
+
 
 To Do:
 
-Run profiling.
-
-Improve Null-move Pruning - add verification.
-
 Tune Tapered Eval.
-
 Implement Pondering.
-
-Implement Magic Bitboards?
-
-
-

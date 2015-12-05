@@ -89,16 +89,16 @@ func (sp *SplitPoint) ServantMask() uint8 {
 func (sp *SplitPoint) AddServant(w_mask uint8) {
 	sp.Lock()
 	sp.servant_mask |= w_mask
-	sp.Unlock()
 	sp.wg.Add(1)
+	sp.Unlock()
 }
 
 func (sp *SplitPoint) RemoveServant(w_mask uint8) {
 	sp.Lock()
 	sp.servant_mask &= (^w_mask)
 	sp.servant_finished = true
-	sp.Unlock()
 	sp.wg.Done()
+	sp.Unlock()
 }
 
 type SPList []*SplitPoint

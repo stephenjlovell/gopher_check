@@ -48,26 +48,25 @@ import (
 // each child SP.
 
 const (
-	MAX_WORKER_GOROUTINES = 8
-	// MAX_SP_PER_WORKER     = 8
-	// MAX_SP                = MAX_WORKER_GOROUTINES * MAX_SP_PER_WORKER
+
 )
 
-var node_count [MAX_WORKER_GOROUTINES]SafeCounter
+var node_count []SafeCounter
 
 var load_balancer *Balancer
 
 func setup_load_balancer() {
+	node_count = make([]SafeCounter, num_cpu, num_cpu)
 	load_balancer = NewLoadBalancer()
 	load_balancer.Start()
 }
 
 func NewLoadBalancer() *Balancer {
 	b := &Balancer{
-		workers: make([]*Worker, MAX_WORKER_GOROUTINES),
-		done:    make(chan *Worker, MAX_WORKER_GOROUTINES),
+		workers: make([]*Worker, num_cpu),
+		done:    make(chan *Worker, num_cpu),
 	}
-	for i := uint8(0); i < MAX_WORKER_GOROUTINES; i++ {
+	for i := uint8(0); i < num_cpu; i++ {
 		b.workers[i] = &Worker{
 			mask:      1 << i,
 			index:     i,
