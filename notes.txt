@@ -1,3 +1,17 @@
+
+
+To Do:
+
+BUG: Multiple goroutines sometimes behaving as SP_MASTER for same SP.
+
+Validate correctness of PV returned during parallel search.
+Tune Tapered Eval.
+Implement Pondering.
+
+
+
+
+
 Performance:
 
 
@@ -183,15 +197,3 @@ Serial:
 Total score: 288/300
 10 ABF: 2.1265
 Timeout: 6.0s
-
-
-
-
-
-
-
-
-To Do:
-
-Tune Tapered Eval.
-Implement Pondering.

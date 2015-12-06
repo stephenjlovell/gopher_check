@@ -106,7 +106,7 @@ func (b *Balancer) RootWorker() *Worker {
 }
 
 type Worker struct {
-	sync.Mutex
+	// sync.Mutex
 	mask  uint8
 	index uint8
 
@@ -220,7 +220,9 @@ func (w *Worker) SearchSP(sp *SplitPoint) {
 	brd := sp.brd.Copy()
 	brd.worker = w
 
+	// the SP master must be searching deeper
 	sp.master.stk.CopyUpTo(w.stk, sp.ply)
+
 	w.stk[sp.ply].sp = sp
 
 	sp.AddServant(w.mask)
