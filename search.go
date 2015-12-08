@@ -359,7 +359,7 @@ search_moves:
 				return NO_SCORE, 0
 			case SP_MASTER:
 				if sp.cancel {
-					brd.worker.RemoveSP()
+					load_balancer.RemoveSP(brd.worker)
 					sp.Lock()
 					best, best_move, sum = sp.best, sp.best_move, sp.node_count
 					sp.Unlock()
@@ -367,7 +367,7 @@ search_moves:
 					main_tt.store(brd, best_move, depth, LOWER_BOUND, best)
 					return best, sum
 				} else {
-					brd.worker.CancelSP()
+					load_balancer.CancelSP(brd.worker)
 					return NO_SCORE, 0
 				}
 			case SP_SERVANT:
@@ -386,13 +386,13 @@ search_moves:
 				best_move, sp.best_move, best, sp.best = m, m, score, score
 				if score > alpha {
 					alpha, sp.alpha = score, score
-					if node_type == Y_PV { // will need to update this for parallel search
+					if node_type == Y_PV {
 						pv.m, pv.value, pv.depth, pv.next = m, score, depth, stk[ply+1].pv
 						this_stk.pv = pv
 					}
 					if score >= beta {
 						if sp_type == SP_MASTER {
-							brd.worker.CancelSP()
+							load_balancer.CancelSP(brd.worker)
 							sp.Unlock()
 							main_tt.store(brd, m, depth, LOWER_BOUND, score)
 							store_cutoff(this_stk, m, brd.c, total) // what happens on refutation of main pv?
@@ -427,8 +427,11 @@ search_moves:
 			legal_searched += 1
 			// Determine if this would be a good location to begin searching in parallel.
 			if can_split(brd, ply, depth, node_type, legal_searched, stage) {
-				sp = setup_sp(brd, stk, selector, best_move, alpha, beta, best, depth, ply,
+				sp = CreateSP(brd, stk, selector, best_move, alpha, beta, best, depth, ply,
 					legal_searched, node_type, sum, checked)
+
+				load_balancer.AddSP(brd.worker, sp) // register the split point in the appropriate SP list, and notify any idle workers.
+
 				this_stk = sp.this_stk
 				sp_type = SP_MASTER
 			}
@@ -438,7 +441,7 @@ search_moves:
 
 	switch sp_type {
 	case SP_MASTER:
-		brd.worker.RemoveSP() // prevent more workers from being assigned here.
+		load_balancer.RemoveSP(brd.worker)
 
 		// Helpful Master Concept:
 		// All moves at this SP may have been consumed, but servant workers may still be busy evaluating
@@ -603,57 +606,7 @@ func can_split(brd *Board, ply, depth, node_type, legal_searched, stage int) boo
 	return false
 }
 
-func setup_sp(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, beta, best, depth, ply,
-	legal_searched, node_type, sum int, checked bool) *SplitPoint {
 
-	sp := &SplitPoint{
-		selector: ms,
-		master:   brd.worker,
-		parent:   brd.worker.current_sp,
-
-		brd:      brd.Copy(),
-		this_stk: stk[ply].Copy(),
-		// this_stk: &stk[ply],
-
-		depth: depth,
-		ply:   ply,
-
-		node_type: node_type,
-
-		alpha:     alpha,
-		beta:      beta,
-		best:      best,
-		best_move: best_move,
-
-		checked: checked,
-
-		node_count:     sum,
-		legal_searched: legal_searched,
-		cancel:         false,
-	}
-
-	ms.brd = sp.brd // make sure the move selector points to the static SP board.
-	ms.this_stk = sp.this_stk
-	stk[ply].sp = sp
-
-	load_balancer.Lock()
-
-	brd.worker.sp_list.Push(sp)
-	brd.worker.current_sp = sp
-
-	load_balancer.Unlock()
-
-FlushIdle: // If there are any idle workers, assign them now.
-	for {
-		select {
-		case w := <-load_balancer.done:
-			w.assign_sp <- sp
-		default:
-			break FlushIdle
-		}
-	}
-	return sp
-}
 
 func null_make(brd *Board, stk Stack, beta, null_depth, ply int, checked bool) (int, int) {
 	hash_key, enp_target := brd.hash_key, brd.enp_target

@@ -47,64 +47,6 @@ import (
 // If there are more SPs below the current one, the cancellation signal will be fanned out to
 // each child SP.
 
-const (
-	MAX_WORKERS = 8
-)
-
-var node_count []SafeCounter
-
-var load_balancer *Balancer
-
-func setup_load_balancer(num_cpu int) {
-	num_workers := uint8(min(num_cpu, MAX_WORKERS))
-	node_count = make([]SafeCounter, num_workers, num_workers)
-	load_balancer = NewLoadBalancer(num_workers)
-	load_balancer.Start()
-}
-
-func NewLoadBalancer(num_workers uint8) *Balancer {
-	b := &Balancer{
-		workers: make([]*Worker, num_workers),
-		done:    make(chan *Worker, num_workers),
-	}
-	for i := uint8(0); i < uint8(num_workers); i++ {
-		b.workers[i] = &Worker{
-			mask:      1 << i,
-			index:     i,
-			sp_list:   make(SPList, 0, MAX_PLY),
-			stk:       NewStack(),
-			ptt:       NewPawnTT(),
-			assign_sp: make(chan *SplitPoint, 1),
-		}
-	}
-	return b
-}
-
-type Balancer struct {
-	workers []*Worker
-	sync.Mutex
-
-	done chan *Worker
-}
-
-func (b *Balancer) Start() {
-	for _, w := range b.workers[1:] {
-		w.Help(b) // Start each worker except for the root worker.
-	}
-}
-
-func (b *Balancer) Overhead() int {
-	overhead := 0
-	for _, w := range b.workers {
-		overhead += w.search_overhead
-	}
-	return overhead
-}
-
-func (b *Balancer) RootWorker() *Worker {
-	return b.workers[0]
-}
-
 type Worker struct {
 	sync.Mutex
 	mask  uint8
@@ -121,26 +63,7 @@ type Worker struct {
 	assign_sp chan *SplitPoint
 }
 
-func (w *Worker) CancelSP() { // Should only be called by the SP master
-	load_balancer.Lock()
 
-	w.sp_list.Pop()
-	last_sp := w.current_sp.parent
-	w.current_sp.cancel = true
-	w.current_sp = last_sp
-
-	load_balancer.Unlock()
-}
-
-func (w *Worker) RemoveSP() { // Prevent new workers from being assigned to w.current_sp without
-	load_balancer.Lock() // cancelling any ongoing work at this SP.
-
-	w.sp_list.Pop()
-	last_sp := w.current_sp.parent
-	w.current_sp = last_sp
-
-	load_balancer.Unlock()
-}
 
 func (w *Worker) IsCancelled() bool {
 	for sp := w.current_sp; sp != nil; sp = sp.parent {
@@ -170,6 +93,9 @@ func (w *Worker) HelpServants(current_sp *SplitPoint) {
 					temp_mask |= this_sp.servant_mask // If this SP has servants of its own, check them as well.
 				}
 			}
+		}
+		if best_sp != nil {
+			best_sp.AddServant(w.mask)
 		}
 		load_balancer.Unlock()
 
@@ -201,6 +127,9 @@ func (w *Worker) Help(b *Balancer) {
 					}
 				}
 			}
+			if best_sp != nil {
+				best_sp.AddServant(w.mask)
+			}
 			b.Unlock()
 
 			if best_sp == nil { // No best SP was available.
@@ -223,7 +152,6 @@ func (w *Worker) SearchSP(sp *SplitPoint) {
 	sp.master.stk.CopyUpTo(w.stk, sp.ply)
 	w.stk[sp.ply].sp = sp
 
-	sp.AddServant(w.mask)
 
 	// Once the SP is fully evaluated, The SP master will handle returning its value to parent node.
 	_, total := ybw(brd, w.stk, sp.alpha, sp.beta, sp.depth, sp.ply, sp.node_type, SP_SERVANT, sp.checked)

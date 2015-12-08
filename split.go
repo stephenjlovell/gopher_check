@@ -79,13 +79,6 @@ func (sp *SplitPoint) ServantMask() uint8 {
 	return servant_mask
 }
 
-// func (sp *SplitPoint) ServantFinished() bool {
-// 	sp.Lock()
-// 	finished := sp.servant_finished
-// 	sp.Unlock()
-// 	return finished
-// }
-
 func (sp *SplitPoint) AddServant(w_mask uint8) {
 	sp.Lock()
 	sp.servant_mask |= w_mask
@@ -100,6 +93,45 @@ func (sp *SplitPoint) RemoveServant(w_mask uint8) {
 	sp.wg.Done()
 	sp.Unlock()
 }
+
+func CreateSP(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, beta, best, depth, ply,
+	legal_searched, node_type, sum int, checked bool) *SplitPoint {
+
+	sp := &SplitPoint{
+		selector: ms,
+		master:   brd.worker,
+		parent:   brd.worker.current_sp,
+
+		brd:      brd.Copy(),
+		this_stk: stk[ply].Copy(),
+		// this_stk: &stk[ply],
+
+		depth: depth,
+		ply:   ply,
+
+		node_type: node_type,
+
+		alpha:     alpha,
+		beta:      beta,
+		best:      best,
+		best_move: best_move,
+
+		checked: checked,
+
+		node_count:     sum,
+		legal_searched: legal_searched,
+		cancel:         false,
+	}
+
+	ms.brd = sp.brd // make sure the move selector points to the static SP board.
+	ms.this_stk = sp.this_stk
+	stk[ply].sp = sp
+
+	return sp
+}
+
+
+
 
 type SPList []*SplitPoint
 
