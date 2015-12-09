@@ -31,16 +31,16 @@ import (
 const (
 	MAX_TIME = 120000 // default search time limit in milliseconds (2m)
 
-	SPLIT_MIN = 16 // set >= MAX_PLY to disable parallel search.
+	MIN_SPLIT = 3 // set >= MAX_PLY to disable parallel search.
 
 	MAX_DEPTH = 16
 	MAX_PLY   = MAX_DEPTH * 2
 
-	F_PRUNE_MAX = 2 // should always be less than SPLIT_MIN
+	F_PRUNE_MAX = 2 // should always be less than MIN_SPLIT
 	LMR_MIN     = 1
 	IID_MIN     = 4
 
-	MIN_CHECK_DEPTH = -2
+	MAX_CHECK_DEPTH = -2
 	COMMS_MIN       = 6 // minimum depth at which to send info to GUI.
 )
 
@@ -330,6 +330,7 @@ search_moves:
 
 		stk[ply+1].in_check = gives_check // avoid having to recalculate in_check at beginning of search.
 
+		// time to search deeper:
 		if node_type == Y_PV && alpha > old_alpha {
 			score, subtotal = ybw(brd, stk, -alpha-1, -alpha, r_depth-1, ply+1, child_type, SP_NONE, checked)
 			score = -score
@@ -372,49 +373,57 @@ search_moves:
 				}
 			case SP_SERVANT:
 				return NO_SCORE, total
+			default:
+				panic("unknown SP type")
 			}
 		}
 
 		if sp_type != SP_NONE {
-			sp.Lock() // get the latest info under lock protection
+			sp.Lock()
+			// get the latest info under lock protection:
 			alpha, beta, best, best_move = sp.alpha, sp.beta, sp.best, sp.best_move
+			if node_type == Y_PV {
+				pv = this_stk.pv
+				stk[ply].pv = pv
+			}
+
 			sp.legal_searched += 1
 			sp.node_count += total
 			legal_searched, sum = sp.legal_searched, sp.node_count
 
 			if score > best {
 				best_move, sp.best_move, best, sp.best = m, m, score, score
+				if node_type == Y_PV {
+					pv.m, pv.value, pv.depth, pv.next = m, score, depth, stk[ply+1].pv
+					this_stk.pv = pv
+					stk[ply].pv = pv
+				}
 				if score > alpha {
 					alpha, sp.alpha = score, score
-					if node_type == Y_PV {
-						pv.m, pv.value, pv.depth, pv.next = m, score, depth, stk[ply+1].pv
-						this_stk.pv = pv
-					}
 					if score >= beta {
+						store_cutoff(&stk[ply], m, brd.c, total)
 						if sp_type == SP_MASTER {
 							load_balancer.CancelSP(brd.worker)
 							sp.Unlock()
 							main_tt.store(brd, m, depth, LOWER_BOUND, score)
-							store_cutoff(this_stk, m, brd.c, total) // what happens on refutation of main pv?
 							return score, sum
 						} else {
 							sp.cancel = true
 							sp.Unlock()
-							store_cutoff(this_stk, m, brd.c, total) // what happens on refutation of main pv?
 							return NO_SCORE, 0
 						}
 					}
 				}
 			}
 			sp.Unlock()
-		} else {
+		} else {  // sp_type == SP_NONE
 			sum += total
 			if score > best {
+				if node_type == Y_PV {
+					pv.m, pv.value, pv.depth, pv.next = m, score, depth, stk[ply+1].pv
+					this_stk.pv = pv
+				}
 				if score > alpha {
-					if node_type == Y_PV {
-						pv.m, pv.value, pv.depth, pv.next = m, score, depth, stk[ply+1].pv
-						this_stk.pv = pv
-					}
 					if score >= beta {
 						store_cutoff(this_stk, m, brd.c, total) // what happens on refutation of main pv?
 						main_tt.store(brd, m, depth, LOWER_BOUND, score)
@@ -451,21 +460,22 @@ search_moves:
 			brd.worker.HelpServants(sp)
 		}
 
+		// make sure to capture any improvements contributed by servant workers:
 		sp.Lock()
 		alpha, best, best_move = sp.alpha, sp.best, sp.best_move
 		sum, legal_searched = sp.node_count, sp.legal_searched
+		if node_type == Y_PV {
+			stk[ply].pv =  this_stk.pv
+		}
 		sp.Unlock()
 
 	case SP_SERVANT:
 		return NO_SCORE, 0
 	default:
+
 	}
 
 	if legal_searched > 0 {
-		if node_type == Y_PV {
-			pv.m, pv.value, pv.depth, pv.next = best_move, best, depth, stk[ply+1].pv
-			this_stk.pv = pv
-		}
 		if alpha > old_alpha {
 			main_tt.store(brd, best_move, depth, EXACT, best)
 			return best, sum
@@ -522,7 +532,7 @@ func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) (int, int) {
 
 	legal_moves := false
 	memento := brd.NewMemento()
-	selector := NewQMoveSelector(brd, this_stk, in_check, depth >= MIN_CHECK_DEPTH)
+	selector := NewQMoveSelector(brd, this_stk, in_check, depth >= MAX_CHECK_DEPTH)
 
 	var may_promote, gives_check bool
 	for m := selector.Next(false); m != NO_MOVE; m = selector.Next(false) {
@@ -588,7 +598,7 @@ func determine_child_type(node_type, legal_searched int) int {
 
 // Determine if the current node is a good place to start searching in parallel.
 func can_split(brd *Board, ply, depth, node_type, legal_searched, stage int) bool {
-	if depth >= SPLIT_MIN {
+	if depth >= MIN_SPLIT {
 		switch node_type {
 		case Y_PV:
 			if ply == 0 {
@@ -605,6 +615,7 @@ func can_split(brd *Board, ply, depth, node_type, legal_searched, stage int) boo
 	}
 	return false
 }
+
 
 
 

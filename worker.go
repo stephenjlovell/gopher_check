@@ -25,7 +25,7 @@ package main
 
 import (
 	// "fmt"
-	"sync"
+	// "sync"
 )
 
 // Each worker maintains a list of active split points for which it is responsible.
@@ -48,7 +48,7 @@ import (
 // each child SP.
 
 type Worker struct {
-	sync.Mutex
+	// sync.Mutex
 	mask  uint8
 	index uint8
 
@@ -149,7 +149,9 @@ func (w *Worker) SearchSP(sp *SplitPoint) {
 	brd := sp.brd.Copy()
 	brd.worker = w
 
+	// the SP master must be searching deeper
 	sp.master.stk.CopyUpTo(w.stk, sp.ply)
+
 	w.stk[sp.ply].sp = sp
 
 
