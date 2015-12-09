@@ -33,7 +33,7 @@ package main
 // 2. Non-captures that give check via get_checks().
 
 import (
-	// "fmt"
+	"fmt"
 	"sync"
 )
 
@@ -141,6 +141,11 @@ func (s *MoveSelector) NextMove() (Move, int) {
 			s.index++
 			if s.brd.ValidMove(s.first_move, s.in_check) && s.brd.LegalMove(s.first_move, s.in_check) {
 				return s.first_move, STAGE_FIRST
+			} else {
+				if s.first_move != NO_MOVE && s.first_move != 0 {
+					fmt.Printf("Invalid/Illegal move: %s\n", s.first_move.ToUCI())
+					// s.brd.Print()
+				}
 			}
 		case STAGE_WINNING:
 			m := s.winning[s.index].move

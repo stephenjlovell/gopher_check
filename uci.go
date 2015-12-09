@@ -260,8 +260,3 @@ func PlayMoveSequence(brd *Board, uci_fields []string) {
 func StartPos() *Board {
 	return ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 }
-
-// move this application logic out of UCI file
-func ResetAll() {
-	main_htable.Clear()
-}

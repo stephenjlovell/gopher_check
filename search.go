@@ -31,7 +31,7 @@ import (
 const (
 	MAX_TIME = 120000 // default search time limit in milliseconds (2m)
 
-	MIN_SPLIT = 3 // set >= MAX_PLY to disable parallel search.
+	MIN_SPLIT = 16 // set >= MAX_PLY to disable parallel search.
 
 	MAX_DEPTH = 16
 	MAX_PLY   = MAX_DEPTH * 2
@@ -131,7 +131,7 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 		}
 
 		nodes_per_iteration[d] += total
-		if d > COMMS_MIN && print_info && uci_mode { // don't print info for first few plys to reduce communication traffic.
+		if d > COMMS_MIN && print_info && uci_mode { // don't print info for first few plies to reduce communication traffic.
 			fmt.Printf("\n")
 			PrintInfo(guess, d, sum, time.Since(start), stk)
 		}

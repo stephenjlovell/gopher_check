@@ -2,9 +2,12 @@
 
 To Do:
 
-BUG: Multiple goroutines sometimes behaving as SP_MASTER for same SP.
+BUG: Rare hang or possible infinite loop during parallel search, where search does not respond to timeout signal
 
-Validate correctness of PV returned during parallel search.
+Reduce GC pressure: decrease object allocation in TT and during parallel search.
+
+Validate correctness of PV returned during parallel search by comparing parallel PV to sequential PV returned.
+
 Tune Tapered Eval.
 Implement Pondering.
 

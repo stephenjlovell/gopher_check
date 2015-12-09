@@ -24,36 +24,32 @@
 package main
 
 import (
-	// "fmt"
-	"sync"
+	"sync/atomic"
 )
 
 type HTable [2][8][64]uint64
 
 var main_htable HTable
-var htable_mutex sync.Mutex
 
+// Store atomically adds count to the history table h.
 func (h *HTable) Store(m Move, c uint8, count int) {
-	htable_mutex.Lock()
-	h[c][m.Piece()][m.To()] += uint64((count >> 2) | 1)
-	htable_mutex.Unlock()
+	atomic.AddUint64(&h[c][m.Piece()][m.To()], uint64((count >> 2) | 1))
 }
 
+// Probe atomically reads the history table h.
 func (h *HTable) Probe(pc Piece, c uint8, to int) uint64 {
-	value := uint64(0)
-	htable_mutex.Lock()
-	if h[c][pc][to] > 0 {
-		value = (((h[c][pc][to] >> 3) & mask_of_length[21]) | 1) << 1
+	v := atomic.LoadUint64(&h[c][pc][to])
+	if v > 0 {
+		return ((((v >> 3) & mask_of_length[21]) | 1) << 1)
 	}
-	htable_mutex.Unlock()
-	return value
+	return 0
 }
 
 func (h *HTable) Clear() {
 	for i := 0; i < 2; i++ {
 		for j := 0; j < 6; j++ {
 			for k := 0; k < 64; k++ {
-				h[i][j][k] = 0
+				atomic.StoreUint64(&h[i][j][k], 0)
 			}
 		}
 	}

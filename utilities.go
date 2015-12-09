@@ -87,3 +87,11 @@ func correct_move(epd *EPD, move_str string) bool {
 	}
 	return false
 }
+
+func ResetAll() {
+	main_htable.Clear()
+	// setup_main_tt()
+	for _, w := range load_balancer.workers {
+		w.stk = NewStack()
+	}
+}

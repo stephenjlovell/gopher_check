@@ -65,6 +65,7 @@ const ( // direction codes (0...8)
 
 var opposite_dir = [16]int{SE, SW, NW, NE, SOUTH, WEST, NORTH, EAST, DIR_INVALID}
 
+// get rid of this type and call atomic directly.
 type SafeCounter int64
 
 func (c *SafeCounter) Add(i int64) int64 {
