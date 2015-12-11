@@ -24,7 +24,7 @@
 package main
 
 import (
-"fmt"
+// "fmt"
 	"sync/atomic"
 )
 
@@ -77,8 +77,6 @@ type Bucket struct {
 	data uint64
 }
 
-type BucketData uint64
-
 func NewBucket(hash_key uint64, move Move, depth, entry_type, value int) Bucket {
 	entry_data := uint64(depth) // maximum allowable depth of 31
 	entry_data |= (uint64(move) << 5) | (uint64(entry_type) << 26) |
@@ -89,12 +87,13 @@ func NewBucket(hash_key uint64, move Move, depth, entry_type, value int) Bucket 
 	}
 }
 
-// XOR out b.data and return the original hash key.  If b.data has been modified by another goroutine
-// due to a race condition, the key returned will no longer match and probe() will reject the entry.
+func (b *Bucket) Store(new_data BucketData, hash_key uint64) {
+	atomic.StoreUint64(&b.data, uint64(new_data))
+	atomic.StoreUint64(&b.key, uint64(new_data) ^ hash_key)
+}
 
-// func (b Bucket) HashKey() uint64 {
-// 	return (b.key ^ b.data)
-// }
+type BucketData uint64
+
 func (data BucketData) Depth() int {
 	return int(uint64(data) & uint64(31))
 }
@@ -111,21 +110,13 @@ func (data BucketData) Id() int {
 	return int((uint64(data) >> 45) & uint64(511))
 }
 
-func (data BucketData) NewID(id int) uint64 {
-	return (uint64(data) & uint64(35184372088831)) | (uint64(id) << 45)
+func (data BucketData) NewID(id int) BucketData {
+	return (data & BucketData(35184372088831)) | (BucketData(id) << 45)
 }
 
-// func (b *Bucket) Replace(hash_key uint64, move Move, depth, entry_type, value int) {
-// 	// maximum allowable depth of 31
-// 	entry_data := uint64(depth) | (uint64(move) << 5) | (uint64(entry_type) << 26) |
-// 		(uint64(value+INF) << 28) | (uint64(search_id) << 45)
-// 	b.key = (hash_key ^ entry_data) // XOR in entry_data to provide a way to check for race conditions.
-// 	b.data = entry_data
-// }
-
-func NewData(move Move, depth, entry_type, value int) uint64 {
-	return uint64(depth) | (uint64(move) << 5) | (uint64(entry_type) << 26) |
-		(uint64(value+INF) << 28) | (uint64(search_id) << 45)
+func NewData(move Move, depth, entry_type, value int) BucketData {
+	return BucketData(depth) | (BucketData(move) << 5) | (BucketData(entry_type) << 26) |
+		(BucketData(value+INF) << 28) | (BucketData(search_id) << 45)
 }
 
 
@@ -149,19 +140,14 @@ func (tt *TT) probe(brd *Board, depth, null_depth, alpha, beta int, score *int) 
 
 		if hash_key == uint64(data ^ key) { // look for an entry uncorrupted by lockless access.
 
-			fmt.Printf("Full Key match: %d", hash_key)
-
-			atomic.StoreUint64(&slot[i].key, key.NewID(search_id)) // update age (search id) of entry.
+			slot[i].Store(data.NewID(search_id), hash_key)  // update age (search id) of entry.
 
 			entry_value := data.Value()
-
 			*score = entry_value // set the current search score
 
 			entry_depth := data.Depth()
 			if entry_depth >= depth {
-				entry_type := data.Type()
-
-				switch entry_type {
+				switch data.Type() {
 				case LOWER_BOUND: // failed high last time (at CUT node)
 					if entry_value >= beta {
 						return data.Move(), (CUTOFF_FOUND | BETA_FOUND)
@@ -179,19 +165,15 @@ func (tt *TT) probe(brd *Board, depth, null_depth, alpha, beta int, score *int) 
 					}
 					return data.Move(), EXACT_FOUND
 				}
-
 			} else if entry_depth >= null_depth {
-				entry_type := data.Type()
-				entry_value := data.Value()
 				// if the entry is too shallow for an immediate cutoff but at least as deep as a potential
 				// null-move search, check if a null move search would have any chance of causing a beta cutoff.
-				if entry_type == UPPER_BOUND && entry_value < beta {
+				if data.Type() == UPPER_BOUND && data.Value() < beta {
 					return data.Move(), AVOID_NULL
 				}
 			}
 			return data.Move(), ORDERING_ONLY
 		}
-
 	}
 	return NO_MOVE, NO_MATCH
 }
@@ -206,11 +188,11 @@ func (tt *TT) store(brd *Board, move Move, depth, entry_type, value int) {
 	for i := 0; i < 4; i++ {
 		data[i] = BucketData(atomic.LoadUint64(&slot[i].data))
 		key = BucketData(atomic.LoadUint64(&slot[i].key))
-
-		if hash_key == uint64(data[i] ^ key) { // exact match found.  Always replace.
-			data[i] = BucketData(NewData(move, depth, entry_type, value))
-			atomic.StoreUint64(&slot[i].data, uint64(data[i]))
-			atomic.StoreUint64(&slot[i].key, uint64(data[i] ^ key))
+		// XOR out b.data to return the original hash key.  If b.data has been modified by another goroutine
+		// due to a race condition, the key returned will no longer match and probe() will reject the entry.
+		if hash_key == uint64(data[i] ^ key) {
+			data[i] = NewData(move, depth, entry_type, value)  // exact match found.  Always replace.
+			slot[i].Store(data[i], hash_key)
 			return
 		}
 	}
@@ -224,8 +206,7 @@ func (tt *TT) store(brd *Board, move Move, depth, entry_type, value int) {
 		}
 	}
 	if replace_index != 4 {
-		atomic.StoreUint64(&slot[replace_index].data, uint64(data[replace_index]))
-		atomic.StoreUint64(&slot[replace_index].key, uint64(data[replace_index] ^ key))
+		slot[replace_index].Store(data[replace_index], hash_key)
 		return
 	}
 	// No exact match or entry from previous search found. Replace the shallowest entry.
@@ -235,8 +216,7 @@ func (tt *TT) store(brd *Board, move Move, depth, entry_type, value int) {
 			replace_index, replace_depth = i, data[i].Depth()
 		}
 	}
-	atomic.StoreUint64(&slot[replace_index].data, uint64(data[replace_index]))
-	atomic.StoreUint64(&slot[replace_index].key, uint64(data[replace_index] ^ key))
+	slot[replace_index].Store(data[replace_index], hash_key)
 }
 
 // Zobrist Hashing
