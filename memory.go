@@ -25,7 +25,7 @@ package main
 
 import (
 // "fmt"
-	"sync/atomic"
+	// "sync/atomic"
 )
 
 const (
@@ -52,18 +52,15 @@ const (
 var main_tt TT
 
 func setup_main_tt() {
-	for i, _ := range main_tt {
-		main_tt[i] = &Slot{
-			NewBucket(0, NO_MOVE, 0, 0, NO_SCORE),
-			NewBucket(0, NO_MOVE, 0, 0, NO_SCORE),
-			NewBucket(0, NO_MOVE, 0, 0, NO_SCORE),
-			NewBucket(0, NO_MOVE, 0, 0, NO_SCORE),
+	for i := 0; i < SLOT_COUNT; i++ {
+		for j := 0; j < 4; j++ {
+			main_tt[i][j].key = uint64(0)
+			main_tt[i][j].data = uint64(NewData(NO_MOVE, 0, EXACT, NO_SCORE, 511))
 		}
 	}
 }
 
-type TT [SLOT_COUNT]*Slot
-
+type TT [SLOT_COUNT]Slot
 type Slot [4]Bucket // 512 bits
 
 // data stores the following: (54 bits total)
@@ -77,19 +74,29 @@ type Bucket struct {
 	data uint64
 }
 
-func NewBucket(hash_key uint64, move Move, depth, entry_type, value int) Bucket {
-	entry_data := uint64(depth) // maximum allowable depth of 31
-	entry_data |= (uint64(move) << 5) | (uint64(entry_type) << 26) |
-		(uint64(value+INF) << 28) | (uint64(search_id) << 45)
-	return Bucket{
-		key:  (hash_key ^ entry_data), // XOR in entry_data to provide a way to check for race conditions.
-		data: entry_data,
-	}
+func NewData(move Move, depth, entry_type, value, id int) BucketData {
+	return BucketData(depth) | (BucketData(move) << 5) | (BucketData(entry_type) << 26) |
+		(BucketData(value+INF) << 28) | (BucketData(id) << 45)
 }
 
+// func NewBucket(hash_key uint64, move Move, depth, entry_type, value int) Bucket {
+// 	entry_data := uint64(NewData(move, depth, entry_type, value))
+// 	return Bucket{
+// 		key:  (hash_key ^ entry_data), // XOR in entry_data to provide a way to check for race conditions.
+// 		data: entry_data,
+// 	}
+// }
+
 func (b *Bucket) Store(new_data BucketData, hash_key uint64) {
-	atomic.StoreUint64(&b.data, uint64(new_data))
-	atomic.StoreUint64(&b.key, uint64(new_data) ^ hash_key)
+	// atomic.StoreUint64(&b.data, uint64(new_data))
+	// atomic.StoreUint64(&b.key, uint64(new_data) ^ hash_key)
+	b.data = uint64(new_data)
+	b.key = (uint64(new_data) ^ hash_key)
+}
+
+func (b *Bucket) Load() (BucketData, BucketData) {
+	// return BucketData(atomic.LoadUint64(&b.data)), BucketData(atomic.LoadUint64(&b.key))
+	return BucketData(b.data), BucketData(b.key)
 }
 
 type BucketData uint64
@@ -114,14 +121,11 @@ func (data BucketData) NewID(id int) BucketData {
 	return (data & BucketData(35184372088831)) | (BucketData(id) << 45)
 }
 
-func NewData(move Move, depth, entry_type, value int) BucketData {
-	return BucketData(depth) | (BucketData(move) << 5) | (BucketData(entry_type) << 26) |
-		(BucketData(value+INF) << 28) | (BucketData(search_id) << 45)
-}
+
 
 
 func (tt *TT) get_slot(hash_key uint64) *Slot {
-	return tt[hash_key&TT_MASK]
+	return &tt[hash_key&TT_MASK]
 }
 
 // Use Hyatt's lockless hashing approach to avoid having to lock/unlock shared TT memory
@@ -135,9 +139,10 @@ func (tt *TT) probe(brd *Board, depth, null_depth, alpha, beta int, score *int) 
 	slot := tt.get_slot(hash_key)
 
 	for i := 0; i < 4; i++ {
-		data = BucketData(atomic.LoadUint64(&slot[i].data))
-		key = BucketData(atomic.LoadUint64(&slot[i].key))
+		data, key = slot[i].Load()
 
+		// XOR out data to return the original hash key.  If data has been modified by another goroutine
+		// due to a data race, the key returned will no longer match and probe() will reject the entry.
 		if hash_key == uint64(data ^ key) { // look for an entry uncorrupted by lockless access.
 
 			slot[i].Store(data.NewID(search_id), hash_key)  // update age (search id) of entry.
@@ -186,12 +191,10 @@ func (tt *TT) store(brd *Board, move Move, depth, entry_type, value int) {
 	var data [4]BucketData
 
 	for i := 0; i < 4; i++ {
-		data[i] = BucketData(atomic.LoadUint64(&slot[i].data))
-		key = BucketData(atomic.LoadUint64(&slot[i].key))
-		// XOR out b.data to return the original hash key.  If b.data has been modified by another goroutine
-		// due to a race condition, the key returned will no longer match and probe() will reject the entry.
+		data[i], key = slot[i].Load()
+
 		if hash_key == uint64(data[i] ^ key) {
-			data[i] = NewData(move, depth, entry_type, value)  // exact match found.  Always replace.
+			data[i] = NewData(move, depth, entry_type, value, search_id)  // exact match found.  Always replace.
 			slot[i].Store(data[i], hash_key)
 			return
 		}
@@ -216,6 +219,7 @@ func (tt *TT) store(brd *Board, move Move, depth, entry_type, value int) {
 			replace_index, replace_depth = i, data[i].Depth()
 		}
 	}
+	// fmt.Printf("No match from previous search\n")
 	slot[replace_index].Store(data[replace_index], hash_key)
 }
 
@@ -231,7 +235,7 @@ var enp_table [65]uint64           // integer keys representing the en-passant t
 var castle_table [16]uint64
 
 var side_key64 uint64 // keys representing a change in side-to-move.
-var side_key32 uint32
+// var side_key32 uint32
 
 const (
 	MAX_RAND = (1 << 32) - 1
@@ -254,7 +258,7 @@ func setup_zobrist() {
 	}
 	enp_table[64] = 0
 	side_key64 = random_key64()
-	side_key32 = random_key32()
+	// side_key32 = random_key32()
 }
 
 func zobrist(pc Piece, sq int, c uint8) uint64 {

@@ -143,7 +143,8 @@ func (s *MoveSelector) NextMove() (Move, int) {
 				return s.first_move, STAGE_FIRST
 			} else {
 				if s.first_move != NO_MOVE && s.first_move != 0 {
-					fmt.Printf("Invalid/Illegal move: %s\n", s.first_move.ToUCI())
+					// fmt.Printf("Invalid/Illegal move: %s\n", s.first_move.ToUCI())
+					fmt.Printf("!")
 					// s.brd.Print()
 				}
 			}
