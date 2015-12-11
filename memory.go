@@ -25,7 +25,7 @@ package main
 
 import (
 // "fmt"
-	// "sync/atomic"
+	"sync/atomic"
 )
 
 const (
@@ -88,15 +88,15 @@ func NewData(move Move, depth, entry_type, value, id int) BucketData {
 // }
 
 func (b *Bucket) Store(new_data BucketData, hash_key uint64) {
-	// atomic.StoreUint64(&b.data, uint64(new_data))
-	// atomic.StoreUint64(&b.key, uint64(new_data) ^ hash_key)
-	b.data = uint64(new_data)
-	b.key = (uint64(new_data) ^ hash_key)
+	atomic.StoreUint64(&b.data, uint64(new_data))
+	atomic.StoreUint64(&b.key, uint64(new_data) ^ hash_key)
+	// b.data = uint64(new_data)
+	// b.key = (uint64(new_data) ^ hash_key)
 }
 
 func (b *Bucket) Load() (BucketData, BucketData) {
-	// return BucketData(atomic.LoadUint64(&b.data)), BucketData(atomic.LoadUint64(&b.key))
-	return BucketData(b.data), BucketData(b.key)
+	return BucketData(atomic.LoadUint64(&b.data)), BucketData(atomic.LoadUint64(&b.key))
+	// return BucketData(b.data), BucketData(b.key)
 }
 
 type BucketData uint64
@@ -190,12 +190,12 @@ func (tt *TT) store(brd *Board, move Move, depth, entry_type, value int) {
 	var key BucketData
 	var data [4]BucketData
 
+	new_data := NewData(move, depth, entry_type, value, search_id)
+
 	for i := 0; i < 4; i++ {
 		data[i], key = slot[i].Load()
-
 		if hash_key == uint64(data[i] ^ key) {
-			data[i] = NewData(move, depth, entry_type, value, search_id)  // exact match found.  Always replace.
-			slot[i].Store(data[i], hash_key)
+			slot[i].Store(new_data, hash_key) // exact match found.  Always replace.
 			return
 		}
 	}
@@ -209,7 +209,7 @@ func (tt *TT) store(brd *Board, move Move, depth, entry_type, value int) {
 		}
 	}
 	if replace_index != 4 {
-		slot[replace_index].Store(data[replace_index], hash_key)
+		slot[replace_index].Store(new_data, hash_key)
 		return
 	}
 	// No exact match or entry from previous search found. Replace the shallowest entry.
@@ -219,8 +219,7 @@ func (tt *TT) store(brd *Board, move Move, depth, entry_type, value int) {
 			replace_index, replace_depth = i, data[i].Depth()
 		}
 	}
-	// fmt.Printf("No match from previous search\n")
-	slot[replace_index].Store(data[replace_index], hash_key)
+	slot[replace_index].Store(new_data, hash_key)
 }
 
 // Zobrist Hashing
