@@ -63,7 +63,6 @@ func NewStack() Stack {
 	return stk
 }
 
-
 // this currently creates way too much garbage for the GC...
 func (stk Stack) CopyUpTo(other_stk Stack, ply int) {
 	for i := 0; i <= ply; i++ {

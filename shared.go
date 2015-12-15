@@ -84,7 +84,6 @@ var row_masks, column_masks [8]BB
 
 var ray_masks [8][64]BB
 
-
 var pawn_isolated_masks, pawn_side_masks, pawn_doubled_masks, knight_masks, bishop_masks, rook_masks,
 	queen_masks, king_masks, sq_mask_on, sq_mask_off [64]BB
 

@@ -24,7 +24,6 @@
 package main
 
 import (
-// "fmt"
 	"sync/atomic"
 )
 
@@ -79,17 +78,9 @@ func NewData(move Move, depth, entry_type, value, id int) BucketData {
 		(BucketData(value+INF) << 28) | (BucketData(id) << 45)
 }
 
-// func NewBucket(hash_key uint64, move Move, depth, entry_type, value int) Bucket {
-// 	entry_data := uint64(NewData(move, depth, entry_type, value))
-// 	return Bucket{
-// 		key:  (hash_key ^ entry_data), // XOR in entry_data to provide a way to check for race conditions.
-// 		data: entry_data,
-// 	}
-// }
-
 func (b *Bucket) Store(new_data BucketData, hash_key uint64) {
 	atomic.StoreUint64(&b.data, uint64(new_data))
-	atomic.StoreUint64(&b.key, uint64(new_data) ^ hash_key)
+	atomic.StoreUint64(&b.key, uint64(new_data)^hash_key)
 	// b.data = uint64(new_data)
 	// b.key = (uint64(new_data) ^ hash_key)
 }
@@ -121,9 +112,6 @@ func (data BucketData) NewID(id int) BucketData {
 	return (data & BucketData(35184372088831)) | (BucketData(id) << 45)
 }
 
-
-
-
 func (tt *TT) get_slot(hash_key uint64) *Slot {
 	return &tt[hash_key&TT_MASK]
 }
@@ -143,9 +131,9 @@ func (tt *TT) probe(brd *Board, depth, null_depth, alpha, beta int, score *int) 
 
 		// XOR out data to return the original hash key.  If data has been modified by another goroutine
 		// due to a data race, the key returned will no longer match and probe() will reject the entry.
-		if hash_key == uint64(data ^ key) { // look for an entry uncorrupted by lockless access.
+		if hash_key == uint64(data^key) { // look for an entry uncorrupted by lockless access.
 
-			slot[i].Store(data.NewID(search_id), hash_key)  // update age (search id) of entry.
+			slot[i].Store(data.NewID(search_id), hash_key) // update age (search id) of entry.
 
 			entry_value := data.Value()
 			*score = entry_value // set the current search score
@@ -194,7 +182,7 @@ func (tt *TT) store(brd *Board, move Move, depth, entry_type, value int) {
 
 	for i := 0; i < 4; i++ {
 		data[i], key = slot[i].Load()
-		if hash_key == uint64(data[i] ^ key) {
+		if hash_key == uint64(data[i]^key) {
 			slot[i].Store(new_data, hash_key) // exact match found.  Always replace.
 			return
 		}

@@ -35,7 +35,6 @@ import (
 // 	depth := MAX_DEPTH
 // 	for n := 0; n < b.N; n++ {
 // 		brd := ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-// 		ResetAll()
 // 		Search(brd, depth, 4000)
 // 		fmt.Printf(".")
 // 	}

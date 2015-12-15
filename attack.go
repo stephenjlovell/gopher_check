@@ -81,7 +81,6 @@ func is_attacked_by(brd *Board, occ BB, sq int, attacker, defender uint8) bool {
 // 2. Scan toward the king to see if there are any other pieces blocking this route to the king.
 // 3. Scan in the opposite direction to see detect any potential threats along this ray.
 
-
 // Return a bitboard of locations the piece at sq can move to without leaving the king in check.
 func is_pinned(brd *Board, sq int, c, e uint8) BB {
 	occ := brd.AllOccupied()
@@ -98,7 +97,7 @@ func is_pinned(brd *Board, sq int, c, e uint8) BB {
 			attacks = rook_attacks(occ, sq)
 			threat = line & attacks & (brd.pieces[e][ROOK] | brd.pieces[e][QUEEN])
 		}
-		if threat > 0 && (attacks & brd.pieces[c][KING]) > 0  {
+		if threat > 0 && (attacks&brd.pieces[c][KING]) > 0 {
 			return line & attacks
 		}
 	}

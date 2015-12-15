@@ -31,13 +31,13 @@ import (
 const (
 	MAX_TIME = 120000 // default search time limit in milliseconds (2m)
 
-	MIN_SPLIT = 16 // set >= MAX_PLY to disable parallel search.
+	MIN_SPLIT = 3 // set >= MAX_PLY to disable parallel search.
 
 	MAX_DEPTH = 16
 	MAX_PLY   = MAX_DEPTH * 2
 
 	F_PRUNE_MAX = 2 // should always be less than MIN_SPLIT
-	LMR_MIN     = 1
+	LMR_MIN     = 2
 	IID_MIN     = 4
 
 	MAX_CHECK_DEPTH = -2
@@ -77,6 +77,8 @@ func search_timer(timer *time.Timer) {
 }
 
 func Search(brd *Board, depth, time_limit int) (Move, int) {
+
+	ResetAll() // reset shared data structures
 
 	side_to_move = brd.c
 	id_move[brd.c] = 0
@@ -417,7 +419,7 @@ search_moves:
 				}
 			}
 			sp.Unlock()
-		} else {  // sp_type == SP_NONE
+		} else { // sp_type == SP_NONE
 			sum += total
 			if score > best {
 				if node_type == Y_PV {
@@ -466,7 +468,7 @@ search_moves:
 		alpha, best, best_move = sp.alpha, sp.best, sp.best_move
 		sum, legal_searched = sp.node_count, sp.legal_searched
 		if node_type == Y_PV {
-			stk[ply].pv =  this_stk.pv
+			stk[ply].pv = this_stk.pv
 		}
 		sp.Unlock()
 
@@ -616,9 +618,6 @@ func can_split(brd *Board, ply, depth, node_type, legal_searched, stage int) boo
 	}
 	return false
 }
-
-
-
 
 func null_make(brd *Board, stk Stack, beta, null_depth, ply int, checked bool) (int, int) {
 	hash_key, enp_target := brd.hash_key, brd.enp_target

@@ -33,7 +33,7 @@ var main_htable HTable
 
 // Store atomically adds count to the history table h.
 func (h *HTable) Store(m Move, c uint8, count int) {
-	atomic.AddUint64(&h[c][m.Piece()][m.To()], uint64((count >> 2) | 1))
+	atomic.AddUint64(&h[c][m.Piece()][m.To()], uint64((count>>2)|1))
 }
 
 // Probe atomically reads the history table h.

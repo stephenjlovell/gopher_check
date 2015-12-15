@@ -24,8 +24,8 @@
 package main
 
 import (
-	// "fmt"
-	// "sync"
+// "fmt"
+// "sync"
 )
 
 // Each worker maintains a list of active split points for which it is responsible.
@@ -62,8 +62,6 @@ type Worker struct {
 
 	assign_sp chan *SplitPoint
 }
-
-
 
 func (w *Worker) IsCancelled() bool {
 	for sp := w.current_sp; sp != nil; sp = sp.parent {
@@ -153,7 +151,6 @@ func (w *Worker) SearchSP(sp *SplitPoint) {
 	sp.master.stk.CopyUpTo(w.stk, sp.ply)
 
 	w.stk[sp.ply].sp = sp
-
 
 	// Once the SP is fully evaluated, The SP master will handle returning its value to parent node.
 	_, total := ybw(brd, w.stk, sp.alpha, sp.beta, sp.depth, sp.ply, sp.node_type, SP_SERVANT, sp.checked)

@@ -45,7 +45,6 @@ func RunTestSuite(test_suite string) {
 
 	start := time.Now()
 	for i, epd := range test {
-		ResetAll()
 		// epd.brd.Print()
 		move, count := Search(epd.brd, depth, timeout)
 		move_str = ToSAN(epd.brd, move)
@@ -91,7 +90,7 @@ func correct_move(epd *EPD, move_str string) bool {
 func ResetAll() {
 	main_htable.Clear()
 	// setup_main_tt()
-	for _, w := range load_balancer.workers {
-		w.stk = NewStack()
-	}
+	// for _, w := range load_balancer.workers {
+	// 	w.stk = NewStack()
+	// }
 }

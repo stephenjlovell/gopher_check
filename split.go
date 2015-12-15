@@ -69,7 +69,6 @@ func (sp *SplitPoint) Order() int {
 		searched = 16
 	}
 	return (searched << 3) | sp.node_type
-
 }
 
 func (sp *SplitPoint) ServantMask() uint8 {
@@ -129,9 +128,6 @@ func CreateSP(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, be
 
 	return sp
 }
-
-
-
 
 type SPList []*SplitPoint
 

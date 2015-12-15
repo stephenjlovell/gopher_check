@@ -114,7 +114,6 @@ func ReadUCICommand() {
 				fmt.Printf("readyok\n")
 
 			case "ucinewgame":
-				ResetAll() // reset all shared data structures and prepare to start a new game.
 				current_board = ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 				fmt.Printf("readyok\n")
 

@@ -44,7 +44,6 @@ import (
 //   USAGE:
 //   - When the master directly assigns a worker, it should register the worker immediately with the SP before sending the SP to the worker.
 
-
 const (
 	MAX_WORKERS = 8
 )
@@ -104,22 +103,22 @@ func (b *Balancer) RootWorker() *Worker {
 }
 
 func (b *Balancer) AddSP(w *Worker, sp *SplitPoint) {
-		b.Lock()
+	b.Lock()
 
-		w.sp_list.Push(sp)
-		w.current_sp = sp
+	w.sp_list.Push(sp)
+	w.current_sp = sp
 FlushIdle: // If there are any idle workers, assign them now.
-  		for {
-  			select {
-  			case idle := <-load_balancer.done:
-	        sp.AddServant(idle.mask)
-  				idle.assign_sp <- sp
-  			default:
-  				break FlushIdle
-  			}
-  		}
+	for {
+		select {
+		case idle := <-load_balancer.done:
+			sp.AddServant(idle.mask)
+			idle.assign_sp <- sp
+		default:
+			break FlushIdle
+		}
+	}
 
-		b.Unlock()
+	b.Unlock()
 }
 
 func (b *Balancer) CancelSP(w *Worker) { // Should only be called by the SP master
