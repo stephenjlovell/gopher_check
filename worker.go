@@ -49,23 +49,23 @@ import (
 
 type Worker struct {
 	// sync.Mutex
-	mask  uint8
-	index uint8
-
 	search_overhead int
 
-	sp_list    SPList
-	current_sp *SplitPoint
+	sp_list    			SPList
+	stk 						Stack
 
-	stk Stack
-	ptt *PawnTT
+	assign_sp chan  *SplitPoint
 
-	assign_sp chan *SplitPoint
+	ptt 						*PawnTT
+	current_sp 			*SplitPoint
+
+	mask  					uint8
+	index 					uint8
 }
 
 func (w *Worker) IsCancelled() bool {
 	for sp := w.current_sp; sp != nil; sp = sp.parent {
-		if sp.cancel {
+		if sp.Cancel() {
 			return true
 		}
 	}
@@ -77,7 +77,7 @@ func (w *Worker) HelpServants(current_sp *SplitPoint) {
 	var worker *Worker
 	// Check for SPs underneath current_sp
 
-	for mask := current_sp.servant_mask; mask > 0; mask = current_sp.servant_mask {
+	for mask := current_sp.ServantMask(); mask > 0; mask = current_sp.ServantMask() {
 		best_sp = nil
 
 		load_balancer.Lock()
@@ -86,9 +86,9 @@ func (w *Worker) HelpServants(current_sp *SplitPoint) {
 			for _, this_sp := range worker.sp_list {
 				// If a worker has already finished searching, then either a beta cutoff has already
 				// occurred at sp, or no moves are left to search.
-				if !this_sp.servant_finished && (best_sp == nil || this_sp.Order() > best_sp.Order()) {
+				if !this_sp.ServantFinished() && (best_sp == nil || this_sp.Order() > best_sp.Order()) {
 					best_sp = this_sp
-					temp_mask |= this_sp.servant_mask // If this SP has servants of its own, check them as well.
+					temp_mask |= this_sp.ServantMask() // If this SP has servants of its own, check them as well.
 				}
 			}
 		}
@@ -120,7 +120,7 @@ func (w *Worker) Help(b *Balancer) {
 					continue
 				}
 				for _, this_sp := range master.sp_list {
-					if !this_sp.servant_finished && (best_sp == nil || this_sp.Order() > best_sp.Order()) {
+					if !this_sp.ServantFinished() && (best_sp == nil || this_sp.Order() > best_sp.Order()) {
 						best_sp = this_sp
 					}
 				}
@@ -147,13 +147,15 @@ func (w *Worker) SearchSP(sp *SplitPoint) {
 	brd := sp.brd.Copy()
 	brd.worker = w
 
-	// the SP master must be searching deeper
 	sp.master.stk.CopyUpTo(w.stk, sp.ply)
-
 	w.stk[sp.ply].sp = sp
 
+	sp.Lock()
+	alpha, beta := sp.alpha, sp.beta
+	sp.Unlock()
+
 	// Once the SP is fully evaluated, The SP master will handle returning its value to parent node.
-	_, total := ybw(brd, w.stk, sp.alpha, sp.beta, sp.depth, sp.ply, sp.node_type, SP_SERVANT, sp.checked)
+	_, total := ybw(brd, w.stk, alpha, beta, sp.depth, sp.ply, sp.node_type, SP_SERVANT, sp.checked)
 	w.search_overhead += total
 
 	sp.RemoveServant(w.mask)

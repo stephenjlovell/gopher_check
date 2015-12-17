@@ -23,6 +23,10 @@
 
 package main
 
+import (
+	// "fmt"
+)
+
 const (
 	MAX_STACK = 128
 )
@@ -30,20 +34,21 @@ const (
 type Stack []StackItem
 
 type StackItem struct {
+	hash_key      uint64 // use hash key to search for repetitions
+	eval          int
+	killers       KEntry
+	singular_move Move
+
 	sp *SplitPoint
 	pv *PV
 
-	killers       KEntry
-	singular_move Move
-	eval          int
-	hash_key      uint64 // use hash key to search for repetitions
 	in_check      bool
 	can_null      bool
 }
 
 func (this_stk *StackItem) Copy() *StackItem {
 	return &StackItem{
-		// sp: this_stk.sp,
+		// split point is not copied over.
 		pv:            this_stk.pv,
 		killers:       this_stk.killers,
 		singular_move: this_stk.singular_move,
@@ -63,19 +68,15 @@ func NewStack() Stack {
 	return stk
 }
 
-// this currently creates way too much garbage for the GC...
 func (stk Stack) CopyUpTo(other_stk Stack, ply int) {
-	for i := 0; i <= ply; i++ {
-		this_stk := &stk[i]
-		this_cpy := &other_stk[i]
-
-		// this_cpy.sp = this_stk.sp
-		// this_cpy.value = this_stk.value
-		// this_cpy.eval = this_stk.eval
-		// this_cpy.pv_move = this_stk.pv_move
-		// this_cpy.killers = this_stk.killers
-		this_cpy.hash_key = this_stk.hash_key
-		// this_cpy.depth = this_stk.depth
-		// this_cpy.in_check = this_stk.in_check
+	for i := 0; i < ply; i++ {
+		// other_stk[i].sp = stk[i].sp
+		// other_stk[i].value = stk[i].value
+		// other_stk[i].eval = stk[i].eval
+		// other_stk[i].pv_move = stk[i].pv_move
+		// other_stk[i].killers = stk[i].killers
+		other_stk[i].hash_key = stk[i].hash_key
+		// other_stk[i].depth = stk[i].depth
+		// other_stk[i].in_check = stk[i].in_check
 	}
 }

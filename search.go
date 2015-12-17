@@ -100,6 +100,7 @@ func Search(brd *Board, depth, time_limit int) (Move, int) {
 
 	timer.Stop() // cancel the timer to prevent it from interfering with the next search if it's not
 	// garbage collected before then.
+
 	return move, sum
 }
 
@@ -144,6 +145,8 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 	if print_info {
 		PrintInfo(guess, depth, sum, time.Since(start), stk)
 	}
+
+	// BUG: 'orphaned' workers occasionally still processing at this point.
 
 	return id_move[c], sum
 }
@@ -359,12 +362,10 @@ search_moves:
 
 		if brd.worker.IsCancelled() {
 			switch sp_type {
-			case SP_NONE:
-				return NO_SCORE, 0
 			case SP_MASTER:
+				sp.Lock()
 				if sp.cancel {
 					load_balancer.RemoveSP(brd.worker)
-					sp.Lock()
 					best, best_move, sum = sp.best, sp.best_move, sp.node_count
 					sp.Unlock()
 					// the servant that found the cutoff has already stored the cutoff info.
@@ -372,10 +373,13 @@ search_moves:
 					return best, sum
 				} else {
 					load_balancer.CancelSP(brd.worker)
+					sp.Unlock()
 					return NO_SCORE, 0
 				}
 			case SP_SERVANT:
-				return NO_SCORE, total
+				return NO_SCORE, sum
+			case SP_NONE:
+				return NO_SCORE, 0
 			default:
 				panic("unknown SP type")
 			}
@@ -410,7 +414,7 @@ search_moves:
 							sp.Unlock()
 							main_tt.store(brd, m, depth, LOWER_BOUND, score)
 							return score, sum
-						} else {
+						} else {  // sp_type == SP_SERVANT
 							sp.cancel = true
 							sp.Unlock()
 							return NO_SCORE, 0
@@ -441,8 +445,8 @@ search_moves:
 			if can_split(brd, ply, depth, node_type, legal_searched, stage) {
 				sp = CreateSP(brd, stk, selector, best_move, alpha, beta, best, depth, ply,
 					legal_searched, node_type, sum, checked)
-
-				load_balancer.AddSP(brd.worker, sp) // register the split point in the appropriate SP list, and notify any idle workers.
+				// register the split point in the appropriate SP list, and notify any idle workers.
+				load_balancer.AddSP(brd.worker, sp)
 
 				this_stk = sp.this_stk
 				sp_type = SP_MASTER
@@ -457,9 +461,11 @@ search_moves:
 
 		// Helpful Master Concept:
 		// All moves at this SP may have been consumed, but servant workers may still be busy evaluating
-		// subtrees rooted at this SP.  If that's the case, offer to help only those workers assigned to this
-		// split point.
-		if !sp.cancel {
+		// subtrees rooted at this SP.  If that's the case, offer to help only those workers assigned to
+		// this split point.
+
+		// if !sp.Cancel() {
+		if sp.HelpWanted()
 			brd.worker.HelpServants(sp)
 		}
 
@@ -475,7 +481,6 @@ search_moves:
 	case SP_SERVANT:
 		return NO_SCORE, 0
 	default:
-
 	}
 
 	if legal_searched > 0 {
@@ -500,6 +505,12 @@ search_moves:
 // Q-Search will always be done sequentially: Q-search subtrees are taller and narrower than in the main search,
 // making benefit of parallelism smaller and raising communication and synchronization overhead.
 func quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) (int, int) {
+
+	select {
+	case <-cancel:
+		return NO_SCORE, 1
+	default:
+	}
 
 	this_stk := &stk[ply]
 

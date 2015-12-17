@@ -33,8 +33,9 @@ import (
 //
 //   - Protects integrity of SP lists maintained by workers (Adding / Removing SPs)
 //   USAGE:
-//   - When a worker self-assigns (searches for an SP from available SP lists), it should lock the load balancer.
-//     Load balancer should only be unlocked after the worker is registered with the SP.
+//   - When a worker self-assigns (searches for an SP from available SP lists), it should lock
+//     the load balancer. Load balancer should only be unlocked after the worker is registered
+//     with the SP.
 //   - Finding the best SP should ideally be encapsulated by the load balancer.
 //
 // Split Point (local) Lock
@@ -42,7 +43,9 @@ import (
 //   - Protects search state for workers collaborating on same SP.
 //   - Protects info on which workers are collaborating at this SP.
 //   USAGE:
-//   - When the master directly assigns a worker, it should register the worker immediately with the SP before sending the SP to the worker.
+//   - When the master directly assigns a worker, it should register the worker immediately
+//     with the SP before sending the SP to the worker to avoid a data race with the SP's
+// 		 WaitGroup.
 
 const (
 	MAX_WORKERS = 8
@@ -80,7 +83,6 @@ func NewLoadBalancer(num_workers uint8) *Balancer {
 type Balancer struct {
 	workers []*Worker
 	sync.Mutex
-
 	done chan *Worker
 }
 
@@ -121,19 +123,22 @@ FlushIdle: // If there are any idle workers, assign them now.
 	b.Unlock()
 }
 
-func (b *Balancer) CancelSP(w *Worker) { // Should only be called by the SP master
+func (b *Balancer) CancelSP(w *Worker) {
 	b.Lock()
 
 	w.sp_list.Pop()
 	last_sp := w.current_sp.parent
-	w.current_sp.cancel = true
 	w.current_sp = last_sp
+
+	w.current_sp.cancel = true // Caller is responsible for SP lock protection
 
 	b.Unlock()
 }
 
-func (b *Balancer) RemoveSP(w *Worker) { // Prevent new workers from being assigned to w.current_sp without
-	b.Lock() // cancelling any ongoing work at this SP.
+// RemoveSP prevents new workers from being assigned to w.current_sp without cancelling
+// any ongoing work at this SP.
+func (b *Balancer) RemoveSP(w *Worker) {
+	b.Lock()
 
 	w.sp_list.Pop()
 	last_sp := w.current_sp.parent

@@ -2,11 +2,15 @@
 
 To Do:
 
-BUG: Rare hang or possible infinite loop during parallel search, where search does not respond to timeout signal
+BUG: Rare hang or possible infinite loop during parallel search, where search does not respond
+     to timeout signal
+BUG: 'orphaned' workers occasionally still processing at completion of search - can interfere
+     with next search.
 
-Reduce GC pressure: decrease object allocation in TT and during parallel search.
+Reduce GC pressure: decrease object allocation during parallel search.
 
-Validate correctness of PV returned during parallel search by comparing parallel PV to sequential PV returned.
+Validate correctness of PV returned during parallel search by comparing parallel PV to sequential
+PV return; inspect differences.
 
 Tune Tapered Eval.
 Implement Pondering.

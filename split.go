@@ -64,11 +64,12 @@ type SplitPoint struct {
 }
 
 func (sp *SplitPoint) Order() int {
+	sp.Lock()
 	searched := sp.legal_searched
-	if searched > 16 {
-		searched = 16
-	}
-	return (searched << 3) | sp.node_type
+	node_type := sp.node_type
+	sp.Unlock()
+
+	return (max(searched,16) << 3) | node_type
 }
 
 func (sp *SplitPoint) ServantMask() uint8 {
@@ -77,6 +78,29 @@ func (sp *SplitPoint) ServantMask() uint8 {
 	sp.Unlock()
 	return servant_mask
 }
+
+func (sp *SplitPoint) ServantFinished() bool {
+	sp.Lock()
+	finished := sp.servant_finished
+	sp.Unlock()
+	return finished
+}
+
+func (sp *SplitPoint) Cancel() bool {
+	sp.Lock()
+	cancel := sp.cancel
+	sp.Unlock()
+	return cancel
+}
+
+func (sp *SplitPoint) HelpWanted() bool {
+	sp.Lock()
+	help_wanted := !sp.cancel && sp.servant_mask > 0
+	sp.Unlock()
+	return help_wanted
+}
+
+
 
 func (sp *SplitPoint) AddServant(w_mask uint8) {
 	sp.Lock()
@@ -97,25 +121,24 @@ func CreateSP(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, be
 	legal_searched, node_type, sum int, checked bool) *SplitPoint {
 
 	sp := &SplitPoint{
-		selector: ms,
-		master:   brd.worker,
-		parent:   brd.worker.current_sp,
+		selector: 			ms,
+		master:   			brd.worker,
+		parent:   			brd.worker.current_sp,
 
-		brd:      brd.Copy(),
-		this_stk: stk[ply].Copy(),
-		// this_stk: &stk[ply],
+		brd:      			brd.Copy(),
+		this_stk: 			stk[ply].Copy(),
 
-		depth: depth,
-		ply:   ply,
+		depth: 					depth,
+		ply:   					ply,
 
-		node_type: node_type,
+		node_type: 			node_type,
 
-		alpha:     alpha,
-		beta:      beta,
-		best:      best,
-		best_move: best_move,
+		alpha:     			alpha,
+		beta:      			beta,
+		best:      			best,
+		best_move: 			best_move,
 
-		checked: checked,
+		checked: 				checked,
 
 		node_count:     sum,
 		legal_searched: legal_searched,
