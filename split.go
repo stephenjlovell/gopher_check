@@ -69,7 +69,7 @@ func (sp *SplitPoint) Order() int {
 	node_type := sp.node_type
 	sp.Unlock()
 
-	return (max(searched,16) << 3) | node_type
+	return (max(searched, 16) << 3) | node_type
 }
 
 func (sp *SplitPoint) ServantMask() uint8 {
@@ -100,8 +100,6 @@ func (sp *SplitPoint) HelpWanted() bool {
 	return help_wanted
 }
 
-
-
 func (sp *SplitPoint) AddServant(w_mask uint8) {
 	sp.Lock()
 	sp.servant_mask |= w_mask
@@ -121,24 +119,24 @@ func CreateSP(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, be
 	legal_searched, node_type, sum int, checked bool) *SplitPoint {
 
 	sp := &SplitPoint{
-		selector: 			ms,
-		master:   			brd.worker,
-		parent:   			brd.worker.current_sp,
+		selector: ms,
+		master:   brd.worker,
+		parent:   brd.worker.current_sp,
 
-		brd:      			brd.Copy(),
-		this_stk: 			stk[ply].Copy(),
+		brd:      brd.Copy(),
+		this_stk: stk[ply].Copy(),
 
-		depth: 					depth,
-		ply:   					ply,
+		depth: depth,
+		ply:   ply,
 
-		node_type: 			node_type,
+		node_type: node_type,
 
-		alpha:     			alpha,
-		beta:      			beta,
-		best:      			best,
-		best_move: 			best_move,
+		alpha:     alpha,
+		beta:      beta,
+		best:      best,
+		best_move: best_move,
 
-		checked: 				checked,
+		checked: checked,
 
 		node_count:     sum,
 		legal_searched: legal_searched,

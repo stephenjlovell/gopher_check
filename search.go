@@ -465,7 +465,7 @@ search_moves:
 		// this split point.
 
 		// if !sp.Cancel() {
-		if sp.HelpWanted()
+		if sp.HelpWanted() {
 			brd.worker.HelpServants(sp)
 		}
 

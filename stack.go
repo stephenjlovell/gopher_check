@@ -24,7 +24,7 @@
 package main
 
 import (
-	// "fmt"
+// "fmt"
 )
 
 const (
@@ -42,8 +42,8 @@ type StackItem struct {
 	sp *SplitPoint
 	pv *PV
 
-	in_check      bool
-	can_null      bool
+	in_check bool
+	can_null bool
 }
 
 func (this_stk *StackItem) Copy() *StackItem {

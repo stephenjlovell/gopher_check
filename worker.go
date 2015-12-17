@@ -51,16 +51,16 @@ type Worker struct {
 	// sync.Mutex
 	search_overhead int
 
-	sp_list    			SPList
-	stk 						Stack
+	sp_list SPList
+	stk     Stack
 
-	assign_sp chan  *SplitPoint
+	assign_sp chan *SplitPoint
 
-	ptt 						*PawnTT
-	current_sp 			*SplitPoint
+	ptt        *PawnTT
+	current_sp *SplitPoint
 
-	mask  					uint8
-	index 					uint8
+	mask  uint8
+	index uint8
 }
 
 func (w *Worker) IsCancelled() bool {
