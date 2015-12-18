@@ -43,5 +43,8 @@ import (
 func TestPlayingStrength(t *testing.T) {
 	print_name()
 	setup()
+	// cancel := make(chan bool)
+	// defer close(cancel)
+	// load_balancer.KeepPrinting(cancel)
 	RunTestSuite("test_suites/wac_300.epd")
 }

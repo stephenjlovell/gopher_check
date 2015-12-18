@@ -24,7 +24,9 @@
 package main
 
 import (
+	"time"
 	"sync"
+	"fmt"
 )
 
 // 2-Level Locking Scheme
@@ -105,10 +107,11 @@ func (b *Balancer) RootWorker() *Worker {
 }
 
 func (b *Balancer) AddSP(w *Worker, sp *SplitPoint) {
-	b.Lock()
-
+	w.Lock()
 	w.sp_list.Push(sp)
 	w.current_sp = sp
+	w.Unlock()
+
 FlushIdle: // If there are any idle workers, assign them now.
 	for {
 		select {
@@ -119,30 +122,44 @@ FlushIdle: // If there are any idle workers, assign them now.
 			break FlushIdle
 		}
 	}
-
-	b.Unlock()
-}
-
-func (b *Balancer) CancelSP(w *Worker) {
-	b.Lock()
-
-	w.sp_list.Pop()
-	last_sp := w.current_sp.parent
-	w.current_sp = last_sp
-
-	w.current_sp.cancel = true // Caller is responsible for SP lock protection
-
-	b.Unlock()
 }
 
 // RemoveSP prevents new workers from being assigned to w.current_sp without cancelling
 // any ongoing work at this SP.
 func (b *Balancer) RemoveSP(w *Worker) {
-	b.Lock()
-
+	w.Lock()
 	w.sp_list.Pop()
 	last_sp := w.current_sp.parent
 	w.current_sp = last_sp
+	w.Unlock()
+}
 
-	b.Unlock()
+func (b *Balancer) Print() {
+	for i, w := range b.workers {
+		if len(w.sp_list) > 0 {
+			w.Lock()
+			fmt.Printf("w%d: ", i)
+			for _, sp := range w.sp_list {
+				fmt.Printf("%d, ", (sp.brd.hash_key>>48))
+			}
+			fmt.Printf("\n")
+			w.Unlock()
+		}
+	}
+}
+
+func (b *Balancer) KeepPrinting(cancel chan bool) {
+	go func() {
+		for {
+			select {
+			case <-cancel:
+				return
+			default:
+				b.Print()
+				time.Sleep(time.Second)
+			}
+		}
+		// time.Sleep(time.Second * 5)
+		// panic("Gimme all your stack traces...")
+	}()
 }

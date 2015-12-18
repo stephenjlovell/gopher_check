@@ -25,7 +25,7 @@ package main
 
 import (
 // "fmt"
-// "sync"
+"sync"
 )
 
 // Each worker maintains a list of active split points for which it is responsible.
@@ -48,7 +48,7 @@ import (
 // each child SP.
 
 type Worker struct {
-	// sync.Mutex
+	sync.Mutex
 	search_overhead int
 
 	sp_list SPList
@@ -80,9 +80,9 @@ func (w *Worker) HelpServants(current_sp *SplitPoint) {
 	for mask := current_sp.ServantMask(); mask > 0; mask = current_sp.ServantMask() {
 		best_sp = nil
 
-		load_balancer.Lock()
 		for temp_mask := mask; temp_mask > 0; temp_mask &= (^worker.mask) {
 			worker = load_balancer.workers[lsb(BB(temp_mask))]
+			worker.Lock()
 			for _, this_sp := range worker.sp_list {
 				// If a worker has already finished searching, then either a beta cutoff has already
 				// occurred at sp, or no moves are left to search.
@@ -91,15 +91,13 @@ func (w *Worker) HelpServants(current_sp *SplitPoint) {
 					temp_mask |= this_sp.ServantMask() // If this SP has servants of its own, check them as well.
 				}
 			}
+			worker.Unlock()
 		}
-		if best_sp != nil {
-			best_sp.AddServant(w.mask)
-		}
-		load_balancer.Unlock()
 
 		if best_sp == nil {
 			break
 		} else {
+			best_sp.AddServant(w.mask)
 			w.SearchSP(best_sp)
 		}
 	}
@@ -113,26 +111,25 @@ func (w *Worker) Help(b *Balancer) {
 		var best_sp *SplitPoint
 		for {
 
-			b.Lock()
 			best_sp = nil
 			for _, master := range b.workers { // try to find a good SP
 				if master.index == w.index {
 					continue
 				}
+				master.Lock()
 				for _, this_sp := range master.sp_list {
 					if !this_sp.ServantFinished() && (best_sp == nil || this_sp.Order() > best_sp.Order()) {
 						best_sp = this_sp
 					}
 				}
+				master.Unlock()
 			}
-			if best_sp != nil {
-				best_sp.AddServant(w.mask)
-			}
-			b.Unlock()
 
-			if best_sp == nil { // No best SP was available.
-				b.done <- w             // worker is completely idle and available to help any processor.
-				best_sp = <-w.assign_sp // wait for the next SP to be discovered.
+			if best_sp == nil { 			// No best SP was available.
+				b.done <- w             // Worker is completely idle and available to help any processor.
+				best_sp = <-w.assign_sp // Wait for the next SP to be discovered.
+			} else {
+				best_sp.AddServant(w.mask)
 			}
 
 			w.current_sp = best_sp
