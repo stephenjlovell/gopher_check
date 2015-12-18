@@ -24,8 +24,8 @@
 package main
 
 import (
-// "fmt"
-"sync"
+	// "fmt"
+	"sync"
 )
 
 // Each worker maintains a list of active split points for which it is responsible.
@@ -125,7 +125,7 @@ func (w *Worker) Help(b *Balancer) {
 				master.Unlock()
 			}
 
-			if best_sp == nil { 			// No best SP was available.
+			if best_sp == nil { // No best SP was available.
 				b.done <- w             // Worker is completely idle and available to help any processor.
 				best_sp = <-w.assign_sp // Wait for the next SP to be discovered.
 			} else {

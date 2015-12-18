@@ -372,7 +372,7 @@ search_moves:
 					// the servant that found the cutoff has already stored the cutoff info.
 					main_tt.store(brd, best_move, depth, LOWER_BOUND, best)
 					return best, sum
-				} else {  // A cutoff has been found somewhere above this SP.
+				} else { // A cutoff has been found somewhere above this SP.
 					sp.cancel = true
 					sp.Unlock()
 					load_balancer.RemoveSP(brd.worker)
@@ -417,7 +417,7 @@ search_moves:
 							load_balancer.RemoveSP(brd.worker)
 							main_tt.store(brd, m, depth, LOWER_BOUND, score)
 							return score, sum
-						} else {  // sp_type == SP_SERVANT
+						} else { // sp_type == SP_SERVANT
 							return NO_SCORE, 0
 						}
 					}
@@ -469,7 +469,6 @@ search_moves:
 		if sp.HelpWanted() {
 			brd.worker.HelpServants(sp)
 		}
-
 
 		// make sure to capture any improvements contributed by servant workers:
 		sp.Lock()

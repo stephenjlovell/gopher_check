@@ -24,9 +24,9 @@
 package main
 
 import (
-	"time"
-	"sync"
 	"fmt"
+	"sync"
+	"time"
 )
 
 // 2-Level Locking Scheme
@@ -140,7 +140,7 @@ func (b *Balancer) Print() {
 			w.Lock()
 			fmt.Printf("w%d: ", i)
 			for _, sp := range w.sp_list {
-				fmt.Printf("%d, ", (sp.brd.hash_key>>48))
+				fmt.Printf("%d, ", (sp.brd.hash_key >> 48))
 			}
 			fmt.Printf("\n")
 			w.Unlock()
