@@ -48,7 +48,7 @@ import (
 // each child SP.
 
 type Worker struct {
-	sync.Mutex
+	sync.RWMutex
 	search_overhead int
 
 	sp_list SPList
@@ -76,34 +76,34 @@ func (w *Worker) HelpServants(current_sp *SplitPoint) {
 	var best_sp *SplitPoint
 	var worker *Worker
 	// Check for SPs underneath current_sp
-
 	for mask := current_sp.ServantMask(); mask > 0; mask = current_sp.ServantMask() {
 		best_sp = nil
 
 		for temp_mask := mask; temp_mask > 0; temp_mask &= (^worker.mask) {
 			worker = load_balancer.workers[lsb(BB(temp_mask))]
-			worker.Lock()
+			worker.RLock()
 			for _, this_sp := range worker.sp_list {
 				// If a worker has already finished searching, then either a beta cutoff has already
 				// occurred at sp, or no moves are left to search.
-				if !this_sp.ServantFinished() && (best_sp == nil || this_sp.Order() > best_sp.Order()) {
+				if !this_sp.WorkerFinished() && (best_sp == nil || this_sp.Order() > best_sp.Order()) {
 					best_sp = this_sp
 					temp_mask |= this_sp.ServantMask() // If this SP has servants of its own, check them as well.
 				}
 			}
-			worker.Unlock()
+			worker.RUnlock()
 		}
 
-		if best_sp == nil {
+		if best_sp == nil || best_sp.WorkerFinished() {
 			break
 		} else {
 			best_sp.AddServant(w.mask)
 			w.SearchSP(best_sp)
 		}
 	}
+
 	// If at any point we can't find another viable servant SP, wait for remaining servants to complete.
 	// This prevents us from continually acquiring the worker locks.
-	current_sp.wg.Wait()
+	current_sp.Wait()
 }
 
 func (w *Worker) Help(b *Balancer) {
@@ -116,16 +116,16 @@ func (w *Worker) Help(b *Balancer) {
 				if master.index == w.index {
 					continue
 				}
-				master.Lock()
+				master.RLock()
 				for _, this_sp := range master.sp_list {
-					if !this_sp.ServantFinished() && (best_sp == nil || this_sp.Order() > best_sp.Order()) {
+					if !this_sp.WorkerFinished() && (best_sp == nil || this_sp.Order() > best_sp.Order()) {
 						best_sp = this_sp
 					}
 				}
-				master.Unlock()
+				master.RUnlock()
 			}
 
-			if best_sp == nil { // No best SP was available.
+			if best_sp == nil || best_sp.WorkerFinished() { // No best SP was available.
 				b.done <- w             // Worker is completely idle and available to help any processor.
 				best_sp = <-w.assign_sp // Wait for the next SP to be discovered.
 			} else {
@@ -144,12 +144,17 @@ func (w *Worker) SearchSP(sp *SplitPoint) {
 	brd := sp.brd.Copy()
 	brd.worker = w
 
+<<<<<<< HEAD
 	sp.master.stk.CopyUpTo(w.stk, sp.ply) // infrequent data race here.
+=======
+	sp.stk.CopyUpTo(w.stk, sp.ply)
+	// sp.master.stk.CopyUpTo(w.stk, sp.ply)
+>>>>>>> 1c60c21ea12edbdc732154039177ef198f9379c6
 	w.stk[sp.ply].sp = sp
 
-	sp.Lock()
+	sp.RLock()
 	alpha, beta := sp.alpha, sp.beta
-	sp.Unlock()
+	sp.RUnlock()
 
 	// Once the SP is fully evaluated, The SP master will handle returning its value to parent node.
 	_, total := ybw(brd, w.stk, alpha, beta, sp.depth, sp.ply, sp.node_type, SP_SERVANT, sp.checked)

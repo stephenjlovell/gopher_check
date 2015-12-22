@@ -2,6 +2,8 @@
 
 To Do:
 
+Switch to using RWMutex for SPs.
+
 BUG: Rare hang or possible infinite loop during parallel search, where search does not respond
      to timeout signal
 BUG: 'orphaned' workers occasionally still processing at completion of search - can interfere

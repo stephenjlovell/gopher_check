@@ -364,15 +364,16 @@ search_moves:
 		if brd.worker.IsCancelled() {
 			switch sp_type {
 			case SP_MASTER:
-				sp.Lock()
 				if sp.cancel { // A servant has found a cutoff
+					sp.RLock()
 					best, best_move, sum = sp.best, sp.best_move, sp.node_count
-					sp.Unlock()
+					sp.RUnlock()
 					load_balancer.RemoveSP(brd.worker)
 					// the servant that found the cutoff has already stored the cutoff info.
 					main_tt.store(brd, best_move, depth, LOWER_BOUND, best)
 					return best, sum
 				} else { // A cutoff has been found somewhere above this SP.
+					sp.Lock()
 					sp.cancel = true
 					sp.Unlock()
 					load_balancer.RemoveSP(brd.worker)
@@ -458,6 +459,9 @@ search_moves:
 
 	switch sp_type {
 	case SP_MASTER:
+		sp.Lock()
+		sp.worker_finished = true
+		sp.Unlock()
 		load_balancer.RemoveSP(brd.worker)
 
 		// Helpful Master Concept:
@@ -465,18 +469,20 @@ search_moves:
 		// subtrees rooted at this SP.  If that's the case, offer to help only those workers assigned to
 		// this split point.
 
-		// if !sp.Cancel() {
-		if sp.HelpWanted() {
-			brd.worker.HelpServants(sp)
-		}
+		// if sp.HelpWanted() {
+		brd.worker.HelpServants(sp)
+		// }
 
-		// make sure to capture any improvements contributed by servant workers:
-		sp.Lock()
+		sp.Lock() // make sure to capture any improvements contributed by servant workers:
 		alpha, best, best_move = sp.alpha, sp.best, sp.best_move
 		sum, legal_searched = sp.node_count, sp.legal_searched
 		if node_type == Y_PV {
 			stk[ply].pv = this_stk.pv
 		}
+
+		// assert(sp.servant_mask == 0 || sp.cancel, "Orphaned servants detected")
+
+		sp.cancel = true // any servant contributions have been captured.  Make sure any orphaned servants.
 		sp.Unlock()
 
 	case SP_SERVANT:
