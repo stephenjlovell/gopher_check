@@ -107,10 +107,8 @@ func ParseEPDString(str string) *EPD {
 
 var san_chars = [6]string{"P", "N", "B", "R", "Q", "K"}
 
-func ToSAN(brd *Board, m Move) string { // convert move to Standard Algebraic Notation
-	piece := m.Piece()
-	from, to := m.From(), m.To()
-
+func ToSAN(brd *Board, m Move) string { // convert move to Standard Algebraic Notation (SAN)
+	piece, from, to := m.Piece(), m.From(), m.To()
 	san := SquareString(to)
 
 	if piece == PAWN {

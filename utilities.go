@@ -45,7 +45,6 @@ func RunTestSuite(test_suite string) {
 
 	start := time.Now()
 	for i, epd := range test {
-		// epd.brd.Print()
 		move, count := Search(epd.brd, depth, timeout)
 		move_str = ToSAN(epd.brd, move)
 		if correct_move(epd, move_str) {

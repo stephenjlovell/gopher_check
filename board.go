@@ -75,6 +75,7 @@ func (brd *Board) InCheck() bool { // determines if side to move is in check
 }
 
 func (brd *Board) KingSq(c uint8) int {
+	// assert(brd.pieces[c][KING] > 0, "King missing from board")
 	return furthest_forward(c, brd.pieces[c][KING])
 }
 
@@ -87,7 +88,8 @@ func (brd *Board) LegalMove(m Move, in_check bool) bool {
 	}
 }
 
-// moves generated while in check should already be legal.
+// Moves generated while in check should already be legal, since we determine this
+// as a side-effect of generating evasions.
 func (brd *Board) AvoidsCheck(m Move, in_check bool) bool {
 	return in_check || brd.PseudolegalAvoidsCheck(m)
 }

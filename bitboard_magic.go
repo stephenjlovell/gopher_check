@@ -67,7 +67,10 @@ func setup_magic_move_gen() {
 
 	magics_needed := false
 	if _, err := os.Stat(MAGICS_JSON); err == nil {
-		load_magics()
+		if !load_magics() {
+			// if magics failed to load for any reason, we'll have to generate them.
+			magics_needed = true
+		}
 	} else {
 		magics_needed = true
 		fmt.Printf("Calculating magics")
@@ -89,6 +92,7 @@ type MagicData struct {
 	Bishop_magics [64]BB
 	Rook_magics   [64]BB
 }
+
 
 func check_error(e error) {
 	if e != nil {
@@ -112,17 +116,24 @@ func write_magics_to_disk() {
 	f.Write(data) // write the magics to disk as JSON.
 }
 
-func load_magics() {
+func load_magics() (success bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			success = false // recover any panic
+		}
+	}()
+
 	data, err := ioutil.ReadFile(MAGICS_JSON)
 	check_error(err)
 
 	magics := &MagicData{}
 
-	json.Unmarshal(data, magics)
+	json.Unmarshal(data, magics) // will panic if malformed json present.
 
 	bishop_magics = magics.Bishop_magics
 	rook_magics = magics.Rook_magics
 	fmt.Printf("Magics read from disk.\n")
+	return true
 }
 
 func setup_magics_for_piece(magics_needed bool, wg *sync.WaitGroup, magic_masks, masks, magics *[64]BB,

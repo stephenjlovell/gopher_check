@@ -102,7 +102,7 @@ func (w *Worker) HelpServants(current_sp *SplitPoint) {
 		}
 	}
 	// If at any point we can't find another viable servant SP, wait for remaining servants to complete.
-	// This prevents us from continually acquiring the load balancer lock.
+	// This prevents us from continually acquiring the worker locks.
 	current_sp.wg.Wait()
 }
 
@@ -144,7 +144,7 @@ func (w *Worker) SearchSP(sp *SplitPoint) {
 	brd := sp.brd.Copy()
 	brd.worker = w
 
-	sp.master.stk.CopyUpTo(w.stk, sp.ply)
+	sp.master.stk.CopyUpTo(w.stk, sp.ply) // infrequent data race here.
 	w.stk[sp.ply].sp = sp
 
 	sp.Lock()

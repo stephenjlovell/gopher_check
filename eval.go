@@ -227,7 +227,7 @@ func major_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
 
 	var sq, mobility, placement, king_threats int
 	var b, attacks BB
-	enemy_king_sq := furthest_forward(e, brd.pieces[e][KING])
+	enemy_king_sq := brd.KingSq(e)
 	enemy_king_zone := king_zone_masks[e][enemy_king_sq]
 
 	pawn_count := pentry.count[c]

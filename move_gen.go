@@ -439,8 +439,6 @@ func get_winning_captures(brd *Board, winning *MoveList) {
 func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 	c, e := brd.c, brd.Enemy()
 
-	assert(brd.pieces[c][KING] != 0, "Illegal position detected in get_evasions()")
-
 	var defense_map BB
 	var from, to, threat_sq_1, threat_sq_2 int
 
@@ -702,7 +700,7 @@ func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 
 func get_checks(brd *Board, remaining_moves *MoveList) {
 	c, e := brd.c, brd.Enemy()
-	king_sq := furthest_forward(e, brd.pieces[e][KING])
+	king_sq := brd.KingSq(e)
 	var f, t, single_advances, target, queen_target BB
 	var from, to int
 	var m Move

@@ -43,7 +43,7 @@ func make_move(brd *Board, move Move) {
 	brd.hash_key ^= enp_zobrist(enp_target) // XOR out old en passant target.
 	brd.enp_target = SQ_INVALID
 
-	assert(captured_piece != KING, "Illegal king capture detected during make_move()")
+	// assert(captured_piece != KING, "Illegal king capture detected during make_move()")
 
 	switch piece {
 	case PAWN:

@@ -31,7 +31,7 @@ import (
 const (
 	MAX_TIME = 120000 // default search time limit in milliseconds (2m)
 
-	MIN_SPLIT = 3 // set >= MAX_PLY to disable parallel search.
+	MIN_SPLIT = 2 // set >= MAX_PLY to disable parallel search.
 
 	MAX_DEPTH = 16
 	MAX_PLY   = MAX_DEPTH * 2
@@ -616,12 +616,7 @@ func can_split(brd *Board, ply, depth, node_type, legal_searched, stage int) boo
 	if depth >= MIN_SPLIT {
 		switch node_type {
 		case Y_PV:
-			if ply == 0 {
-				// return legal_searched > 2
-				return false
-			} else {
-				return legal_searched > 0
-			}
+			return ply > 0 && legal_searched > 0
 		case Y_CUT:
 			return legal_searched > 6 && stage >= STAGE_REMAINING
 		case Y_ALL:
@@ -637,8 +632,6 @@ func null_make(brd *Board, stk Stack, beta, null_depth, ply int, checked bool) (
 	brd.hash_key ^= side_key64
 	brd.hash_key ^= enp_zobrist(enp_target)
 	brd.enp_target = SQ_INVALID
-
-	// assert(brd.InCheck() == false, "Illegal position detected during null_make()")
 
 	stk[ply+1].in_check = false // Impossible to give check from a legal position by standing pat.
 	stk[ply+1].can_null = false
