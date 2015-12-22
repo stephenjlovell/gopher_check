@@ -144,12 +144,7 @@ func (w *Worker) SearchSP(sp *SplitPoint) {
 	brd := sp.brd.Copy()
 	brd.worker = w
 
-<<<<<<< HEAD
-	sp.master.stk.CopyUpTo(w.stk, sp.ply) // infrequent data race here.
-=======
 	sp.stk.CopyUpTo(w.stk, sp.ply)
-	// sp.master.stk.CopyUpTo(w.stk, sp.ply)
->>>>>>> 1c60c21ea12edbdc732154039177ef198f9379c6
 	w.stk[sp.ply].sp = sp
 
 	sp.RLock()
