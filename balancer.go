@@ -150,16 +150,16 @@ func (b *Balancer) Print() {
 
 func (b *Balancer) KeepPrinting(cancel chan bool) {
 	go func() {
-		for {
-			select {
-			case <-cancel:
-				return
-			default:
-				b.Print()
-				time.Sleep(time.Second)
-			}
-		}
-		// time.Sleep(time.Second * 5)
-		// panic("Gimme all your stack traces...")
+		// for {
+		// 	select {
+		// 	case <-cancel:
+		// 		return
+		// 	default:
+		// 		b.Print()
+		// 		time.Sleep(time.Second)
+		// 	}
+		// }
+		time.Sleep(time.Second * 5)
+		panic("Gimme all your stack traces...")
 	}()
 }
