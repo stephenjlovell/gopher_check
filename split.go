@@ -36,33 +36,33 @@ const (
 type SplitPoint struct {
 	sync.RWMutex
 	// wg 								sync.WaitGroup
-	stk								Stack
+	stk Stack
 
-	depth           	int
-	ply             	int
-	extensions_left 	int
-	node_type       	int
-	alpha     				int  // shared
-	beta      				int  // shared
-	best      				int  // shared
-	node_count     		int // shared
-	legal_searched 		int
+	depth           int
+	ply             int
+	extensions_left int
+	node_type       int
+	alpha           int // shared
+	beta            int // shared
+	best            int // shared
+	node_count      int // shared
+	legal_searched  int
 
-	best_move 				Move // shared
+	best_move Move // shared
 
-	selector         	*MoveSelector
-	parent           	*SplitPoint
-	master           	*Worker
-	brd      					*Board
-	this_stk 					*StackItem
-	cond 							*sync.Cond
+	selector *MoveSelector
+	parent   *SplitPoint
+	master   *Worker
+	brd      *Board
+	this_stk *StackItem
+	cond     *sync.Cond
 
-	servant_mask     	uint8
+	servant_mask uint8
 
-	cancel         		bool
-	worker_finished 	bool
-	can_null        	bool
-	checked         	bool
+	cancel          bool
+	worker_finished bool
+	can_null        bool
+	checked         bool
 }
 
 func (sp *SplitPoint) Wait() {
@@ -72,7 +72,6 @@ func (sp *SplitPoint) Wait() {
 	}
 	sp.cond.L.Unlock()
 }
-
 
 func (sp *SplitPoint) Order() int {
 	sp.RLock()
@@ -130,25 +129,25 @@ func CreateSP(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, be
 	legal_searched, node_type, sum int, checked bool) *SplitPoint {
 
 	sp := &SplitPoint{
-		cond: 					sync.NewCond(new(sync.Mutex)),
-		selector: 			ms,
-		master:   			brd.worker,
-		parent:   			brd.worker.current_sp,
+		cond:     sync.NewCond(new(sync.Mutex)),
+		selector: ms,
+		master:   brd.worker,
+		parent:   brd.worker.current_sp,
 
-		brd:      			brd.Copy(),
-		this_stk: 			stk[ply].Copy(),
+		brd:      brd.Copy(),
+		this_stk: stk[ply].Copy(),
 
-		depth: 					depth,
-		ply:   					ply,
+		depth: depth,
+		ply:   ply,
 
-		node_type: 			node_type,
+		node_type: node_type,
 
-		alpha:     			alpha,
-		beta:      			beta,
-		best:      			best,
-		best_move: 			best_move,
+		alpha:     alpha,
+		beta:      beta,
+		best:      best,
+		best_move: best_move,
 
-		checked: 				checked,
+		checked: checked,
 
 		node_count:     sum,
 		legal_searched: legal_searched,

@@ -470,7 +470,7 @@ search_moves:
 		// this split point.
 
 		// if sp.HelpWanted() {
-			brd.worker.HelpServants(sp)
+		brd.worker.HelpServants(sp)
 		// }
 
 		sp.Lock() // make sure to capture any improvements contributed by servant workers:
@@ -482,7 +482,7 @@ search_moves:
 
 		// assert(sp.servant_mask == 0 || sp.cancel, "Orphaned servants detected")
 
-		sp.cancel = true  // any servant contributions have been captured.  Make sure any orphaned servants.
+		sp.cancel = true // any servant contributions have been captured.  Make sure any orphaned servants.
 		sp.Unlock()
 
 	case SP_SERVANT:
