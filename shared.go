@@ -196,7 +196,7 @@ func main() {
 	flag.Parse()
 
 	if *profile_flag {
-		RunProfiledTestSuite()
+		RunProfiledTestSuite("test_suites/wac_300.epd", 9, 6000)
 	} else {
 		ReadUCICommand()
 	}

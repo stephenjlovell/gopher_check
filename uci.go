@@ -60,7 +60,7 @@ func PrintInfo(score, depth, node_count int, time_elapsed time.Duration, stk Sta
 	if stk[0].pv.m.IsMove() {
 		fmt.Printf(" pv %s\n", stk[0].pv.ToUCI())
 	}
-	fmt.Printf("NPS: %.4f m\n", float64(nps)/1000000)
+	// fmt.Printf("NPS: %.4f m\n", float64(nps)/1000000)
 }
 
 func ReadUCICommand() {
@@ -218,8 +218,8 @@ func UCIGo(uci_fields []string, wg *sync.WaitGroup) {
 			uci_fields = uci_fields[:1]
 		}
 	}
-	move, _ := Search(current_board, int(depth), int(time))
-	fmt.Printf("bestmove %s\n", move.ToUCI())
+	Search(current_board, int(depth), int(time))
+	// fmt.Printf("bestmove %s\n", move.ToUCI())
 	wg.Done()
 }
 

@@ -109,8 +109,8 @@ func (b *Balancer) RootWorker() *Worker {
 func (b *Balancer) AddSP(w *Worker, sp *SplitPoint) {
 	w.Lock()
 	w.sp_list.Push(sp)
-	w.current_sp = sp
 	w.Unlock()
+	w.current_sp = sp
 
 FlushIdle: // If there are any idle workers, assign them now.
 	for {
@@ -129,9 +129,8 @@ FlushIdle: // If there are any idle workers, assign them now.
 func (b *Balancer) RemoveSP(w *Worker) {
 	w.Lock()
 	w.sp_list.Pop()
-	last_sp := w.current_sp.parent
-	w.current_sp = last_sp
 	w.Unlock()
+	w.current_sp = w.current_sp.parent
 }
 
 func (b *Balancer) Print() {

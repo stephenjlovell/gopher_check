@@ -76,6 +76,10 @@ func (w *Worker) HelpServants(current_sp *SplitPoint) {
 	var best_sp *SplitPoint
 	var worker *Worker
 	// Check for SPs underneath current_sp
+
+	// assert(w.current_sp == current_sp.parent, "not current sp")
+
+
 	for mask := current_sp.ServantMask(); mask > 0; mask = current_sp.ServantMask() {
 		best_sp = nil
 
@@ -97,9 +101,12 @@ func (w *Worker) HelpServants(current_sp *SplitPoint) {
 			break
 		} else {
 			best_sp.AddServant(w.mask)
+			w.current_sp = best_sp
 			w.SearchSP(best_sp)
 		}
 	}
+
+	w.current_sp = current_sp.parent
 
 	// If at any point we can't find another viable servant SP, wait for remaining servants to complete.
 	// This prevents us from continually acquiring the worker locks.

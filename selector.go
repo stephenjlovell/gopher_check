@@ -144,7 +144,9 @@ func (s *MoveSelector) NextMove() (Move, int) {
 			} else {
 				if s.first_move != NO_MOVE && s.first_move != 0 {
 					// fmt.Printf("Invalid/Illegal move: %s\n", s.first_move.ToUCI())
-					fmt.Printf("!")
+					if !uci_mode {
+						fmt.Printf("!")
+					}
 					// s.brd.Print()
 				}
 			}

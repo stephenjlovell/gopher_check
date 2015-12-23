@@ -30,15 +30,13 @@ import (
 	"time"
 )
 
-func RunProfiledTestSuite() {
+func RunProfiledTestSuite(test_suite string, depth, timeout int) {
 	defer profile.Start(profile.MemProfile).Stop()
-	RunTestSuite("test_suites/wac_300.epd")
+	RunTestSuite(test_suite, depth, timeout)
 }
 
-func RunTestSuite(test_suite string) {
+func RunTestSuite(test_suite string, depth, timeout int) {
 	print_info = false
-	depth := 9
-	timeout := 6000
 	test := load_epd_file(test_suite)
 	var move_str string
 	sum, score := 0, 0
