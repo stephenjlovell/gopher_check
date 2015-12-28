@@ -27,12 +27,20 @@ import (
 	"math/rand"
 )
 
+const (
+	MAX_RAND = (1 << 32) - 1
+)
+
 func random_key64() uint64 { // create a pseudorandom 64-bit unsigned int key
 	return (uint64(rand.Int63n(MAX_RAND)) << 32) | uint64(rand.Int63n(MAX_RAND))
 }
 
 func random_key32() uint32 {
 	return uint32(rand.Int63n(MAX_RAND))
+}
+
+func setup_rand() {
+	rand.Seed(4129246945) // keep the same seed each time for debugging purposes.
 }
 
 // RngKiss uses Bob Jenkins' pseudorandom number approach, which is well-suited for generating
@@ -61,9 +69,21 @@ func (r *RngKiss) Setup(seed int) {
 }
 
 func (r *RngKiss) RandomMagic(sq int) BB {
-	s := r.boosters[row(sq)]
-	return r.rotate((r.rotate(r.rand(), s&63) & r.rand()), ((s >> 6) & 63 & r.rand()))
+	return r.RandomBB(r.boosters[row(sq)])
 }
+
+func (r *RngKiss) RandomUint64(sq int) uint64 {
+	return uint64(r.RandomBB(r.boosters[row(sq)]))
+}
+
+func (r *RngKiss) RandomUint32(sq int) uint32 {
+	return uint32(r.RandomBB(r.boosters[row(sq)]))
+}
+
+func (r *RngKiss) RandomBB(booster BB) BB {
+	return r.rotate((r.rotate(r.rand(), booster&63) & r.rand()), ((booster >> 6) & 63 & r.rand()))
+}
+
 
 func (r *RngKiss) rand() BB {
 	e := r.a - r.rotate(r.b, 7)

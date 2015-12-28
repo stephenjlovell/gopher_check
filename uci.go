@@ -40,9 +40,7 @@ import (
 	"time"
 )
 
-var uci_mode bool = false
-var uci_ponder bool = false
-var uci_debug bool = false
+var uci_mode, uci_ponder, uci_debug bool
 
 var current_board *Board = EmptyBoard()
 
@@ -77,7 +75,6 @@ func ReadUCICommand() {
 	log.Println("Begin reading from StdIn")
 
 	reader := bufio.NewReader(os.Stdin)
-	// UCIIdentify()
 	for {
 		input, _ = reader.ReadString('\n')
 		log.Print(input)
@@ -86,58 +83,46 @@ func ReadUCICommand() {
 			switch uci_fields[0] {
 			case "":
 				continue
-
 			case "uci":
 				uci_mode = true
 				UCIIdentify()
-
 			case "debug":
 				if len(uci_fields) > 1 {
 					UCIDebug(uci_fields[1:])
 				}
 				fmt.Printf("readyok\n")
-
 			case "isready":
 				wg.Wait()
 				fmt.Printf("readyok\n")
-
 			case "setoption": // setoption name option_name
 				if len(uci_fields) > 2 && uci_fields[1] == "name" {
 					UCISetOption(uci_fields[2:])
 				}
 				fmt.Printf("readyok\n")
-
 			case "register":
 				if len(uci_fields) > 1 {
 					UCIRegister(uci_fields[1:])
 				}
 				fmt.Printf("readyok\n")
-
 			case "ucinewgame":
 				current_board = ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 				fmt.Printf("readyok\n")
-
 			case "position":
 				wg.Wait()
 				current_board = UCIPosition(uci_fields[1:])
 				fmt.Printf("readyok\n")
-
 			case "go":
 				wg.Add(1)
 				go UCIGo(uci_fields[1:], &wg) // parse any parameters given by GUI and begin searching.
-
 			case "stop": // stop calculating and return a result as soon as possible.
 				AbortSearch()
-
 			case "ponderhit":
 				UCIInvalid(uci_fields) // placeholder until pondering is implemented.
 			case "quit":
 				AbortSearch()
 				return
-
 			case "print":
 				current_board.Print()
-
 			default:
 				UCIInvalid(uci_fields)
 			}

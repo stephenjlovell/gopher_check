@@ -24,7 +24,7 @@
 package main
 
 import (
-// "fmt"
+	// "fmt"
 )
 
 func setup_square_masks() {

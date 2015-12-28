@@ -48,7 +48,7 @@ func make_move(brd *Board, move Move) {
 	switch piece {
 	case PAWN:
 		brd.halfmove_clock = 0 // All pawn moves are irreversible.
-		brd.pawn_hash_key ^= (pawn_zobrist(from, c) ^ pawn_zobrist(to, c))
+		brd.pawn_hash_key ^= pawn_zobrist(from, c)
 		switch captured_piece {
 		case EMPTY:
 			if abs(to-from) == 16 { // handle en passant advances
@@ -78,10 +78,9 @@ func make_move(brd *Board, move Move) {
 			brd.squares[from] = EMPTY
 			add_piece(brd, promoted_piece, to, c)
 		} else {
+			brd.pawn_hash_key ^= pawn_zobrist(to, c)
 			relocate_piece(brd, PAWN, from, to, c)
 		}
-
-	// to do: update pawn hash key...
 
 	case KING:
 		switch captured_piece {
@@ -292,7 +291,6 @@ func update_castle_rights(brd *Board, sq int) {
 	}
 }
 
-// do not use for en-passant captures.
 func remove_piece(brd *Board, removed_piece Piece, sq int, e uint8) {
 	brd.pieces[e][removed_piece].Clear(sq)
 	brd.occupied[e].Clear(sq)

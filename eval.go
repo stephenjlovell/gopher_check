@@ -29,9 +29,6 @@ import (
 
 const (
 	MAX_ENDGAME_COUNT = 24
-	DOUBLED_PENALTY   = 20
-	ISOLATED_PENALTY  = 12
-	BACKWARD_PENALTY  = 4
 )
 
 const (
@@ -173,49 +170,37 @@ var queen_mobility = [32]int{-24, -18, -12, -6, -3, 0, 2, 3, 4, 5, 6, 7, 8, 9, 1
 var queen_tropism_bonus = [8]int{0, 12, 9, 6, 3, 0, -3, -6}
 
 func evaluate(brd *Board, alpha, beta int) int {
-	score := int(brd.material[WHITE]-brd.material[BLACK]) + tempo_bonus()
+	c, e := brd.c, brd.Enemy()
 	// lazy evaluation: if material balance is already outside the search window by an amount that outweighs
 	// the largest likely placement evaluation, return the material as an approximate evaluation.
 	// This prevents the engine from wasting a lot of time evaluating unrealistic positions.
-
+	score := int(brd.material[c]-brd.material[e])
 	if score+piece_values[BISHOP] < alpha || score-piece_values[BISHOP] > beta {
-		if brd.c == BLACK {
-			return -score
-		}
 		return score
 	}
 
 	pentry := brd.worker.ptt.Probe(brd.pawn_hash_key)
-	if pentry.key != brd.pawn_hash_key {
-		set_pawn_structure(brd, pentry)
+	if pentry.key != brd.pawn_hash_key { // pawn hash table miss.
+		set_pawn_structure(brd, pentry) // evaluate pawn structure and save to pentry.
 	}
 
-	score += pentry.value
+	score += net_pawn_placement(brd, pentry, c, e)
+	score += net_major_placement(brd, pentry, c, e)
+	score += tempo_bonus(c)
 
-	score += net_passed_pawns(brd, pentry)
-
-	score += net_major_placement(brd, pentry)
-
-	if brd.c == BLACK { // score is calculated relative to white to move
-		return -score
-	}
 	return score
 }
 
-func lazy_eval(brd *Board) int {
-	return int(brd.material[brd.c] - brd.material[brd.Enemy()])
-}
-
-func tempo_bonus() int {
-	if side_to_move == WHITE {
+func tempo_bonus(c uint8) int {
+	if side_to_move == c {
 		return 5
 	} else {
 		return -5
 	}
 }
 
-func net_major_placement(brd *Board, pentry *PawnEntry) int {
-	return major_placement(brd, pentry, WHITE, BLACK) - major_placement(brd, pentry, BLACK, WHITE)
+func net_major_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
+	return major_placement(brd, pentry, c, e) - major_placement(brd, pentry, e, c)
 }
 
 func major_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
@@ -246,8 +231,8 @@ func major_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
 		king_threats += pop_count(attacks & enemy_king_zone)
 		mobility += bishop_mobility[pop_count(attacks)]
 	}
-	// bishop pairs
-	if pop_count(brd.pieces[c][BISHOP]) > 1 {
+
+	if pop_count(brd.pieces[c][BISHOP]) > 1 { // bishop pairs
 		placement += 40 + bishop_pair_pawns[pentry.count[e]]
 	}
 
@@ -288,122 +273,6 @@ func major_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
 	return placement + mobility
 }
 
-// PAWN EVALUATION
-// Good structures:
-//   -Passed pawns - Bonus for pawns unblocked by an enemy pawn on the same or adjacent file.
-//                   May eventually get promoted.
-//   -Pawn duos - Pawns side by side to another friendly pawn receive a small bonus
-// Bad structures:
-//   -Isolated pawns - Penalty for any pawn without friendly pawns on adjacent files.
-//   -Double/tripled pawns - Penalty for having multiple pawns on the same file.
-
-var passed_pawn_bonus = [2][8]int{
-	{0, 192, 96, 48, 24, 12, 6, 0},
-	{0, 6, 12, 24, 48, 96, 192, 0},
-}
-var tarrasch_bonus = [2][8]int{
-	{0, 12, 8, 4, 2, 0, 0, 0},
-	{0, 0, 0, 2, 4, 8, 12, 0},
-}
-var defense_bonus = [2][8]int{
-	{0, 12, 8, 6, 5, 4, 3, 0},
-	{0, 3, 4, 5, 6, 8, 12, 0},
-}
-var duo_bonus = [2][8]int{
-	{0, 0, 2, 1, 1, 1, 0, 0},
-	{0, 0, 1, 1, 1, 2, 0, 0},
-}
-
-var pawn_shield_bonus = [4]int{-9, -3, 3, 9}
-
-var promote_row = [2][2]int{
-	{1, 2},
-	{6, 5},
-}
-
-func set_pawn_structure(brd *Board, pentry *PawnEntry) {
-	pentry.left_attacks[WHITE], pentry.right_attacks[WHITE] = pawn_attacks(brd, WHITE)
-	pentry.left_attacks[BLACK], pentry.right_attacks[BLACK] = pawn_attacks(brd, BLACK)
-
-	pentry.all_attacks[WHITE] = pentry.left_attacks[WHITE] | pentry.right_attacks[WHITE]
-	pentry.all_attacks[BLACK] = pentry.left_attacks[BLACK] | pentry.right_attacks[BLACK]
-
-	pentry.count[WHITE] = uint8(pop_count(brd.pieces[WHITE][PAWN]))
-	pentry.count[BLACK] = uint8(pop_count(brd.pieces[BLACK][PAWN]))
-
-	pentry.passed_pawns[WHITE], pentry.passed_pawns[BLACK] = 0, 0
-
-	pentry.key = brd.pawn_hash_key
-	pentry.value = (pawn_structure(brd, pentry, WHITE, BLACK) - pawn_structure(brd, pentry, BLACK, WHITE))
-}
-
-// Evaluation features that depend ONLY on the position of pawns go here.
-// Only pawn position is used for the pawn hash key.
-func pawn_structure(brd *Board, pentry *PawnEntry, c, e uint8) int {
-	var value, sq, sq_row int
-	own_pawns, enemy_pawns := brd.pieces[c][PAWN], brd.pieces[e][PAWN]
-
-	for b := own_pawns; b > 0; b.Clear(sq) {
-		sq = furthest_forward(c, b)
-		sq_row = row(sq)
-
-		if (pawn_attack_masks[c][sq]|pawn_attack_masks[e][sq])&own_pawns > 0 { // defended pawns
-			value += defense_bonus[c][sq_row]
-		} else if (pawn_side_masks[sq] & own_pawns) > 0 { // pawn duos
-			value += duo_bonus[c][sq_row]
-		}
-
-		if pawn_doubled_masks[sq]&own_pawns > 0 { // doubled or tripled pawns
-			value -= DOUBLED_PENALTY
-		}
-
-		if pawn_passed_masks[c][sq]&enemy_pawns == 0 { // passed pawns
-			value += passed_pawn_bonus[c][sq_row]
-			pentry.passed_pawns[c].Add(sq) // note the passed pawn location in the pawn hash entry.
-		} else { // don't penalize passed pawns for being isolated.
-			if pawn_isolated_masks[sq]&own_pawns == 0 {
-				value -= ISOLATED_PENALTY // isolated pawns
-			}
-		}
-
-		if pawn_attack_spans[e][pawn_stop_sq[c][sq]]&own_pawns == 0 && // backward pawns
-			pawn_stop_masks[c][sq]&(enemy_pawns|pentry.all_attacks[e]) > 0 {
-			value -= BACKWARD_PENALTY
-		}
-	}
-
-	return value
-}
-
-func net_passed_pawns(brd *Board, pentry *PawnEntry) int {
-	return eval_passed_pawns(brd, WHITE, BLACK, pentry.passed_pawns[WHITE]) -
-		eval_passed_pawns(brd, BLACK, WHITE, pentry.passed_pawns[BLACK])
-}
-
-func eval_passed_pawns(brd *Board, c, e uint8, passed_pawns BB) int {
-	var value, sq int
-	enemy_king_sq := brd.KingSq(e)
-
-	for ; passed_pawns > 0; passed_pawns.Clear(sq) {
-		sq = furthest_forward(c, passed_pawns)
-		// Tarrasch rule: assign small bonus for friendly rook behind the passed pawn
-		if pawn_front_spans[e][sq]&brd.pieces[c][ROOK] > 0 {
-			value += tarrasch_bonus[c][row(sq)]
-		}
-		// pawn race: Assign a bonus if the pawn is closer to its promote square than the enemy king.
-		promote_square := pawn_promote_sq[c][sq]
-		if side_to_move == c {
-			if chebyshev_distance(sq, promote_square) < (chebyshev_distance(enemy_king_sq, promote_square)) {
-				value += passed_pawn_bonus[c][row(sq)]
-			}
-		} else {
-			if chebyshev_distance(sq, promote_square) < (chebyshev_distance(enemy_king_sq, promote_square) - 1) {
-				value += passed_pawn_bonus[c][row(sq)]
-			}
-		}
-	}
-	return value
-}
 
 // Tapered Evaluation: adjust the score based on how close we are to the endgame.
 // This prevents 'evaluation discontinuity' where the score changes significantly when moving from

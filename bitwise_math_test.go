@@ -97,7 +97,8 @@ func BenchmarkLSB(b *testing.B) {
 
 func BenchmarkLSBRand(b *testing.B) {
 	setup()
-	bb := BB(random_key64())
+	rng := NewRngKiss(74)
+	bb := rng.RandomBB(BB(MAX_RAND))
 	for i := 0; i < b.N; i++ {
 		result = lsb(bb)
 	}

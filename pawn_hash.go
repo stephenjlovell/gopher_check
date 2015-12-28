@@ -28,36 +28,23 @@ const (
 	PAWN_TT_MASK     = PAWN_ENTRY_COUNT - 1
 )
 
-type PawnTT [PAWN_ENTRY_COUNT]*PawnEntry
+type PawnTT [PAWN_ENTRY_COUNT]PawnEntry
 
 type PawnEntry struct {
 	left_attacks  [2]BB
 	right_attacks [2]BB
 	all_attacks   [2]BB
 	passed_pawns  [2]BB
-
-	value int
+	value [2]int
 	key   uint32
 	count [2]uint8
 }
 
 func NewPawnTT() *PawnTT {
-	var ptt PawnTT
-	for i := 0; i < PAWN_ENTRY_COUNT; i++ {
-		ptt[i] = &PawnEntry{
-			value: NO_SCORE,
-		}
-	}
-	return &ptt
+	return new(PawnTT)
 }
 
 // Typical hit rate is around 97 %
 func (ptt *PawnTT) Probe(key uint32) *PawnEntry {
-	return ptt[key&PAWN_TT_MASK]
+	return &ptt[key&PAWN_TT_MASK]
 }
-
-// func (entry *PawnEntry) Store(key uint32, value int, passed_pawns BB) {
-// 	entry.passed_pawns = passed_pawns
-// 	entry.value = value
-// 	entry.key = key
-// }

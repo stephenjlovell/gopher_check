@@ -26,14 +26,14 @@ package main
 import (
 	"flag"
 	"fmt"
-	"math/rand"
+	// "math/rand"
 	"runtime"
 	"sync/atomic"
 )
 
 const (
-	INF      = 10000            // an arbitrarily large score used to signal checkmate.
-	NO_SCORE = INF - 1          // score used to signal
+	INF      = 10000            // an arbitrarily large score used for initial bounds
+	NO_SCORE = INF - 1          // sentinal value indicating a meaningless score.
 	MATE     = NO_SCORE - 1     // maximum checkmate score (i.e. mate in 0)
 	MIN_MATE = MATE - MAX_STACK // minimum possible checkmate score (mate in MAX_STACK)
 ) // total value of all starting pieces for one side: 9006
@@ -106,8 +106,7 @@ const (
 var piece_values = [8]int{100, 320, 333, 510, 880, 5000} // default piece values
 
 // var promote_values = [8]int{0, 225, 225, 400, 875}
-var promote_values = [8]int{0, 220, 233, 410, 780, 0, 0, 0}
-
+var promote_values = [8]int{0, 220, 233, 410, 780, 0, 0, 0}  // piece_values[pc] - PAWN
 var pawn_from_offsets = [2][4]int{{8, 16, 9, 7}, {-8, -16, -7, -9}}
 var knight_offsets = [8]int{-17, -15, -10, -6, 6, 10, 15, 17}
 var bishop_offsets = [4]int{7, 9, -7, -9}
@@ -172,11 +171,11 @@ func assert(statement bool, failure_message string) {
 func setup() {
 	num_cpu := runtime.NumCPU()
 	runtime.GOMAXPROCS(num_cpu)
-	rand.Seed(4129246945) // keep the same seed each time for debugging purposes.
 	setup_chebyshev_distance()
 	setup_masks()
 	setup_magic_move_gen()
 	setup_eval()
+	setup_rand()
 	setup_zobrist()
 	setup_main_tt()
 	setup_load_balancer(num_cpu)
