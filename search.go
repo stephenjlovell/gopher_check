@@ -31,7 +31,7 @@ import (
 const (
 	MAX_TIME = 120000 // default search time limit in milliseconds (2m)
 
-	MIN_SPLIT = 16 // set >= MAX_PLY to disable parallel search.
+	MIN_SPLIT = 2 // set >= MAX_PLY to disable parallel search.
 
 	MAX_DEPTH = 24
 	MAX_PLY   = MAX_DEPTH * 2

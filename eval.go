@@ -181,12 +181,15 @@ func evaluate(brd *Board, alpha, beta int) int {
 
 	pentry := brd.worker.ptt.Probe(brd.pawn_hash_key)
 	if pentry.key != brd.pawn_hash_key { // pawn hash table miss.
+		// collisions can occur, but are too infrequent to matter much (1 / 20+ million)
 		set_pawn_structure(brd, pentry) // evaluate pawn structure and save to pentry.
 	}
 
 	score += net_pawn_placement(brd, pentry, c, e)
 	score += net_major_placement(brd, pentry, c, e)
+
 	score += tempo_bonus(c)
+	// minor bug: tempo bonus only accurate half the time when score is extracted from TT.
 
 	return score
 }
