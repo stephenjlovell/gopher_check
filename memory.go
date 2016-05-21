@@ -50,11 +50,12 @@ const (
 
 var main_tt TT
 
-func setup_main_tt() {
+func reset_main_tt() {
 	for i := 0; i < SLOT_COUNT; i++ {
 		for j := 0; j < 4; j++ {
-			main_tt[i][j].key = uint64(0)
-			main_tt[i][j].data = uint64(NewData(NO_MOVE, 0, EXACT, NO_SCORE, 511))
+			// main_tt[i][j].key = uint64(0)
+			// main_tt[i][j].data = uint64(NewData(NO_MOVE, 0, EXACT, NO_SCORE, 511))
+			main_tt[i][j].Store(NewData(NO_MOVE, 0, EXACT, NO_SCORE, 511), uint64(0))
 		}
 	}
 }

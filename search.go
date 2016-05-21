@@ -120,13 +120,12 @@ func iterative_deepening(brd *Board, depth int, start time.Time) (Move, int) {
 		nodes_per_iteration[d] += total
 		if d > COMMS_MIN && print_info && uci_mode { // don't print info for first few plies to reduce communication traffic.
 			fmt.Printf("\n")
-			PrintInfo(guess, d, sum, time.Since(start), stk)
+			UCIInfo(Info{guess, d, sum, time.Since(start), stk})
 		}
-
 	}
 
 	if print_info {
-		PrintInfo(guess, depth, sum, time.Since(start), stk)
+		UCIInfo(Info{guess, depth, sum, time.Since(start), stk})
 		if uci_mode	{
 			fmt.Printf("bestmove %s\n", id_move[side_to_move].ToUCI())
 		}

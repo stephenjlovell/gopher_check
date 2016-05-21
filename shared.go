@@ -28,7 +28,7 @@ import (
 	"fmt"
 	// "math/rand"
 	"runtime"
-	"sync/atomic"
+	// "sync/atomic"
 )
 
 const (
@@ -65,15 +65,15 @@ const ( // direction codes (0...8)
 
 var opposite_dir = [16]int{SE, SW, NW, NE, SOUTH, WEST, NORTH, EAST, DIR_INVALID}
 
-type SafeCounter int64
-
-func (c *SafeCounter) Add(i int64) int64 {
-	return atomic.AddInt64((*int64)(c), i)
-}
-
-func (c *SafeCounter) Get() int64 {
-	return atomic.LoadInt64((*int64)(c))
-}
+// type SafeCounter int64
+//
+// func (c *SafeCounter) Add(i int64) int64 {
+// 	return atomic.AddInt64((*int64)(c), i)
+// }
+//
+// func (c *SafeCounter) Get() int64 {
+// 	return atomic.LoadInt64((*int64)(c))
+// }
 
 var middle_rows BB
 
@@ -177,7 +177,7 @@ func setup() {
 	setup_eval()
 	setup_rand()
 	setup_zobrist()
-	setup_main_tt()
+	reset_main_tt()
 	setup_load_balancer(num_cpu)
 }
 
