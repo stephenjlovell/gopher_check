@@ -40,10 +40,13 @@ func RunTestSuite(test_suite string, depth, timeout int) {
 	test := load_epd_file(test_suite)
 	var move_str string
 	sum, score := 0, 0
-
+	var gt *GameTimer
 	start := time.Now()
 	for i, epd := range test {
-		move, count := Search(epd.brd, depth, timeout)
+		gt = NewGameTimer(0)
+		gt.max_depth = depth
+		gt.PerMoveStart(time.Duration(timeout) * time.Millisecond)
+		move, count := Search(epd.brd, gt)
 		move_str = ToSAN(epd.brd, move)
 		if correct_move(epd, move_str) {
 			score += 1

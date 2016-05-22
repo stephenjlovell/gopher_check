@@ -46,7 +46,7 @@ func TestPlayingStrength(t *testing.T) {
 	// cancel := make(chan bool)
 	// defer close(cancel)
 	// load_balancer.KeepPrinting(cancel)
-	depth := 12
+	depth := 10
 	timeout := 10000
 	RunTestSuite("test_suites/wac_300.epd", depth, timeout)
 }

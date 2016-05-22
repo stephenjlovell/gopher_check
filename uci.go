@@ -130,12 +130,13 @@ func UCISend(s string) { // log the UCI command s and print to standard I/O.
 func UCIInfo(info Info) {
 	nps := int64(float64(info.node_count) / info.t.Seconds())
 	UCISend(fmt.Sprintf("info score cp %d depth %d nodes %d nps %d time %d pv %s\n", info.score, info.depth,
-		info.node_count, nps, float64(info.t) / float64(time.Millisecond), info.stk[0].pv.ToUCI()))
+		info.node_count, nps, int(info.t / time.Millisecond), info.stk[0].pv.ToUCI()))
 }
 
 func ReadUCICommand() {
 	var input string
 	var wg sync.WaitGroup
+	var move_counter int
 
 	f, err := os.OpenFile("log.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -255,7 +256,8 @@ func ReadUCICommand() {
 	// 	If one command is not send its value should be interpreted as it would not influence the search.
 			case "go":
 				wg.Add(1)
-				go UCIGo(uci_fields[1:], &wg) // parse any parameters given by GUI and begin searching.
+				go UCIGo(uci_fields[1:], &wg, move_counter) // parse any parameters given by GUI and begin searching.
+				move_counter += 1
 	// * stop
 	// 	stop calculating as soon as possible,
 	// 	don't forget the "bestmove" and possibly the "ponder" token when finishing the search
@@ -330,10 +332,12 @@ func UCIRegister(uci_fields []string) {
 // 	start calculating on the current position set up with the "position" command.
 // 	There are a number of commands that can follow this command, all will be sent in the same string.
 // 	If one command is not send its value should be interpreted as it would not influence the search.
-func UCIGo(uci_fields []string, wg *sync.WaitGroup) {
-	depth, time := int64(MAX_DEPTH), int64(MAX_TIME)
-	var restrict_search []Move
+func UCIGo(uci_fields []string, wg *sync.WaitGroup, move_counter int) {
+	var time_limit int
+	per_move := false
 
+	var restrict_search []Move
+	gt := NewGameTimer(move_counter)
 	for len(uci_fields) > 0 {
 		switch uci_fields[0] {
 		// 	* searchmoves  ....
@@ -346,6 +350,7 @@ func UCIGo(uci_fields []string, wg *sync.WaitGroup) {
 				restrict_search = append(restrict_search, ParseMove(current_board, uci_fields[0]))
 				uci_fields = uci_fields[:1]
 			}
+			per_move = true
 		// 	* ponder
 		// 		start searching in pondering mode.
 		// 		Do not exit the search in ponder mode, even if it's mate!
@@ -357,53 +362,76 @@ func UCIGo(uci_fields []string, wg *sync.WaitGroup) {
 		// 		likely to be misinterpreted by the GUI because the GUI expects the engine to ponder
 		// 	   on the suggested move.
 		case "ponder":
-			depth = 32
 			uci_ponder = true  // TODO: actually implement pondering.
-		// 	* wtime
+			per_move = true
+
 		// 		white has x msec left on the clock
-
-		// 	* btime
-		// 		black has x msec left on the clock
-
-		// 	* winc
-		// 		white increment per move in mseconds if x > 0
-
-		// 	* binc
-		// 		black increment per move in mseconds if x > 0
-
-		// 	* movestogo
-		//       there are x moves to the next time control,
-		// 		this will only be sent if x > 0,
-		// 		if you don't get this and get the wtime and btime it's sudden death
-
-		// 	* depth
-		// 		search x plies only.
-		case "depth":
-			depth, _ = strconv.ParseInt(uci_fields[1], 10, 8)
+		case "wtime":
+			time_limit, _ = strconv.Atoi(uci_fields[1])
+			gt.remaining[WHITE] = time.Duration(time_limit) * time.Millisecond
 			uci_fields = uci_fields[2:]
 
-		// 	* nodes
-		// 	   search x nodes only,
+		// black has x msec left on the clock
+		case "btime":
+			time_limit, _ = strconv.Atoi(uci_fields[1])
+			gt.remaining[BLACK] = time.Duration(time_limit) * time.Millisecond
+			uci_fields = uci_fields[2:]
 
-		// 	* mate
-		// 		search for a mate in x moves
+		// 		white increment per move in mseconds if x > 0
+		case "winc":
+			time_limit, _ = strconv.Atoi(uci_fields[1])
+			gt.inc[WHITE] = time.Duration(time_limit) * time.Millisecond
+			uci_fields = uci_fields[2:]
+
+		// 		black increment per move in mseconds if x > 0
+		case "binc":
+			time_limit, _ = strconv.Atoi(uci_fields[1])
+			gt.inc[BLACK] = time.Duration(time_limit) * time.Millisecond
+			uci_fields = uci_fields[2:]
+
+		// 	* movestogo: there are x moves to the next time control, this will only be sent if x > 0,
+		// 		if you don't get this and get the wtime and btime it's sudden death
+		case "movestogo":
+			gt.moves_remaining, _ = strconv.Atoi(uci_fields[1])
+			uci_fields = uci_fields[2:]
+
+		// search x plies only.
+		case "depth":
+			gt.max_depth, _ = strconv.Atoi(uci_fields[1])
+			uci_fields = uci_fields[2:]
+			per_move = true
+		// search x nodes only,
+		case "nodes":
+			uci_fields = uci_fields[2:]
+			per_move = true
+		// search for a mate in x moves
+		case "mate":
+			uci_fields = uci_fields[2:]
 
 		// 	* movetime
-		// 		search exactly x mseconds
+		// 	search exactly x mseconds
 		case "movetime":
-			time, _ = strconv.ParseInt(uci_fields[1], 10, 24)
+			time_limit, _ = strconv.Atoi(uci_fields[1])
 			uci_fields = uci_fields[2:]
-			
+			per_move = true
+
 		// 	* infinite
-		// 		search until the "stop" command. Do not exit the search without being told so in this mode!
+		// 	search until the "stop" command. Do not exit the search without being told so in this mode!
 		case "infinite":
-			depth = 32
+			per_move = true
 		default:
 			uci_fields = uci_fields[:1]
 		}
 	}
-	Search(current_board, int(depth), int(time))
-	// UCISend(fmt.Sprintf("bestmove %s\n", move.ToUCI())
+
+	if per_move {
+		gt.PerMoveStart(time.Duration(time_limit) * time.Millisecond)
+	} else {
+		gt.PerGameStart(current_board.c)
+	}
+
+	Search(current_board, gt)
+
 	wg.Done()
 }
 

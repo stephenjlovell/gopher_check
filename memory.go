@@ -154,7 +154,6 @@ func (tt *TT) probe(brd *Board, depth, null_depth, alpha, beta int, score *int) 
 					return data.Move(), ALPHA_FOUND
 				case EXACT: // score was inside bounds.  (at PV node)
 					if entry_value > alpha && entry_value < beta {
-						// to do: if exact entry is valid for current bounds, save the full PV.
 						return data.Move(), (CUTOFF_FOUND | EXACT_FOUND)
 					}
 					return data.Move(), EXACT_FOUND
