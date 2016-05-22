@@ -65,8 +65,6 @@ func (g *GameTimer) PerMoveStart(time_limit time.Duration) {
 }
 
 func (g *GameTimer) PerGameStart(c uint8) {
-  // time_limit := (g.remaining[c] + (g.inc[c] * time.Duration(g.moves_remaining))) /
-  //   time.Duration(g.moves_remaining)
   time_limit := g.remaining[c] / time.Duration(g.moves_remaining)
   g.PerMoveStart(time_limit)
 }
@@ -76,7 +74,9 @@ func (g *GameTimer) Elapsed() time.Duration {
 }
 
 func (g *GameTimer) Stop() {
-  g.timer.Stop()
+  if g.timer != nil {
+    g.timer.Stop()
+  }
 }
 
 

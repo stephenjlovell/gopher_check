@@ -113,21 +113,21 @@ func iterative_deepening(brd *Board, gt *GameTimer) (Move, int) {
 			id_move[c], id_score[c] = stk[0].pv.m, guess
 			stk[0].pv.SavePV(brd, d, guess) // install PV to transposition table prior to next iteration.
 		} else {
-			fmt.Printf("Nil PV returned to ID\n")
+			if uci_mode {
+				UCIInfoString(fmt.Sprintf("Nil PV returned to ID\n"))
+			} else {
+				fmt.Printf("Nil PV returned to ID\n")
+			}
 		}
 
 		nodes_per_iteration[d] += total
 		if d > COMMS_MIN && print_info && uci_mode { // don't print info for first few plies to reduce communication traffic.
-			fmt.Printf("\n")
 			UCIInfo(Info{guess, d, sum, gt.Elapsed(), stk})
 		}
 	}
 
-	if print_info {
-		UCIInfo(Info{guess, gt.max_depth, sum, gt.Elapsed(), stk})
-		if uci_mode	{
-			fmt.Printf("bestmove %s\n", id_move[side_to_move].ToUCI())
-		}
+	if print_info || uci_mode	{
+		UCISend(fmt.Sprintf("bestmove %s\n", id_move[side_to_move].ToUCI()))
 	}
 
 	// TODO: BUG: 'orphaned' workers occasionally still processing after ID loop
@@ -633,9 +633,8 @@ func AbortSearch() {
 		select {
 		case <-cancel: // If search was already aborted, don't try to close the closed channel.
 		default:
-			// fmt.Printf("A")
-			if uci_mode {
-				fmt.Printf("bestmove %s\n", id_move[side_to_move].ToUCI())
+			if print_info || uci_mode {
+				UCISend(fmt.Sprintf("bestmove %s\n", id_move[side_to_move].ToUCI()))
 			}
 			close(cancel)
 		}

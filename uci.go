@@ -120,7 +120,7 @@ type Info struct {
 }
 
 func UCISend(s string) { // log the UCI command s and print to standard I/O.
-	log.Print(s)
+	log.Printf("engine: " + s)
 	fmt.Printf(s)
 }
 
@@ -131,6 +131,10 @@ func UCIInfo(info Info) {
 	nps := int64(float64(info.node_count) / info.t.Seconds())
 	UCISend(fmt.Sprintf("info score cp %d depth %d nodes %d nps %d time %d pv %s\n", info.score, info.depth,
 		info.node_count, nps, int(info.t / time.Millisecond), info.stk[0].pv.ToUCI()))
+}
+
+func UCIInfoString(s string) {
+	UCISend("info string " + s)
 }
 
 func ReadUCICommand() {
@@ -148,7 +152,7 @@ func ReadUCICommand() {
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		input, _ = reader.ReadString('\n')
-		log.Print(input)
+		log.Println("gui: " + input)
 		uci_fields := strings.Fields(input)
 		if len(uci_fields) > 0 {
 			switch uci_fields[0] {
@@ -334,10 +338,11 @@ func UCIRegister(uci_fields []string) {
 // 	If one command is not send its value should be interpreted as it would not influence the search.
 func UCIGo(uci_fields []string, wg *sync.WaitGroup, move_counter int) {
 	var time_limit int
-	per_move := false
+	var per_move, depth_based bool
 
 	var restrict_search []Move
 	gt := NewGameTimer(move_counter)
+
 	for len(uci_fields) > 0 {
 		switch uci_fields[0] {
 		// 	* searchmoves  ....
@@ -395,36 +400,36 @@ func UCIGo(uci_fields []string, wg *sync.WaitGroup, move_counter int) {
 			gt.moves_remaining, _ = strconv.Atoi(uci_fields[1])
 			uci_fields = uci_fields[2:]
 
-		// search x plies only.
-		case "depth":
+		case "depth": 	// search x plies only
 			gt.max_depth, _ = strconv.Atoi(uci_fields[1])
 			uci_fields = uci_fields[2:]
-			per_move = true
-		// search x nodes only,
-		case "nodes":
-			uci_fields = uci_fields[2:]
-			per_move = true
-		// search for a mate in x moves
-		case "mate":
+			depth_based = true
+
+		case "nodes": // search x nodes only
+			UCIInvalid(uci_fields)
 			uci_fields = uci_fields[2:]
 
-		// 	* movetime
-		// 	search exactly x mseconds
-		case "movetime":
+		case "mate": // search for a mate in x moves
+			UCIInvalid(uci_fields)
+			uci_fields = uci_fields[2:]
+
+		case "movetime": 	// 	search exactly x mseconds
 			time_limit, _ = strconv.Atoi(uci_fields[1])
 			uci_fields = uci_fields[2:]
 			per_move = true
 
-		// 	* infinite
-		// 	search until the "stop" command. Do not exit the search without being told so in this mode!
+		// * infinite: search until the "stop" command. Do not exit the search without being
+		// told so in this mode!
 		case "infinite":
-			per_move = true
+ 			depth_based = true
 		default:
 			uci_fields = uci_fields[:1]
 		}
 	}
 
-	if per_move {
+	if depth_based {
+		gt.DepthBasedStart()
+	} else if per_move {
 		gt.PerMoveStart(time.Duration(time_limit) * time.Millisecond)
 	} else {
 		gt.PerGameStart(current_board.c)
