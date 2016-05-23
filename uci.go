@@ -40,7 +40,18 @@ import (
 	"time"
 )
 
-var uci_mode, uci_ponder, uci_debug bool
+var uci_mode, uci_ponder, uci_debug, uci_restrict_search bool
+var uci_ponder_wg sync.WaitGroup
+var uci_allowed_moves []Move
+
+func UCIMoveAllowed(m Move) bool {
+	for _, permitted_move := range uci_allowed_moves {
+		if m == permitted_move {
+			return true
+		}
+	}
+	return false
+}
 
 var current_board *Board = EmptyBoard()
 
@@ -154,6 +165,7 @@ func ReadUCICommand() {
 		input, _ = reader.ReadString('\n')
 		log.Println("gui: " + input)
 		uci_fields := strings.Fields(input)
+
 		if len(uci_fields) > 0 {
 			switch uci_fields[0] {
 			case "":
@@ -253,7 +265,7 @@ func ReadUCICommand() {
 			case "position":
 				wg.Wait()
 				current_board = UCIPosition(uci_fields[1:])
-				fmt.Sprintf("readyok\n")
+				UCISend(fmt.Sprintf("readyok\n"))
 	// * go
 	// 	start calculating on the current position set up with the "position" command.
 	// 	There are a number of commands that can follow this command, all will be sent in the same string.
@@ -266,17 +278,21 @@ func ReadUCICommand() {
 	// 	stop calculating as soon as possible,
 	// 	don't forget the "bestmove" and possibly the "ponder" token when finishing the search
 			case "stop": // stop calculating and return a result as soon as possible.
+				if uci_ponder	{
+					uci_ponder_wg.Done()
+				}
 				AbortSearch()
 	// * ponderhit
 	// 	the user has played the expected move. This will be sent if the engine was told to ponder on the same move
 	// 	the user has played. The engine should continue searching but switch from pondering to normal search.
 			case "ponderhit":
-				UCIInvalid(uci_fields) // placeholder until pondering is implemented.
-	// * quit
-	// 	quit the program as soon as possible
-			case "quit":
+
+				// UCIInvalid(uci_fields) // placeholder until pondering is implemented.
+
+			case "quit": // quit the program as soon as possible
 				AbortSearch()
 				return
+
 			case "print": // Not a UCI command. Used to print the board for debugging while in UCI mode.
 				current_board.Print()
 			default:
@@ -340,22 +356,28 @@ func UCIGo(uci_fields []string, wg *sync.WaitGroup, move_counter int) {
 	var time_limit int
 	var per_move, depth_based bool
 
-	var restrict_search []Move
 	gt := NewGameTimer(move_counter)
+	uci_restrict_search, uci_ponder = false, false
 
 	for len(uci_fields) > 0 {
+		fmt.Println(uci_fields[0])
 		switch uci_fields[0] {
+
 		// 	* searchmoves  ....
 		// 		restrict search to this moves only
 		// 		Example: After "position startpos" and "go infinite searchmoves e2e4 d2d4"
 		// 		the engine should only search the two moves e2e4 and d2d4 in the initial position.
 		case "searchmoves":
-			uci_fields = uci_fields[:1]
+			uci_fields = uci_fields[1:]
+			uci_allowed_moves = make([]Move, 0)
 			for len(uci_fields) > 0 && IsMove(uci_fields[0]) {
-				restrict_search = append(restrict_search, ParseMove(current_board, uci_fields[0]))
-				uci_fields = uci_fields[:1]
+				uci_allowed_moves = append(uci_allowed_moves, ParseMove(current_board, uci_fields[0]))
+				uci_fields = uci_fields[1:]
 			}
-			per_move = true
+			if len(uci_allowed_moves) > 0 {
+				uci_restrict_search = true
+			}
+
 		// 	* ponder
 		// 		start searching in pondering mode.
 		// 		Do not exit the search in ponder mode, even if it's mate!
@@ -367,8 +389,10 @@ func UCIGo(uci_fields []string, wg *sync.WaitGroup, move_counter int) {
 		// 		likely to be misinterpreted by the GUI because the GUI expects the engine to ponder
 		// 	   on the suggested move.
 		case "ponder":
-			uci_ponder = true  // TODO: actually implement pondering.
-			per_move = true
+			uci_ponder = true
+			uci_ponder_wg.Add(1)
+			depth_based = true
+			uci_fields = uci_fields[1:]
 
 		// 		white has x msec left on the clock
 		case "wtime":
@@ -422,8 +446,9 @@ func UCIGo(uci_fields []string, wg *sync.WaitGroup, move_counter int) {
 		// told so in this mode!
 		case "infinite":
  			depth_based = true
+			uci_fields = uci_fields[1:]
 		default:
-			uci_fields = uci_fields[:1]
+			uci_fields = uci_fields[1:]
 		}
 	}
 

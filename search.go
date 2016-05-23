@@ -126,6 +126,10 @@ func iterative_deepening(brd *Board, gt *GameTimer) (Move, int) {
 		}
 	}
 
+	if uci_ponder {
+		uci_ponder_wg.Wait()
+	}
+
 	if print_info || uci_mode	{
 		UCISend(fmt.Sprintf("bestmove %s\n", id_move[side_to_move].ToUCI()))
 	}
@@ -271,6 +275,12 @@ search_moves:
 	memento := brd.NewMemento()
 
 	for m, stage := selector.Next(sp_type); m != NO_MOVE; m, stage = selector.Next(sp_type) {
+
+		if uci_restrict_search && ply == 0 && uci_mode {
+			if !UCIMoveAllowed(m) {
+				continue
+			}
+		}
 
 		if m == this_stk.singular_move {
 			continue

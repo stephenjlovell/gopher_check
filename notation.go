@@ -29,9 +29,9 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
+	"regexp"
 )
 
 type EPD struct {
@@ -320,6 +320,11 @@ func ParseHalfmoveClock(str string) uint8 {
 }
 
 func ParseMove(brd *Board, str string) Move {
+	// make sure the move is valid.
+	if !IsMove(str) {
+		return NO_MOVE
+	}
+
 	from := ParseSquare(string(str[:2]))
 	to := ParseSquare(string(str[2:4]))
 	piece := brd.TypeAt(from)
