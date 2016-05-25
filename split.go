@@ -50,6 +50,7 @@ type SplitPoint struct {
 
 	best_move Move // shared
 
+	s        *Search
 	selector *MoveSelector
 	parent   *SplitPoint
 	master   *Worker
@@ -125,8 +126,8 @@ func (sp *SplitPoint) RemoveServant(w_mask uint8) {
 	sp.cond.Signal()
 }
 
-func CreateSP(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, beta, best, depth, ply,
-	legal_searched, node_type, sum int, checked bool) *SplitPoint {
+func CreateSP(s *Search, brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, beta, best,
+	depth, ply, legal_searched, node_type, sum int, checked bool) *SplitPoint {
 
 	sp := &SplitPoint{
 		cond:     sync.NewCond(new(sync.Mutex)),
@@ -136,6 +137,7 @@ func CreateSP(brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, be
 
 		brd:      brd.Copy(),
 		this_stk: stk[ply].Copy(),
+		s:        s,
 
 		depth: depth,
 		ply:   ply,

@@ -84,7 +84,6 @@ func (r *RngKiss) RandomBB(booster BB) BB {
 	return r.rotate((r.rotate(r.rand(), booster&63) & r.rand()), ((booster >> 6) & 63 & r.rand()))
 }
 
-
 func (r *RngKiss) rand() BB {
 	e := r.a - r.rotate(r.b, 7)
 	r.a = r.b ^ r.rotate(r.c, 13)

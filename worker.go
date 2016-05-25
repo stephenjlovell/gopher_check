@@ -79,7 +79,6 @@ func (w *Worker) HelpServants(current_sp *SplitPoint) {
 
 	// assert(w.current_sp == current_sp.parent, "not current sp")
 
-
 	for mask := current_sp.ServantMask(); mask > 0; mask = current_sp.ServantMask() {
 		best_sp = nil
 
@@ -159,7 +158,7 @@ func (w *Worker) SearchSP(sp *SplitPoint) {
 	sp.RUnlock()
 
 	// Once the SP is fully evaluated, The SP master will handle returning its value to parent node.
-	_, total := ybw(brd, w.stk, alpha, beta, sp.depth, sp.ply, sp.node_type, SP_SERVANT, sp.checked)
+	_, total := sp.s.ybw(brd, w.stk, alpha, beta, sp.depth, sp.ply, sp.node_type, SP_SERVANT, sp.checked)
 	w.search_overhead += total
 
 	sp.RemoveServant(w.mask)

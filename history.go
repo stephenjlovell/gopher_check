@@ -27,30 +27,18 @@ import (
 	"sync/atomic"
 )
 
-type HTable [2][8][64]uint64
-
-var main_htable HTable
+type HistoryTable [2][8][64]uint64
 
 // Store atomically adds count to the history table h.
-func (h *HTable) Store(m Move, c uint8, count int) {
+func (h *HistoryTable) Store(m Move, c uint8, count int) {
 	atomic.AddUint64(&h[c][m.Piece()][m.To()], uint64((count>>2)|1))
 }
 
 // Probe atomically reads the history table h.
-func (h *HTable) Probe(pc Piece, c uint8, to int) uint64 {
+func (h *HistoryTable) Probe(pc Piece, c uint8, to int) uint64 {
 	v := atomic.LoadUint64(&h[c][pc][to])
 	if v > 0 {
 		return ((((v >> 3) & mask_of_length[21]) | 1) << 1)
 	}
 	return 0
-}
-
-func (h *HTable) Clear() {
-	for i := 0; i < 2; i++ {
-		for j := 0; j < 6; j++ {
-			for k := 0; k < 64; k++ {
-				atomic.StoreUint64(&h[i][j][k], 0)
-			}
-		}
-	}
 }

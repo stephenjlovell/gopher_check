@@ -169,12 +169,12 @@ var queen_mobility = [32]int{-24, -18, -12, -6, -3, 0, 2, 3, 4, 5, 6, 7, 8, 9, 1
 
 var queen_tropism_bonus = [8]int{0, 12, 9, 6, 3, 0, -3, -6}
 
-func evaluate(brd *Board, alpha, beta int) int {
+func evaluate(brd *Board, alpha, beta int, side_to_move uint8) int {
 	c, e := brd.c, brd.Enemy()
 	// lazy evaluation: if material balance is already outside the search window by an amount that outweighs
 	// the largest likely placement evaluation, return the material as an approximate evaluation.
 	// This prevents the engine from wasting a lot of time evaluating unrealistic positions.
-	score := int(brd.material[c]-brd.material[e])
+	score := int(brd.material[c] - brd.material[e])
 	if score+piece_values[BISHOP] < alpha || score-piece_values[BISHOP] > beta {
 		return score
 	}
@@ -185,17 +185,17 @@ func evaluate(brd *Board, alpha, beta int) int {
 		set_pawn_structure(brd, pentry) // evaluate pawn structure and save to pentry.
 	}
 
-	score += net_pawn_placement(brd, pentry, c, e)
+	score += net_pawn_placement(brd, pentry, c, e, side_to_move)
 	score += net_major_placement(brd, pentry, c, e)
 
-	score += tempo_bonus(c)
+	score += tempo_bonus(c, side_to_move)
 	// minor bug: tempo bonus only accurate half the time when score is extracted from TT.
 
 	return score
 }
 
-func tempo_bonus(c uint8) int {
-	if side_to_move == c {
+func tempo_bonus(c, side_to_move uint8) int {
+	if c == side_to_move {
 		return 5
 	} else {
 		return -5
@@ -275,7 +275,6 @@ func major_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
 	placement += king_pressure
 	return placement + mobility
 }
-
 
 // Tapered Evaluation: adjust the score based on how close we are to the endgame.
 // This prevents 'evaluation discontinuity' where the score changes significantly when moving from

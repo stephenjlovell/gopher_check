@@ -23,7 +23,7 @@
 
 package main
 
-func get_non_captures(brd *Board, remaining_moves *MoveList) {
+func get_non_captures(brd *Board, htable *HistoryTable, remaining_moves *MoveList) {
 	var from, to int
 	var single_advances, double_advances BB
 	c := brd.c
@@ -39,23 +39,23 @@ func get_non_captures(brd *Board, remaining_moves *MoveList) {
 			if (castle&C_WQ > uint8(0)) && castle_queenside_intervening[WHITE]&occ == 0 &&
 				!is_attacked_by(brd, occ, B1, e, c) && !is_attacked_by(brd, occ, C1, e, c) && !is_attacked_by(brd, occ, D1, e, c) {
 				m = NewRegularMove(E1, C1, KING)
-				remaining_moves.Push(&SortItem{m, main_htable.Probe(KING, c, C1) | 1})
+				remaining_moves.Push(&SortItem{m, htable.Probe(KING, c, C1) | 1})
 			}
 			if (castle&C_WK > uint8(0)) && castle_kingside_intervening[WHITE]&occ == 0 &&
 				!is_attacked_by(brd, occ, F1, e, c) && !is_attacked_by(brd, occ, G1, e, c) {
 				m = NewRegularMove(E1, G1, KING)
-				remaining_moves.Push(&SortItem{m, main_htable.Probe(KING, c, G1) | 1})
+				remaining_moves.Push(&SortItem{m, htable.Probe(KING, c, G1) | 1})
 			}
 		} else {
 			if (castle&C_BQ > uint8(0)) && castle_queenside_intervening[BLACK]&occ == 0 &&
 				!is_attacked_by(brd, occ, B8, e, c) && !is_attacked_by(brd, occ, C8, e, c) && !is_attacked_by(brd, occ, D8, e, c) {
 				m = NewRegularMove(E8, C8, KING)
-				remaining_moves.Push(&SortItem{m, main_htable.Probe(KING, c, C8) | 1})
+				remaining_moves.Push(&SortItem{m, htable.Probe(KING, c, C8) | 1})
 			}
 			if (castle&C_BK > uint8(0)) && castle_kingside_intervening[BLACK]&occ == 0 &&
 				!is_attacked_by(brd, occ, F8, e, c) && !is_attacked_by(brd, occ, G8, e, c) {
 				m = NewRegularMove(E8, G8, KING)
-				remaining_moves.Push(&SortItem{m, main_htable.Probe(KING, c, G8) | 1})
+				remaining_moves.Push(&SortItem{m, htable.Probe(KING, c, G8) | 1})
 			}
 		}
 	}
@@ -78,13 +78,13 @@ func get_non_captures(brd *Board, remaining_moves *MoveList) {
 		to = furthest_forward(c, double_advances)
 		from = to + pawn_from_offsets[c][OFF_DOUBLE]
 		m = NewRegularMove(from, to, PAWN)
-		remaining_moves.Push(&SortItem{m, main_htable.Probe(PAWN, c, to)})
+		remaining_moves.Push(&SortItem{m, htable.Probe(PAWN, c, to)})
 	}
 	for ; single_advances > 0; single_advances.Clear(to) {
 		to = furthest_forward(c, single_advances)
 		from = to + pawn_from_offsets[c][OFF_SINGLE]
 		m = NewRegularMove(from, to, PAWN)
-		remaining_moves.Push(&SortItem{m, main_htable.Probe(PAWN, c, to)})
+		remaining_moves.Push(&SortItem{m, htable.Probe(PAWN, c, to)})
 	}
 	// Knights
 	for f := brd.pieces[c][KNIGHT]; f > 0; f.Clear(from) {
@@ -92,7 +92,7 @@ func get_non_captures(brd *Board, remaining_moves *MoveList) {
 		for t := (knight_masks[from] & empty); t > 0; t.Clear(to) { // generate to squares
 			to = furthest_forward(c, t)
 			m = NewRegularMove(from, to, KNIGHT)
-			remaining_moves.Push(&SortItem{m, main_htable.Probe(KNIGHT, c, to)})
+			remaining_moves.Push(&SortItem{m, htable.Probe(KNIGHT, c, to)})
 		}
 	}
 	// Bishops
@@ -101,7 +101,7 @@ func get_non_captures(brd *Board, remaining_moves *MoveList) {
 		for t := (bishop_attacks(occ, from) & empty); t > 0; t.Clear(to) { // generate to squares
 			to = furthest_forward(c, t)
 			m = NewRegularMove(from, to, BISHOP)
-			remaining_moves.Push(&SortItem{m, main_htable.Probe(BISHOP, c, to)})
+			remaining_moves.Push(&SortItem{m, htable.Probe(BISHOP, c, to)})
 		}
 	}
 	// Rooks
@@ -110,7 +110,7 @@ func get_non_captures(brd *Board, remaining_moves *MoveList) {
 		for t := (rook_attacks(occ, from) & empty); t > 0; t.Clear(to) { // generate to squares
 			to = furthest_forward(c, t)
 			m = NewRegularMove(from, to, ROOK)
-			remaining_moves.Push(&SortItem{m, main_htable.Probe(ROOK, c, to)})
+			remaining_moves.Push(&SortItem{m, htable.Probe(ROOK, c, to)})
 		}
 	}
 	// Queens
@@ -119,7 +119,7 @@ func get_non_captures(brd *Board, remaining_moves *MoveList) {
 		for t := (queen_attacks(occ, from) & empty); t > 0; t.Clear(to) { // generate to squares
 			to = furthest_forward(c, t)
 			m = NewRegularMove(from, to, QUEEN)
-			remaining_moves.Push(&SortItem{m, main_htable.Probe(QUEEN, c, to)})
+			remaining_moves.Push(&SortItem{m, htable.Probe(QUEEN, c, to)})
 		}
 	}
 	// Kings
@@ -128,13 +128,13 @@ func get_non_captures(brd *Board, remaining_moves *MoveList) {
 		for t := (king_masks[from] & empty); t > 0; t.Clear(to) { // generate to squares
 			to = furthest_forward(c, t)
 			m = NewRegularMove(from, to, KING)
-			remaining_moves.Push(&SortItem{m, main_htable.Probe(KING, c, to)})
+			remaining_moves.Push(&SortItem{m, htable.Probe(KING, c, to)})
 		}
 	}
 }
 
 // Pawn promotions are also generated during get_captures routine.
-func get_captures(brd *Board, winning, losing *MoveList) {
+func get_captures(brd *Board, htable *HistoryTable, winning, losing *MoveList) {
 	var from, to int
 	var sort uint64
 	var m Move
@@ -291,7 +291,7 @@ func get_captures(brd *Board, winning, losing *MoveList) {
 	}
 }
 
-func get_winning_captures(brd *Board, winning *MoveList) {
+func get_winning_captures(brd *Board, htable *HistoryTable, winning *MoveList) {
 	var from, to int
 	var m Move
 
@@ -436,7 +436,7 @@ func get_winning_captures(brd *Board, winning *MoveList) {
 	}
 }
 
-func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
+func get_evasions(brd *Board, htable *HistoryTable, winning, losing, remaining_moves *MoveList) {
 	c, e := brd.c, brd.Enemy()
 
 	var defense_map BB
@@ -582,7 +582,7 @@ func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 			from = to + pawn_from_offsets[c][OFF_DOUBLE]
 			if pinned_can_move(brd, from, to, c, e) {
 				m = NewRegularMove(from, to, PAWN)
-				remaining_moves.Push(&SortItem{m, main_htable.Probe(PAWN, c, to)})
+				remaining_moves.Push(&SortItem{m, htable.Probe(PAWN, c, to)})
 			}
 		}
 		// single advances
@@ -591,7 +591,7 @@ func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 			from = to + pawn_from_offsets[c][OFF_SINGLE]
 			if pinned_can_move(brd, from, to, c, e) {
 				m = NewRegularMove(from, to, PAWN)
-				remaining_moves.Push(&SortItem{m, main_htable.Probe(PAWN, c, to)})
+				remaining_moves.Push(&SortItem{m, htable.Probe(PAWN, c, to)})
 			}
 		}
 		// Knights
@@ -611,7 +611,7 @@ func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 						}
 					} else {
 						m = NewRegularMove(from, to, KNIGHT)
-						remaining_moves.Push(&SortItem{m, main_htable.Probe(KNIGHT, c, to)})
+						remaining_moves.Push(&SortItem{m, htable.Probe(KNIGHT, c, to)})
 					}
 				}
 			}
@@ -631,7 +631,7 @@ func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 						}
 					} else {
 						m = NewRegularMove(from, to, BISHOP)
-						remaining_moves.Push(&SortItem{m, main_htable.Probe(BISHOP, c, to)})
+						remaining_moves.Push(&SortItem{m, htable.Probe(BISHOP, c, to)})
 					}
 				}
 			}
@@ -651,7 +651,7 @@ func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 						}
 					} else {
 						m = NewRegularMove(from, to, ROOK)
-						remaining_moves.Push(&SortItem{m, main_htable.Probe(ROOK, c, to)})
+						remaining_moves.Push(&SortItem{m, htable.Probe(ROOK, c, to)})
 					}
 				}
 			}
@@ -671,7 +671,7 @@ func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 						}
 					} else {
 						m = NewRegularMove(from, to, QUEEN)
-						remaining_moves.Push(&SortItem{m, main_htable.Probe(QUEEN, c, to)})
+						remaining_moves.Push(&SortItem{m, htable.Probe(QUEEN, c, to)})
 					}
 				}
 			}
@@ -693,12 +693,12 @@ func get_evasions(brd *Board, winning, losing, remaining_moves *MoveList) {
 		if !is_attacked_by(brd, occ, to, e, c) && threat_dir_1 != directions[king_sq][to] &&
 			threat_dir_2 != directions[king_sq][to] {
 			m = NewRegularMove(king_sq, to, KING)
-			remaining_moves.Push(&SortItem{m, main_htable.Probe(KING, c, to)})
+			remaining_moves.Push(&SortItem{m, htable.Probe(KING, c, to)})
 		}
 	}
 }
 
-func get_checks(brd *Board, remaining_moves *MoveList) {
+func get_checks(brd *Board, htable *HistoryTable, remaining_moves *MoveList) {
 	c, e := brd.c, brd.Enemy()
 	king_sq := brd.KingSq(e)
 	var f, t, single_advances, target, queen_target BB
@@ -718,7 +718,7 @@ func get_checks(brd *Board, remaining_moves *MoveList) {
 		from = to + pawn_from_offsets[c][OFF_SINGLE]
 		if get_see(brd, from, to, EMPTY) >= 0 { // make sure the checking piece won't be immediately recaptured
 			m = NewRegularMove(from, to, PAWN)
-			remaining_moves.Push(&SortItem{m, main_htable.Probe(PAWN, c, to)})
+			remaining_moves.Push(&SortItem{m, htable.Probe(PAWN, c, to)})
 		}
 	}
 	// Knight direct checks
@@ -729,7 +729,7 @@ func get_checks(brd *Board, remaining_moves *MoveList) {
 			to = furthest_forward(c, t)
 			if get_see(brd, from, to, EMPTY) >= 0 {
 				m = NewRegularMove(from, to, KNIGHT)
-				remaining_moves.Push(&SortItem{m, main_htable.Probe(KNIGHT, c, to)})
+				remaining_moves.Push(&SortItem{m, htable.Probe(KNIGHT, c, to)})
 			}
 		}
 	}
@@ -742,7 +742,7 @@ func get_checks(brd *Board, remaining_moves *MoveList) {
 			to = furthest_forward(c, t)
 			if get_see(brd, from, to, EMPTY) >= 0 {
 				m = NewRegularMove(from, to, BISHOP)
-				remaining_moves.Push(&SortItem{m, main_htable.Probe(BISHOP, c, to)})
+				remaining_moves.Push(&SortItem{m, htable.Probe(BISHOP, c, to)})
 			}
 		}
 	}
@@ -755,7 +755,7 @@ func get_checks(brd *Board, remaining_moves *MoveList) {
 			to = furthest_forward(c, t)
 			if get_see(brd, from, to, EMPTY) >= 0 {
 				m = NewRegularMove(from, to, ROOK)
-				remaining_moves.Push(&SortItem{m, main_htable.Probe(ROOK, c, to)})
+				remaining_moves.Push(&SortItem{m, htable.Probe(ROOK, c, to)})
 			}
 		}
 	}
@@ -766,7 +766,7 @@ func get_checks(brd *Board, remaining_moves *MoveList) {
 			to = furthest_forward(c, t)
 			if get_see(brd, from, to, EMPTY) >= 0 {
 				m = NewRegularMove(from, to, QUEEN)
-				remaining_moves.Push(&SortItem{m, main_htable.Probe(QUEEN, c, to)})
+				remaining_moves.Push(&SortItem{m, htable.Probe(QUEEN, c, to)})
 			}
 		}
 	}
@@ -802,7 +802,7 @@ func get_checks(brd *Board, remaining_moves *MoveList) {
 		to = furthest_forward(c, t)
 		from = to + pawn_from_offsets[c][OFF_SINGLE]
 		m = NewRegularMove(from, to, PAWN)
-		remaining_moves.Push(&SortItem{m, main_htable.Probe(PAWN, c, to)})
+		remaining_moves.Push(&SortItem{m, htable.Probe(PAWN, c, to)})
 	}
 	// Knights
 	for f = brd.pieces[c][KNIGHT] & (bishop_blockers | rook_blockers); f > 0; f.Clear(from) {
@@ -810,7 +810,7 @@ func get_checks(brd *Board, remaining_moves *MoveList) {
 		for t = (knight_masks[from] & empty); t > 0; t.Clear(to) {
 			to = furthest_forward(c, t)
 			m = NewRegularMove(from, to, KNIGHT)
-			remaining_moves.Push(&SortItem{m, main_htable.Probe(KNIGHT, c, to)})
+			remaining_moves.Push(&SortItem{m, htable.Probe(KNIGHT, c, to)})
 		}
 	}
 	// Bishops
@@ -820,7 +820,7 @@ func get_checks(brd *Board, remaining_moves *MoveList) {
 		for t = (bishop_attacks(occ, from) & unblock_path); t > 0; t.Clear(to) { // generate to squares
 			to = furthest_forward(c, t)
 			m = NewRegularMove(from, to, BISHOP)
-			remaining_moves.Push(&SortItem{m, main_htable.Probe(BISHOP, c, to)})
+			remaining_moves.Push(&SortItem{m, htable.Probe(BISHOP, c, to)})
 		}
 	}
 	// Rooks
@@ -830,7 +830,7 @@ func get_checks(brd *Board, remaining_moves *MoveList) {
 		for t = (rook_attacks(occ, from) & unblock_path); t > 0; t.Clear(to) { // generate to squares
 			to = furthest_forward(c, t)
 			m = NewRegularMove(from, to, ROOK)
-			remaining_moves.Push(&SortItem{m, main_htable.Probe(ROOK, c, to)})
+			remaining_moves.Push(&SortItem{m, htable.Probe(ROOK, c, to)})
 		}
 	}
 	// Queens cannot give discovered check, since the enemy king would already be in check.
@@ -842,7 +842,7 @@ func get_checks(brd *Board, remaining_moves *MoveList) {
 		for t := (king_masks[from] & unblock_path); t > 0; t.Clear(to) { // generate to squares
 			to = furthest_forward(c, t)
 			m = NewRegularMove(from, to, KING)
-			remaining_moves.Push(&SortItem{m, main_htable.Probe(KING, c, to)})
+			remaining_moves.Push(&SortItem{m, htable.Probe(KING, c, to)})
 		}
 	}
 

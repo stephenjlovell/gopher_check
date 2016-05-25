@@ -93,7 +93,6 @@ type MagicData struct {
 	Rook_magics   [64]BB
 }
 
-
 func check_error(e error) {
 	if e != nil {
 		panic(e)

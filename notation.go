@@ -29,9 +29,9 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
-	"regexp"
 )
 
 type EPD struct {
@@ -180,7 +180,6 @@ func PawnSAN(brd *Board, m Move, san string) string {
 	if GivesCheck(brd, m) {
 		san += "+"
 	}
-
 	return san
 }
 

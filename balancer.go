@@ -26,7 +26,7 @@ package main
 import (
 	"fmt"
 	"sync"
-	"time"
+	// "time"
 )
 
 // 2-Level Locking Scheme
@@ -53,13 +53,10 @@ const (
 	MAX_WORKERS = 8
 )
 
-// var node_count []SafeCounter
-
 var load_balancer *Balancer
 
 func setup_load_balancer(num_cpu int) {
 	num_workers := uint8(min(num_cpu, MAX_WORKERS))
-	// node_count = make([]SafeCounter, num_workers, num_workers)
 	load_balancer = NewLoadBalancer(num_workers)
 	load_balancer.Start()
 }
@@ -145,20 +142,4 @@ func (b *Balancer) Print() {
 			w.Unlock()
 		}
 	}
-}
-
-func (b *Balancer) KeepPrinting(cancel chan bool) {
-	go func() {
-		// for {
-		// 	select {
-		// 	case <-cancel:
-		// 		return
-		// 	default:
-		// 		b.Print()
-		// 		time.Sleep(time.Second)
-		// 	}
-		// }
-		time.Sleep(time.Second * 5)
-		panic("Gimme all your stack traces...")
-	}()
 }

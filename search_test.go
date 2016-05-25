@@ -31,11 +31,11 @@ import (
 
 // func BenchmarkSearch(b *testing.B) {
 // 	setup()
-// 	print_info = false
+// 	verbose = false
 // 	depth := MAX_DEPTH
 // 	for n := 0; n < b.N; n++ {
 // 		brd := ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-// 		Search(brd, depth, 4000)
+// 		Start(brd, depth, 4000)
 // 		fmt.Printf(".")
 // 	}
 // }

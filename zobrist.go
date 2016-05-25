@@ -36,23 +36,23 @@ var castle_table [16]uint64
 var side_key64 uint64 // keys representing a change in side-to-move.
 
 func setup_zobrist() {
-  rng := NewRngKiss(148) // sparsely populated rands produce fewer collisions.
+	rng := NewRngKiss(148) // sparsely populated rands produce fewer collisions.
 	for c := 0; c < 2; c++ {
 		for sq := 0; sq < 64; sq++ {
 			pawn_zobrist_table[c][sq] = rng.RandomUint32(sq)
 			for pc := 0; pc < 6; pc++ {
-        zobrist_table[c][pc][sq] = rng.RandomUint64(sq)
+				zobrist_table[c][pc][sq] = rng.RandomUint64(sq)
 			}
 		}
 	}
 	for i := 0; i < 16; i++ {
-    castle_table[i] = rng.RandomUint64((i<<2))
+		castle_table[i] = rng.RandomUint64((i << 2))
 	}
 	for sq := 0; sq < 64; sq++ {
-    enp_table[sq] = rng.RandomUint64(sq)
+		enp_table[sq] = rng.RandomUint64(sq)
 	}
 	enp_table[64] = 0
-  side_key64 = rng.RandomUint64(63)
+	side_key64 = rng.RandomUint64(63)
 }
 
 func zobrist(pc Piece, sq int, c uint8) uint64 {

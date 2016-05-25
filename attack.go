@@ -109,7 +109,7 @@ func is_pinned(brd *Board, sq int, c, e uint8) BB {
 // 1. When a capture results in an exchange of pieces by both sides, SEE is used to determine the
 //    net gain/loss in material for the side initiating the exchange.
 // 2. SEE scoring of moves is used for move ordering of captures at critical nodes.
-// 3. During quiescence search, SEE is used to prune losing captures. This provides a very low-risk
+// 3. During s.quiescence search, SEE is used to prune losing captures. This provides a very low-risk
 //    way of reducing the size of the q-search without impacting playing strength.
 const (
 	SEE_MIN = -780 // worst possible outcome (trading a queen for a pawn)

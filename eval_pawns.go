@@ -28,9 +28,9 @@ import (
 )
 
 const (
-  DOUBLED_PENALTY   = 20
-  ISOLATED_PENALTY  = 12
-  BACKWARD_PENALTY  = 4
+	DOUBLED_PENALTY  = 20
+	ISOLATED_PENALTY = 12
+	BACKWARD_PENALTY = 4
 )
 
 var passed_pawn_bonus = [2][8]int{
@@ -69,18 +69,18 @@ var promote_row = [2][2]int{
 
 func set_pawn_structure(brd *Board, pentry *PawnEntry) {
 	pentry.key = brd.pawn_hash_key
-  set_pawn_maps(brd, pentry, WHITE)
-  set_pawn_maps(brd, pentry, BLACK)
+	set_pawn_maps(brd, pentry, WHITE)
+	set_pawn_maps(brd, pentry, BLACK)
 	pentry.value[WHITE] = pawn_structure(brd, pentry, WHITE, BLACK) -
-    pawn_structure(brd, pentry, BLACK, WHITE)
-  pentry.value[BLACK] = -pentry.value[WHITE]
+		pawn_structure(brd, pentry, BLACK, WHITE)
+	pentry.value[BLACK] = -pentry.value[WHITE]
 }
 
 func set_pawn_maps(brd *Board, pentry *PawnEntry, c uint8) {
-  pentry.left_attacks[c], pentry.right_attacks[c] = pawn_attacks(brd, c)
-  pentry.all_attacks[c] = pentry.left_attacks[c] | pentry.right_attacks[c]
-  pentry.count[c] = uint8(pop_count(brd.pieces[c][PAWN]))
-  pentry.passed_pawns[c] = 0
+	pentry.left_attacks[c], pentry.right_attacks[c] = pawn_attacks(brd, c)
+	pentry.all_attacks[c] = pentry.left_attacks[c] | pentry.right_attacks[c]
+	pentry.count[c] = uint8(pop_count(brd.pieces[c][PAWN]))
+	pentry.passed_pawns[c] = 0
 }
 
 // pawn_structure() sets the remaining pentry attributes for side c
@@ -119,19 +119,18 @@ func pawn_structure(brd *Board, pentry *PawnEntry, c, e uint8) int {
 	return value
 }
 
-func net_pawn_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
-  return pentry.value[c] + net_passed_pawns(brd, pentry, c, e)
+func net_pawn_placement(brd *Board, pentry *PawnEntry, c, e, side_to_move uint8) int {
+	return pentry.value[c] + net_passed_pawns(brd, pentry, c, e, side_to_move)
 }
 
-func net_passed_pawns(brd *Board, pentry *PawnEntry, c, e uint8) int {
-	return eval_passed_pawns(brd, c, e, pentry.passed_pawns[c]) -
-		eval_passed_pawns(brd, e, c, pentry.passed_pawns[e])
+func net_passed_pawns(brd *Board, pentry *PawnEntry, c, e, side_to_move uint8) int {
+	return eval_passed_pawns(brd, c, e, side_to_move, pentry.passed_pawns[c]) -
+		eval_passed_pawns(brd, e, c, side_to_move, pentry.passed_pawns[e])
 }
 
-func eval_passed_pawns(brd *Board, c, e uint8, passed_pawns BB) int {
+func eval_passed_pawns(brd *Board, c, e, side_to_move uint8, passed_pawns BB) int {
 	var value, sq int
 	enemy_king_sq := brd.KingSq(e)
-
 	for ; passed_pawns > 0; passed_pawns.Clear(sq) {
 		sq = furthest_forward(c, passed_pawns)
 		// Tarrasch rule: assign small bonus for friendly rook behind the passed pawn

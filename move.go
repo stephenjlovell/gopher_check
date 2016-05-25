@@ -106,7 +106,7 @@ func (m Move) Print() {
 
 func (m Move) ToString() string { // string representation used for debugging only.
 	var str string
-	if m == 0 || m == NO_MOVE {
+	if !m.IsMove() {
 		return "NO_MOVE"
 	}
 	str += piece_chars[m.Piece()] + " "
@@ -122,9 +122,11 @@ func (m Move) ToString() string { // string representation used for debugging on
 }
 
 func (m Move) ToUCI() string {
-	var str string
-	str += ParseCoordinates(row(m.From()), column(m.From()))
-	str += ParseCoordinates(row(m.To()), column(m.To()))
+	if !m.IsMove() {
+		return "0000"
+	}
+	str := ParseCoordinates(row(m.From()), column(m.From())) +
+		ParseCoordinates(row(m.To()), column(m.To()))
 	if m.PromotedTo() != EMPTY {
 		str += piece_chars[m.PromotedTo()]
 	}
@@ -132,18 +134,22 @@ func (m Move) ToUCI() string {
 }
 
 func NewMove(from, to int, piece, captured_piece, promoted_to Piece) Move {
-	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) | (Move(captured_piece) << 15) | (Move(promoted_to) << 18)
+	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) |
+		(Move(captured_piece) << 15) | (Move(promoted_to) << 18)
 }
 
 func NewRegularMove(from, to int, piece Piece) Move {
-	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) | (Move(EMPTY) << 15) | (Move(EMPTY) << 18)
+	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) |
+		(Move(EMPTY) << 15) | (Move(EMPTY) << 18)
 }
 
 func NewCapture(from, to int, piece, captured_piece Piece) Move {
-	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) | (Move(captured_piece) << 15) | (Move(EMPTY) << 18)
+	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) |
+		(Move(captured_piece) << 15) | (Move(EMPTY) << 18)
 }
 
 // since moving piece is always PAWN (0) for promotions, no need to merge in the moving piece.
 func NewPromotion(from, to int, piece, promoted_to Piece) Move {
-	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) | (Move(EMPTY) << 15) | (Move(promoted_to) << 18)
+	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) |
+		(Move(EMPTY) << 15) | (Move(promoted_to) << 18)
 }

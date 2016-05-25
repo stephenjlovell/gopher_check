@@ -33,7 +33,6 @@ package main
 // 2. Non-captures that give check via get_checks().
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -61,6 +60,7 @@ type AbstractSelector struct {
 	sync.Mutex
 	brd             *Board
 	this_stk        *StackItem
+	htable          *HistoryTable
 	stage           int
 	index           int
 	finished        int
@@ -85,11 +85,12 @@ type QMoveSelector struct {
 	can_check bool
 }
 
-func NewMoveSelector(brd *Board, this_stk *StackItem, in_check bool, first_move Move) *MoveSelector {
+func NewMoveSelector(brd *Board, this_stk *StackItem, htable *HistoryTable, in_check bool, first_move Move) *MoveSelector {
 	return &MoveSelector{
 		AbstractSelector: AbstractSelector{
 			brd:             brd,
 			this_stk:        this_stk,
+			htable:          htable,
 			in_check:        in_check,
 			winning:         MoveList{},
 			losing:          MoveList{},
@@ -99,11 +100,12 @@ func NewMoveSelector(brd *Board, this_stk *StackItem, in_check bool, first_move 
 	}
 }
 
-func NewQMoveSelector(brd *Board, this_stk *StackItem, in_check, can_check bool) SelectorInterface {
+func NewQMoveSelector(brd *Board, this_stk *StackItem, htable *HistoryTable, in_check, can_check bool) SelectorInterface {
 	return &QMoveSelector{
 		AbstractSelector: AbstractSelector{
 			brd:             brd,
 			this_stk:        this_stk,
+			htable:          htable,
 			in_check:        in_check,
 			winning:         MoveList{},
 			losing:          MoveList{},
@@ -141,14 +143,6 @@ func (s *MoveSelector) NextMove() (Move, int) {
 			s.index++
 			if s.brd.ValidMove(s.first_move, s.in_check) && s.brd.LegalMove(s.first_move, s.in_check) {
 				return s.first_move, STAGE_FIRST
-			} else {
-				if s.first_move != NO_MOVE && s.first_move != 0 {
-					// fmt.Printf("Invalid/Illegal move: %s\n", s.first_move.ToUCI())
-					if !uci_mode {
-						fmt.Printf("!")
-					}
-					// s.brd.Print()
-				}
 			}
 		case STAGE_WINNING:
 			m := s.winning[s.index].move
@@ -187,9 +181,9 @@ func (s *MoveSelector) NextBatch() bool {
 		s.finished = 1
 	case STAGE_WINNING:
 		if s.in_check {
-			get_evasions(s.brd, &s.winning, &s.losing, &s.remaining_moves)
+			get_evasions(s.brd, s.htable, &s.winning, &s.losing, &s.remaining_moves)
 		} else {
-			get_captures(s.brd, &s.winning, &s.losing)
+			get_captures(s.brd, s.htable, &s.winning, &s.losing)
 		}
 		s.winning.Sort()
 		s.finished = len(s.winning)
@@ -200,7 +194,7 @@ func (s *MoveSelector) NextBatch() bool {
 		s.finished = len(s.losing)
 	case STAGE_REMAINING:
 		if !s.in_check {
-			get_non_captures(s.brd, &s.remaining_moves)
+			get_non_captures(s.brd, s.htable, &s.remaining_moves)
 		}
 		s.remaining_moves.Sort()
 		s.finished = len(s.remaining_moves)
@@ -255,9 +249,9 @@ func (s *QMoveSelector) NextBatch() bool {
 	switch s.stage {
 	case Q_STAGE_WINNING:
 		if s.in_check {
-			get_evasions(s.brd, &s.winning, &s.losing, &s.remaining_moves)
+			get_evasions(s.brd, s.htable, &s.winning, &s.losing, &s.remaining_moves)
 		} else {
-			get_winning_captures(s.brd, &s.winning)
+			get_winning_captures(s.brd, s.htable, &s.winning)
 		}
 		s.winning.Sort()
 		s.finished = len(s.winning)
@@ -269,7 +263,7 @@ func (s *QMoveSelector) NextBatch() bool {
 		s.finished = len(s.remaining_moves)
 	case Q_STAGE_CHECKS:
 		if !s.in_check && s.can_check {
-			get_checks(s.brd, &s.checks)
+			get_checks(s.brd, s.htable, &s.checks)
 			s.checks.Sort()
 		}
 		s.finished = len(s.checks)
