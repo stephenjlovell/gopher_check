@@ -322,7 +322,7 @@ func UCIDebug(uci_fields []string) {
 }
 
 func UCIInvalid(uci_fields []string) {
-	UCISend("invalid command.\n")
+	UCIInfoString("invalid command.\n")
 }
 
 func UCIIdentify() {
@@ -362,13 +362,12 @@ func UCIRegister(uci_fields []string) {
 // 	If one command is not send its value should be interpreted as it would not influence the search.
 func UCIGo(uci_fields []string, wg *sync.WaitGroup, move_counter int) *Search {
 	var time_limit int
-	var per_move, depth_based bool
 	max_depth := MAX_DEPTH
-	gt := NewGameTimer(move_counter)
+	gt := NewGameTimer(move_counter, current_board.c) // TODO: this will be inaccurate in pondering mode.
 	uci_ponder, uci_restrict_search = false, false
 
 	for len(uci_fields) > 0 {
-		fmt.Println(uci_fields[0])
+		// fmt.Println(uci_fields[0])
 		switch uci_fields[0] {
 
 		// 	* searchmoves  ....
@@ -429,7 +428,6 @@ func UCIGo(uci_fields []string, wg *sync.WaitGroup, move_counter int) *Search {
 		case "depth": // search x plies only
 			max_depth, _ = strconv.Atoi(uci_fields[1])
 			uci_fields = uci_fields[2:]
-			depth_based = true
 
 		case "nodes": // search x nodes only
 			UCIInvalid(uci_fields)
@@ -441,25 +439,15 @@ func UCIGo(uci_fields []string, wg *sync.WaitGroup, move_counter int) *Search {
 
 		case "movetime": // search exactly x mseconds
 			time_limit, _ = strconv.Atoi(uci_fields[1])
+			gt.SetMoveTime(time.Duration(time_limit) * time.Millisecond)
 			uci_fields = uci_fields[2:]
-			per_move = true
-
 		// * infinite: search until the "stop" command. Do not exit the search without being
 		// told so in this mode!
 		case "infinite":
-			depth_based = true
 			uci_fields = uci_fields[1:]
 		default:
 			uci_fields = uci_fields[1:]
 		}
-	}
-
-	if depth_based {
-		gt.DepthBasedStart()
-	} else if per_move {
-		gt.PerMoveStart(time.Duration(time_limit) * time.Millisecond)
-	} else {
-		gt.PerGameStart(current_board.c)
 	}
 
 	if uci_ponder {
@@ -467,18 +455,20 @@ func UCIGo(uci_fields []string, wg *sync.WaitGroup, move_counter int) *Search {
 	} else {
 		wg.Add(1)
 	}
-
 	s := NewSearch(SearchParams{max_depth, false, true}, gt, wg)
-	go s.Start(current_board)
+	go s.Start(current_board) // starting the search also starts the clock
 	return s
 }
 
 // position [fen  | startpos ]  moves  ....
 func UCIPosition(uci_fields []string) *Board {
 	var brd *Board
-	if len(uci_fields) == 0 || uci_fields[0] == "startpos" {
-		brd = ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-		if len(uci_fields) > 1 {
+	if len(uci_fields) == 0 {
+		brd = StartPos()
+	} else if uci_fields[0] == "startpos" {
+		brd = StartPos()
+		uci_fields = uci_fields[1:]
+		if len(uci_fields) > 1 && uci_fields[0] == "moves" {
 			PlayMoveSequence(brd, uci_fields[1:])
 		}
 	} else if uci_fields[0] == "fen" {
@@ -496,11 +486,11 @@ func PlayMoveSequence(brd *Board, uci_fields []string) {
 	var move Move
 	if uci_fields[0] == "moves" {
 		uci_fields = uci_fields[1:]
-	} else if uci_fields[1] == "moves" {
-		uci_fields = uci_fields[2:]
 	}
 	for _, move_str := range uci_fields {
+		fmt.Println(move_str)
 		move = ParseMove(brd, move_str)
+		fmt.Println(move.ToString())
 		make_move(brd, move)
 	}
 }

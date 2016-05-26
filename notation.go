@@ -359,7 +359,7 @@ var column_names = [8]string{"a", "b", "c", "d", "e", "f", "g", "h"}
 
 // create regular expression to match valid move string.
 func IsMove(str string) bool {
-	match, _ := regexp.MatchString("[a-h][1-8][a-h][1-8][nbrq]", str)
+	match, _ := regexp.MatchString("[a-h][1-8][a-h][1-8][nbrq]?", str)
 	return match
 }
 

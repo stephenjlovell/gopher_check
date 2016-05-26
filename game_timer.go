@@ -32,11 +32,12 @@ package main
 
 import (
 	"time"
+	// "fmt"
 )
 
 const (
 	MOVES_PER_GAME = 55
-	MAX_TIME       = time.Duration(120000) * time.Millisecond // default search time limit
+	MAX_TIME       = time.Duration(8) * time.Hour // default search time limit
 )
 
 type GameTimer struct {
@@ -46,28 +47,31 @@ type GameTimer struct {
 	start_time      time.Time
 	timer           *time.Timer
 	s               *Search
+	side_to_move uint8
 }
 
-func NewGameTimer(moves_played int) *GameTimer {
+func NewGameTimer(moves_played int, side_to_move uint8) *GameTimer {
 	return &GameTimer{
 		moves_remaining: max(1, MOVES_PER_GAME-moves_played),
 		remaining:       [2]time.Duration{MAX_TIME, MAX_TIME},
+		side_to_move: side_to_move,
 	}
 }
 
-func (g *GameTimer) DepthBasedStart() {
-	g.start_time = time.Now()
+func (g *GameTimer) SetMoveTime(time_limit time.Duration) {
+	g.remaining = [2]time.Duration{ time_limit, time_limit }
+	g.moves_remaining = 1
 }
 
-func (g *GameTimer) PerMoveStart(time_limit time.Duration) {
+func (g *GameTimer) Start() {
 	g.start_time = time.Now()
-	g.timer = time.AfterFunc(time_limit, g.s.Abort)
+	g.timer = time.AfterFunc(g.TimeLimit(), g.s.Abort)
 }
 
-func (g *GameTimer) PerGameStart(c uint8) {
-	time_limit := g.remaining[c] / time.Duration(g.moves_remaining)
-	g.PerMoveStart(time_limit)
+func (g *GameTimer) TimeLimit() time.Duration {
+	return g.remaining[g.side_to_move] / time.Duration(g.moves_remaining)
 }
+
 
 func (g *GameTimer) Elapsed() time.Duration {
 	return time.Since(g.start_time)

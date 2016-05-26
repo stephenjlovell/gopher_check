@@ -77,6 +77,7 @@ func NewSearch(params SearchParams, gt *GameTimer, wg *sync.WaitGroup) *Search {
 		SearchParams: params,
 	}
 	gt.s = s
+	gt.Start()
 	return s
 }
 
@@ -143,7 +144,7 @@ func (s *Search) iterativeDeepening(brd *Board) int {
 		}
 
 		// nodes_per_iteration[d] += total
-		if d > COMMS_MIN && s.verbose && s.uci_mode { // don't print info for first few plies to reduce communication traffic.
+		if d > COMMS_MIN && (s.verbose || s.uci_mode) { // don't print info for first few plies to reduce communication traffic.
 			UCIInfo(Info{guess, d, sum, s.gt.Elapsed(), stk})
 		}
 	}

@@ -47,9 +47,8 @@ func RunTestSuite(test_suite string, depth, timeout int) {
 	start := time.Now()
 	for i, epd := range test {
 		wg.Add(1)
-		gt = NewGameTimer(0)
-		gt.PerMoveStart(time.Duration(timeout) * time.Millisecond)
-
+		gt = NewGameTimer(0, epd.brd.c)
+		gt.SetMoveTime(time.Duration(timeout) * time.Millisecond)
 		search = NewSearch(SearchParams{depth, false, false}, gt, &wg)
 		search.Start(epd.brd)
 
