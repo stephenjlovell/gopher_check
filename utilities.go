@@ -49,7 +49,7 @@ func RunTestSuite(test_suite string, depth, timeout int) {
 		wg.Add(1)
 		gt = NewGameTimer(0, epd.brd.c)
 		gt.SetMoveTime(time.Duration(timeout) * time.Millisecond)
-		search = NewSearch(SearchParams{depth, false, false}, gt, &wg)
+		search = NewSearch(SearchParams{depth, false, false, false}, gt, &wg, nil)
 		search.Start(epd.brd)
 
 		move_str = ToSAN(epd.brd, search.best_move)

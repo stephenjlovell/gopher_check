@@ -54,9 +54,9 @@ func UCIMoveAllowed(m Move) bool {
 
 var current_board *Board = EmptyBoard()
 
-func Milliseconds(d time.Duration) int64 {
-	return int64(d.Seconds() * float64(time.Second/time.Millisecond))
-}
+// func Milliseconds(d time.Duration) int64 {
+// 	return int64(d.Seconds() * float64(time.Second/time.Millisecond))
+// }
 
 // * info
 // 	the engine wants to send infos to the GUI. This should be done whenever one of the info has changed.
@@ -134,8 +134,9 @@ func UCISend(s string) { // log the UCI command s and print to standard I/O.
 	fmt.Printf(s)
 }
 
-func UCIBestMove(best_move, ponder_move Move) {
-	UCISend(fmt.Sprintf("bestmove %s ponder %s\n", best_move.ToUCI(), ponder_move.ToUCI()))
+func UCIBestMove(result SearchResult) {
+	UCISend(fmt.Sprintf("bestmove %s ponder %s\n", result.best_move.ToUCI(),
+		result.ponder_move.ToUCI()))
 }
 
 // Printed to standard output at end of each non-trivial iterative deepening pass.
@@ -143,8 +144,8 @@ func UCIBestMove(best_move, ponder_move Move) {
 // Example: info score cp 13  depth 1 nodes 13 time 15 pv f1b5 h1h2
 func UCIInfo(info Info) {
 	nps := int64(float64(info.node_count) / info.t.Seconds())
-	UCISend(fmt.Sprintf("info score cp %d depth %d nodes %d nps %d time %d pv %s\n", info.score, info.depth,
-		info.node_count, nps, int(info.t/time.Millisecond), info.stk[0].pv.ToUCI()))
+	UCISend(fmt.Sprintf("info score cp %d depth %d nodes %d nps %d time %d pv %s\n", info.score,
+		info.depth, info.node_count, nps, int(info.t/time.Millisecond), info.stk[0].pv.ToUCI()))
 }
 
 func UCIInfoString(s string) {
@@ -163,6 +164,8 @@ func ReadUCICommand() {
 	}
 	defer f.Close()
 	log.SetOutput(f)
+
+	uci_result := make(chan SearchResult)
 
 	reader := bufio.NewReader(os.Stdin)
 	for {
@@ -275,7 +278,7 @@ func ReadUCICommand() {
 				// 	There are a number of commands that can follow this command, all will be sent in the same string.
 				// 	If one command is not send its value should be interpreted as it would not influence the search.
 			case "go":
-				search = UCIGo(uci_fields[1:], &wg, move_counter) // parse any parameters given by GUI and begin searching.
+				search = UCIGo(uci_fields[1:], &wg, uci_result, move_counter) // parse any parameters given by GUI and begin searching.
 				move_counter += 1
 				// * stop
 				// 	stop calculating as soon as possible,
@@ -285,15 +288,13 @@ func ReadUCICommand() {
 					search.Abort()
 				}
 				if uci_ponder {
-					wg.Done()
+					UCIBestMove(<-uci_result)
 				}
 				// * ponderhit
 				// 	the user has played the expected move. This will be sent if the engine was told to ponder on the same move
 				// 	the user has played. The engine should continue searching but switch from pondering to normal search.
 			case "ponderhit":
-				if uci_ponder {
-					wg.Done()
-				}
+				UCIBestMove(<-uci_result)
 
 			case "quit": // quit the program as soon as possible
 				if search != nil {
@@ -360,7 +361,7 @@ func UCIRegister(uci_fields []string) {
 // 	start calculating on the current position set up with the "position" command.
 // 	There are a number of commands that can follow this command, all will be sent in the same string.
 // 	If one command is not send its value should be interpreted as it would not influence the search.
-func UCIGo(uci_fields []string, wg *sync.WaitGroup, move_counter int) *Search {
+func UCIGo(uci_fields []string, wg *sync.WaitGroup, uci_result chan SearchResult, move_counter int) *Search {
 	var time_limit int
 	max_depth := MAX_DEPTH
 	gt := NewGameTimer(move_counter, current_board.c) // TODO: this will be inaccurate in pondering mode.
@@ -449,13 +450,8 @@ func UCIGo(uci_fields []string, wg *sync.WaitGroup, move_counter int) *Search {
 			uci_fields = uci_fields[1:]
 		}
 	}
-
-	if uci_ponder {
-		wg.Add(2)
-	} else {
-		wg.Add(1)
-	}
-	s := NewSearch(SearchParams{max_depth, false, true}, gt, wg)
+	wg.Add(1)
+	s := NewSearch(SearchParams{max_depth, false, true, uci_ponder}, gt, wg, uci_result)
 	go s.Start(current_board) // starting the search also starts the clock
 	return s
 }

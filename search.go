@@ -52,6 +52,7 @@ type Search struct {
 	SearchParams
 	best_score             [2]int
 	cancel                 chan bool
+	uci_result						 chan SearchResult
 	best_move, ponder_move Move
 	alpha, beta, nodes     int
 	side_to_move           uint8
@@ -61,13 +62,18 @@ type Search struct {
 
 type SearchParams struct {
 	max_depth         int
-	verbose, uci_mode bool
+	verbose, uci_mode, ponder_mode bool
 }
 
-func NewSearch(params SearchParams, gt *GameTimer, wg *sync.WaitGroup) *Search {
+type SearchResult struct {
+	best_move, ponder_move Move
+}
+
+func NewSearch(params SearchParams, gt *GameTimer, wg *sync.WaitGroup, uci_result chan SearchResult) *Search {
 	s := &Search{
 		best_score:   [2]int{-INF, -INF},
 		cancel:       make(chan bool),
+		uci_result:		uci_result,
 		best_move:    NO_MOVE,
 		ponder_move:  NO_MOVE,
 		alpha:        -INF,
@@ -81,13 +87,26 @@ func NewSearch(params SearchParams, gt *GameTimer, wg *sync.WaitGroup) *Search {
 	return s
 }
 
+func (s *Search) SendResult() {
+	if s.uci_mode {
+		if s.ponder_mode {
+			s.uci_result <- s.Result()  // queue result to be sent when requested by GUI.
+		} else {
+			UCIBestMove(s.Result())	// send result immediately
+		}
+	}
+}
+
+func (s *Search) Result() SearchResult {
+	return SearchResult{ s.best_move, s.ponder_move }
+}
+
 func (s *Search) Abort() {
 	select {
 	case <-s.cancel:
 	default:
-		if s.verbose || s.uci_mode {
-			// UCISend(fmt.Sprintf("bestmove %s\n", s.best_move.ToUCI()))
-			UCIBestMove(s.best_move, s.ponder_move)
+		if s.uci_mode {
+			UCIBestMove(s.Result())
 		}
 		close(s.cancel)
 	}
@@ -136,11 +155,7 @@ func (s *Search) iterativeDeepening(brd *Board) int {
 			}
 			stk[0].pv.SavePV(brd, d, guess) // install PV to transposition table prior to next iteration.
 		} else {
-			if uci_mode {
-				UCIInfoString("Nil PV returned to ID\n")
-			} else {
-				fmt.Printf("Nil PV returned to ID\n")
-			}
+			UCIInfoString("Nil PV returned to ID\n")
 		}
 
 		// nodes_per_iteration[d] += total
@@ -149,9 +164,8 @@ func (s *Search) iterativeDeepening(brd *Board) int {
 		}
 	}
 
-	if s.verbose || s.uci_mode {
-		// UCISend(fmt.Sprintf("bestmove %s\n", s.best_move.ToUCI()))
-		UCIBestMove(s.best_move, s.ponder_move)
+	if s.uci_mode {
+		UCIBestMove(s.Result())
 	}
 
 	// TODO: BUG: 'orphaned' workers occasionally still processing after ID loop
