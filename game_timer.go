@@ -66,11 +66,14 @@ func (gt *GameTimer) SetMoveTime(time_limit time.Duration) {
 }
 
 func (gt *GameTimer) Start() {
+	// UCIInfoString(fmt.Sprint(gt.TimeLimit()) +
+	// 	fmt.Sprintf(" with %d moves remaining\n", gt.moves_remaining))
 	gt.timer = time.AfterFunc(gt.TimeLimit(), gt.s.Abort)
 }
 
 func (gt *GameTimer) TimeLimit() time.Duration {
-	return gt.remaining[gt.side_to_move] / time.Duration(gt.moves_remaining)
+	return (gt.remaining[gt.side_to_move] / time.Duration(gt.moves_remaining)) -
+		(time.Duration(8) * time.Millisecond) // safety margin
 }
 
 
