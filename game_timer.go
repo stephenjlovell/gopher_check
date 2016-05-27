@@ -32,7 +32,7 @@ package main
 
 import (
 	"time"
-	"fmt"
+	// "fmt"
 )
 
 const (
@@ -62,7 +62,7 @@ func NewGameTimer(moves_played int, side_to_move uint8) *GameTimer {
 func (gt *GameTimer) SetMoveTime(time_limit time.Duration) {
 	gt.remaining = [2]time.Duration{ time_limit, time_limit }
 	gt.moves_remaining = 1
-	fmt.Println(gt.TimeLimit())
+	// UCIInfoString(fmt.Sprintln(gt.TimeLimit()))
 }
 
 func (gt *GameTimer) Start() {

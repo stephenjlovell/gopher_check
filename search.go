@@ -36,7 +36,7 @@ const (
 	LMR_MIN         = 2
 	IID_MIN         = 4
 	MAX_CHECK_DEPTH = -2
-	COMMS_MIN       = 6 // minimum depth at which to send info to GUI.
+	COMMS_MIN       = 8 // minimum depth at which to send info to GUI.
 )
 
 const (
@@ -95,7 +95,7 @@ func NewSearch(params SearchParams, gt *GameTimer, wg *sync.WaitGroup, uci_resul
 }
 
 func (s *Search) sendResult() {
-	UCIInfoString(fmt.Sprintf("Search %d aborting...",search_id))
+	UCIInfoString(fmt.Sprintf("Search %d aborting...\n",search_id))
 	s.once.Do(func() {
 		s.Lock()
 		if s.uci {
@@ -179,7 +179,7 @@ func (s *Search) iterativeDeepening(brd *Board) int {
 			UCIInfoString("Nil PV returned to ID\n")
 		}
 		// nodes_per_iteration[d] += total
-		if d > COMMS_MIN && (s.verbose || s.uci) { // don't print info for first few plies to reduce communication traffic.
+		if d >= COMMS_MIN && (s.verbose || s.uci) { // don't print info for first few plies to reduce communication traffic.
 			UCIInfo(Info{guess, d, sum, s.gt.Elapsed(), stk})
 		}
 	}
@@ -659,7 +659,7 @@ func determine_child_type(node_type, legal_searched int) int {
 	case Y_ALL:
 		return Y_CUT
 	default:
-		fmt.Println("Invalid node type detected.")
+		UCIInfoString(fmt.Sprintln("Invalid node type detected."))
 		return node_type
 	}
 }

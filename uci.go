@@ -262,14 +262,18 @@ func ReadUCICommand() {
 				// 	If one command is not send its value should be interpreted as it would not influence the search.
 			case "go":
 				search, ponder = UCIGo(uci_fields[1:], brd.Copy(), &wg, uci_result, move_counter, verbose) // parse any parameters given by GUI and begin searching.
-				move_counter += 1
+				if !uci_ponder || !ponder {
+					move_counter += 1
+				}
 				// * stop
 				// 	stop calculating as soon as possible,
 				// 	don't forget the "bestmove" and possibly the "ponder" token when finishing the search
 			case "stop": // stop calculating and return a result as soon as possible.
-				search.Abort()
-				if ponder {
-					UCIBestMove(<-uci_result)
+				if search != nil {
+					search.Abort()
+					if ponder {
+						UCIBestMove(<-uci_result)
+					}
 				}
 				// * ponderhit
 				// 	the user has played the expected move. This will be sent if the engine was told to ponder on the same move
@@ -279,6 +283,7 @@ func ReadUCICommand() {
 					search.gt.Start()
 					UCIBestMove(<-uci_result)
 				}
+				move_counter += 1
 			case "quit": // quit the program as soon as possible
 				return
 
@@ -315,12 +320,31 @@ func UCIIdentify() {
 
 func UCIOption() { // option name option_name [ parameters ]
 	// tells the GUI which parameters can be changed in the engine.
-	UCISend("option\n")
+	UCISend("option name Ponder type check default false\n")
+
 }
+
+var uci_ponder bool
 
 func UCISetOption(uci_fields []string) {
 	// sent to the engine when GUI user wants to change the internal parameters
 	// of the engine
+
+	// setoption name Ponder value true
+	switch uci_fields[0] {
+	case "Ponder":
+		if len(uci_fields) == 3 {
+			switch uci_fields[2] {
+			case "true":
+				uci_ponder = true
+			case "false":
+				uci_ponder = false
+			default:
+				UCIInvalid(uci_fields)
+			}
+		}
+	}
+
 }
 
 func UCIRegister(uci_fields []string) {
@@ -374,7 +398,9 @@ func UCIGo(uci_fields []string, brd *Board, wg *sync.WaitGroup, uci_result chan 
 		// 		likely to be misinterpreted by the GUI because the GUI expects the engine to ponder
 		// 	   on the suggested move.
 		case "ponder":
-			ponder = true
+			if uci_ponder {
+				ponder = true
+			}
 			uci_fields = uci_fields[1:]
 
 		case "wtime": // white has x msec left on the clock
