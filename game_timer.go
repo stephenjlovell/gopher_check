@@ -32,7 +32,7 @@ package main
 
 import (
 	"time"
-	// "fmt"
+	"fmt"
 )
 
 const (
@@ -55,31 +55,32 @@ func NewGameTimer(moves_played int, side_to_move uint8) *GameTimer {
 		moves_remaining: max(1, MOVES_PER_GAME-moves_played),
 		remaining:       [2]time.Duration{MAX_TIME, MAX_TIME},
 		side_to_move: side_to_move,
+		start_time: time.Now(),
 	}
 }
 
-func (g *GameTimer) SetMoveTime(time_limit time.Duration) {
-	g.remaining = [2]time.Duration{ time_limit, time_limit }
-	g.moves_remaining = 1
+func (gt *GameTimer) SetMoveTime(time_limit time.Duration) {
+	gt.remaining = [2]time.Duration{ time_limit, time_limit }
+	gt.moves_remaining = 1
+	fmt.Println(gt.TimeLimit())
 }
 
-func (g *GameTimer) Start() {
-	g.start_time = time.Now()
-	g.timer = time.AfterFunc(g.TimeLimit(), g.s.Abort)
+func (gt *GameTimer) Start() {
+	gt.timer = time.AfterFunc(gt.TimeLimit(), gt.s.Abort)
 }
 
-func (g *GameTimer) TimeLimit() time.Duration {
-	return g.remaining[g.side_to_move] / time.Duration(g.moves_remaining)
+func (gt *GameTimer) TimeLimit() time.Duration {
+	return gt.remaining[gt.side_to_move] / time.Duration(gt.moves_remaining)
 }
 
 
-func (g *GameTimer) Elapsed() time.Duration {
-	return time.Since(g.start_time)
+func (gt *GameTimer) Elapsed() time.Duration {
+	return time.Since(gt.start_time)
 }
 
-func (g *GameTimer) Stop() {
-	if g.timer != nil {
-		g.timer.Stop()
+func (gt *GameTimer) Stop() {
+	if gt.timer != nil {
+		gt.timer.Stop()
 	}
 }
 

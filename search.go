@@ -53,23 +53,27 @@ type Search struct {
 	best_score             [2]int
 	cancel                 chan bool
 	uci_result						 chan SearchResult
+	allowed_moves					 []Move
 	best_move, ponder_move Move
 	alpha, beta, nodes     int
 	side_to_move           uint8
 	gt                     *GameTimer
 	wg                     *sync.WaitGroup
+	once									 sync.Once
+	sync.Mutex
 }
 
 type SearchParams struct {
 	max_depth         int
-	verbose, uci_mode, ponder_mode bool
+	verbose, uci, ponder, restrict_search bool
 }
 
 type SearchResult struct {
 	best_move, ponder_move Move
 }
 
-func NewSearch(params SearchParams, gt *GameTimer, wg *sync.WaitGroup, uci_result chan SearchResult) *Search {
+func NewSearch(params SearchParams, gt *GameTimer, wg *sync.WaitGroup, uci_result chan SearchResult,
+	allowed_moves []Move) *Search {
 	s := &Search{
 		best_score:   [2]int{-INF, -INF},
 		cancel:       make(chan bool),
@@ -81,20 +85,28 @@ func NewSearch(params SearchParams, gt *GameTimer, wg *sync.WaitGroup, uci_resul
 		gt:           gt,
 		wg:           wg,
 		SearchParams: params,
+		allowed_moves: allowed_moves,
 	}
 	gt.s = s
-	gt.Start()
+	if !s.ponder {
+		gt.Start()
+	}
 	return s
 }
 
-func (s *Search) SendResult() {
-	if s.uci_mode {
-		if s.ponder_mode {
-			s.uci_result <- s.Result()  // queue result to be sent when requested by GUI.
-		} else {
-			UCIBestMove(s.Result())	// send result immediately
+func (s *Search) sendResult() {
+	UCIInfoString(fmt.Sprintf("Search %d aborting...",search_id))
+	s.once.Do(func() {
+		s.Lock()
+		if s.uci {
+			if s.ponder {
+				s.uci_result <- s.Result()  // queue result to be sent when requested by GUI.
+			} else {
+				UCIBestMove(s.Result())	// send result immediately
+			}
 		}
-	}
+		s.Unlock()
+	})
 }
 
 func (s *Search) Result() SearchResult {
@@ -105,11 +117,17 @@ func (s *Search) Abort() {
 	select {
 	case <-s.cancel:
 	default:
-		if s.uci_mode {
-			UCIBestMove(s.Result())
-		}
 		close(s.cancel)
 	}
+}
+
+func (s *Search) moveAllowed(m Move) bool {
+	for _, permitted_move := range s.allowed_moves {
+		if m == permitted_move {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Search) Start(brd *Board) {
@@ -125,8 +143,9 @@ func (s *Search) Start(brd *Board) {
 	}
 	s.gt.Stop() // s.cancel the timer to prevent it from interfering with the next search if it's not
 							// garbage collected before then.
-	s.wg.Done()
+	s.sendResult()
 
+	s.wg.Done()
 }
 
 func (s *Search) iterativeDeepening(brd *Board) int {
@@ -149,23 +168,20 @@ func (s *Search) iterativeDeepening(brd *Board) int {
 		}
 
 		if stk[0].pv.m.IsMove() {
+			s.Lock()
 			s.best_move, s.best_score[c] = stk[0].pv.m, guess
 			if stk[0].pv.next != nil {
 				s.ponder_move = stk[0].pv.next.m
 			}
+			s.Unlock()
 			stk[0].pv.SavePV(brd, d, guess) // install PV to transposition table prior to next iteration.
 		} else {
 			UCIInfoString("Nil PV returned to ID\n")
 		}
-
 		// nodes_per_iteration[d] += total
-		if d > COMMS_MIN && (s.verbose || s.uci_mode) { // don't print info for first few plies to reduce communication traffic.
+		if d > COMMS_MIN && (s.verbose || s.uci) { // don't print info for first few plies to reduce communication traffic.
 			UCIInfo(Info{guess, d, sum, s.gt.Elapsed(), stk})
 		}
-	}
-
-	if s.uci_mode {
-		UCIBestMove(s.Result())
 	}
 
 	// TODO: BUG: 'orphaned' workers occasionally still processing after ID loop
@@ -310,8 +326,8 @@ search_moves:
 
 	for m, stage := selector.Next(sp_type); m != NO_MOVE; m, stage = selector.Next(sp_type) {
 
-		if uci_restrict_search && ply == 0 && uci_mode {
-			if !UCIMoveAllowed(m) {
+		if s.restrict_search && ply == 0 && s.uci {
+			if !s.moveAllowed(m) {
 				continue
 			}
 		}

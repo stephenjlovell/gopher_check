@@ -40,24 +40,6 @@ import (
 	"time"
 )
 
-var uci_mode, uci_debug, uci_ponder, uci_restrict_search bool
-var uci_allowed_moves []Move
-
-func UCIMoveAllowed(m Move) bool {
-	for _, permitted_move := range uci_allowed_moves {
-		if m == permitted_move {
-			return true
-		}
-	}
-	return false
-}
-
-var current_board *Board = EmptyBoard()
-
-// func Milliseconds(d time.Duration) int64 {
-// 	return int64(d.Seconds() * float64(time.Second/time.Millisecond))
-// }
-
 // * info
 // 	the engine wants to send infos to the GUI. This should be done whenever one of the info has changed.
 // 	The engine can send only selected infos and multiple infos can be send with one info command,
@@ -157,6 +139,7 @@ func ReadUCICommand() {
 	var wg sync.WaitGroup
 	var move_counter int
 	var search *Search
+	var brd *Board
 
 	f, err := os.OpenFile("log.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -166,6 +149,7 @@ func ReadUCICommand() {
 	log.SetOutput(f)
 
 	uci_result := make(chan SearchResult)
+	verbose, ponder := false, false
 
 	reader := bufio.NewReader(os.Stdin)
 	for {
@@ -186,7 +170,6 @@ func ReadUCICommand() {
 				// 	After that the engine should sent "uciok" to acknowledge the uci mode.
 				// 	If no uciok is sent within a certain time period, the engine task will be killed by the GUI.
 			case "uci":
-				uci_mode = true
 				UCIIdentify()
 				// * debug [ on | off ]
 				// 	switch the debug mode of the engine on and off.
@@ -196,7 +179,7 @@ func ReadUCICommand() {
 				// 	any time, also when the engine is thinking.
 			case "debug":
 				if len(uci_fields) > 1 {
-					UCIDebug(uci_fields[1:])
+					verbose = UCIDebug(uci_fields[1:])
 				}
 				UCISend("readyok\n")
 				// * isready
@@ -261,7 +244,7 @@ func ReadUCICommand() {
 				//    after "ucinewgame" to wait for the engine to finish its operation.
 			case "ucinewgame":
 				reset_main_tt()
-				current_board = ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+				brd = StartPos()
 				UCISend("readyok\n")
 				// * position [fen  | startpos ]  moves  ....
 				// 	set up the position described in fenstring on the internal board and
@@ -271,39 +254,36 @@ func ReadUCICommand() {
 				// 	the last position sent to the engine, the GUI should have sent a "ucinewgame" inbetween.
 			case "position":
 				wg.Wait()
-				current_board = UCIPosition(uci_fields[1:])
+				brd = UCIPosition(uci_fields[1:])
 				UCISend("readyok\n")
 				// * go
 				// 	start calculating on the current position set up with the "position" command.
 				// 	There are a number of commands that can follow this command, all will be sent in the same string.
 				// 	If one command is not send its value should be interpreted as it would not influence the search.
 			case "go":
-				search = UCIGo(uci_fields[1:], &wg, uci_result, move_counter) // parse any parameters given by GUI and begin searching.
+				search, ponder = UCIGo(uci_fields[1:], brd.Copy(), &wg, uci_result, move_counter, verbose) // parse any parameters given by GUI and begin searching.
 				move_counter += 1
 				// * stop
 				// 	stop calculating as soon as possible,
 				// 	don't forget the "bestmove" and possibly the "ponder" token when finishing the search
 			case "stop": // stop calculating and return a result as soon as possible.
-				if search != nil {
-					search.Abort()
-				}
-				if uci_ponder {
+				search.Abort()
+				if ponder {
 					UCIBestMove(<-uci_result)
 				}
 				// * ponderhit
 				// 	the user has played the expected move. This will be sent if the engine was told to ponder on the same move
 				// 	the user has played. The engine should continue searching but switch from pondering to normal search.
 			case "ponderhit":
-				UCIBestMove(<-uci_result)
-
-			case "quit": // quit the program as soon as possible
-				if search != nil {
-					search.Abort()
+				if search != nil && ponder {
+					search.gt.Start()
+					UCIBestMove(<-uci_result)
 				}
+			case "quit": // quit the program as soon as possible
 				return
 
-			case "print": // Not a UCI command. Used to print the board for debugging while in UCI mode.
-				current_board.Print()
+			case "print": // Not a UCI command. Used to print the board for debugging from console
+				brd.Print() // while in UCI mode.
 			default:
 				UCIInvalid(uci_fields)
 			}
@@ -311,15 +291,15 @@ func ReadUCICommand() {
 	}
 }
 
-func UCIDebug(uci_fields []string) {
+func UCIDebug(uci_fields []string) bool {
 	switch uci_fields[0] {
 	case "on":
-		uci_debug = true
+		return true
 	case "off":
-		uci_debug = false
 	default:
 		UCIInvalid(uci_fields)
 	}
+	return false
 }
 
 func UCIInvalid(uci_fields []string) {
@@ -361,12 +341,13 @@ func UCIRegister(uci_fields []string) {
 // 	start calculating on the current position set up with the "position" command.
 // 	There are a number of commands that can follow this command, all will be sent in the same string.
 // 	If one command is not send its value should be interpreted as it would not influence the search.
-func UCIGo(uci_fields []string, wg *sync.WaitGroup, uci_result chan SearchResult, move_counter int) *Search {
+func UCIGo(uci_fields []string, brd *Board, wg *sync.WaitGroup, uci_result chan SearchResult, move_counter int,
+	verbose bool) (*Search, bool) {
 	var time_limit int
 	max_depth := MAX_DEPTH
-	gt := NewGameTimer(move_counter, current_board.c) // TODO: this will be inaccurate in pondering mode.
-	uci_ponder, uci_restrict_search = false, false
-
+	gt := NewGameTimer(move_counter, brd.c) // TODO: this will be inaccurate in pondering mode.
+	ponder := false
+	allowed_moves := make([]Move, 0)
 	for len(uci_fields) > 0 {
 		// fmt.Println(uci_fields[0])
 		switch uci_fields[0] {
@@ -377,13 +358,9 @@ func UCIGo(uci_fields []string, wg *sync.WaitGroup, uci_result chan SearchResult
 		// 		the engine should only search the two moves e2e4 and d2d4 in the initial position.
 		case "searchmoves":
 			uci_fields = uci_fields[1:]
-			uci_allowed_moves = make([]Move, 0)
 			for len(uci_fields) > 0 && IsMove(uci_fields[0]) {
-				uci_allowed_moves = append(uci_allowed_moves, ParseMove(current_board, uci_fields[0]))
+				allowed_moves = append(allowed_moves, ParseMove(brd, uci_fields[0]))
 				uci_fields = uci_fields[1:]
-			}
-			if len(uci_allowed_moves) > 0 {
-				uci_restrict_search = true
 			}
 
 		// 	* ponder
@@ -397,7 +374,7 @@ func UCIGo(uci_fields []string, wg *sync.WaitGroup, uci_result chan SearchResult
 		// 		likely to be misinterpreted by the GUI because the GUI expects the engine to ponder
 		// 	   on the suggested move.
 		case "ponder":
-			uci_ponder = true
+			ponder = true
 			uci_fields = uci_fields[1:]
 
 		case "wtime": // white has x msec left on the clock
@@ -445,15 +422,22 @@ func UCIGo(uci_fields []string, wg *sync.WaitGroup, uci_result chan SearchResult
 		// * infinite: search until the "stop" command. Do not exit the search without being
 		// told so in this mode!
 		case "infinite":
+			gt.SetMoveTime(MAX_TIME)
 			uci_fields = uci_fields[1:]
 		default:
 			uci_fields = uci_fields[1:]
 		}
 	}
 	wg.Add(1)
-	s := NewSearch(SearchParams{max_depth, false, true, uci_ponder}, gt, wg, uci_result)
-	go s.Start(current_board) // starting the search also starts the clock
-	return s
+
+	// type SearchParams struct {
+	// 	max_depth         int
+	// 	verbose, uci, ponder, restrict_search bool
+	// }
+	search := NewSearch(SearchParams{max_depth, verbose, true, ponder, len(allowed_moves) > 0 },
+		gt, wg, uci_result, allowed_moves)
+	go search.Start(brd) // starting the search also starts the clock
+	return search, ponder
 }
 
 // position [fen  | startpos ]  moves  ....
@@ -484,9 +468,7 @@ func PlayMoveSequence(brd *Board, uci_fields []string) {
 		uci_fields = uci_fields[1:]
 	}
 	for _, move_str := range uci_fields {
-		fmt.Println(move_str)
 		move = ParseMove(brd, move_str)
-		fmt.Println(move.ToString())
 		make_move(brd, move)
 	}
 }
