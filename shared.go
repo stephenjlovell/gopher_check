@@ -192,6 +192,7 @@ var profile_flag = flag.Bool("profile", false, "Set profile=true to run profiler
 func main() {
 	print_name()
 	setup()
+	
 	flag.Parse()
 
 	if *profile_flag {

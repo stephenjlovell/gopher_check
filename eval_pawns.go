@@ -50,8 +50,6 @@ var duo_bonus = [2][8]int{
 	{0, 0, 1, 1, 1, 2, 0, 0},
 }
 
-var pawn_shield_bonus = [4]int{-9, -3, 3, 9}
-
 var promote_row = [2][2]int{
 	{1, 2},
 	{6, 5},

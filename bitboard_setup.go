@@ -177,8 +177,6 @@ func setup_directions() {
 
 func setup_pawn_structure_masks() {
 	var col int
-	var center BB
-
 	for i := 0; i < 64; i++ {
 		col = column(i)
 		pawn_isolated_masks[i] = (king_masks[i] & (^column_masks[col]))

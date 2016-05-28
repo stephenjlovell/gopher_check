@@ -29,10 +29,10 @@ import (
 )
 
 const (
-	MIN_SPLIT       = 2 // set >= MAX_PLY to disable parallel search.
 	MAX_DEPTH       = 32
 	MAX_PLY         = MAX_DEPTH * 2
-	F_PRUNE_MAX     = 2 // should always be less than MIN_SPLIT
+	MIN_SPLIT       = 2 // set >= MAX_PLY to disable parallel search.
+	F_PRUNE_MAX     = 2 // should always be >= than MIN_SPLIT
 	LMR_MIN         = 2
 	IID_MIN         = 4
 	MAX_CHECK_DEPTH = -2
@@ -95,7 +95,7 @@ func NewSearch(params SearchParams, gt *GameTimer, wg *sync.WaitGroup, uci_resul
 }
 
 func (s *Search) sendResult() {
-	UCIInfoString(fmt.Sprintf("Search %d aborting...\n", search_id))
+	// UCIInfoString(fmt.Sprintf("Search %d aborting...\n", search_id))
 	s.once.Do(func() {
 		s.Lock()
 		if s.uci {

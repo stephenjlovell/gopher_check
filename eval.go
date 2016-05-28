@@ -36,10 +36,11 @@ const (
 	ENDGAME
 )
 
-var endgame_phase [32]int
+// 0 indicates endgame.  Initial position phase is 24.  Maximum possible is 48.
+var endgame_phase [64]int
 
-// piece values used to determine endgame status. 0-12 per side, 24 total.
-var endgame_count_values = [8]uint8{0, 1, 1, 2, 4}
+// piece values used to determine endgame status. 0-12 per side,
+var endgame_count_values = [8]uint8{0, 1, 1, 2, 4, 0}
 
 var main_pst = [2][8][64]int{ // Black. White PST will be set in setup_eval.
 	{ // Pawn
@@ -189,7 +190,7 @@ func evaluate(brd *Board, alpha, beta int, side_to_move uint8) int {
 	score += net_major_placement(brd, pentry, c, e)
 
 	score += tempo_bonus(c, side_to_move)
-	// minor bug: tempo bonus only accurate half the time when score is extracted from TT.
+	// TODO: minor bug: tempo bonus may be inaccurate when score extracted from TT.
 
 	return score
 }
@@ -203,10 +204,15 @@ func tempo_bonus(c, side_to_move uint8) int {
 }
 
 func net_major_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
-	return major_placement(brd, pentry, c, e) - major_placement(brd, pentry, e, c)
+	king_sq, enemy_king_sq := brd.KingSq(c), brd.KingSq(e)
+	return major_placement(brd, pentry, c, e, king_sq, enemy_king_sq) -
+		major_placement(brd, pentry, e, c, enemy_king_sq, king_sq)
 }
 
-func major_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
+var pawn_shield_bonus = [8]int{-9, -3, 3, 9}
+
+func major_placement(brd *Board, pentry *PawnEntry, c, e uint8, king_sq,
+	enemy_king_sq int) (total_placement int) {
 
 	friendly := brd.Placement(c)
 	occ := brd.AllOccupied()
@@ -216,7 +222,7 @@ func major_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
 
 	var sq, mobility, placement, king_threats int
 	var b, attacks BB
-	enemy_king_sq := brd.KingSq(e)
+
 	enemy_king_zone := king_zone_masks[e][enemy_king_sq]
 
 	pawn_count := pentry.count[c]
@@ -256,33 +262,15 @@ func major_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
 		placement += queen_tropism_bonus[chebyshev_distance(sq, enemy_king_sq)]
 	}
 
-	for b = brd.pieces[c][KING]; b > 0; b.Clear(sq) {
-		sq = furthest_forward(c, b)
-		attacks = king_masks[sq] & available
+	placement += weight_score(brd.endgame_counter,
+		pawn_shield_bonus[pop_count(brd.pieces[c][PAWN]&king_shield_masks[c][king_sq])], 0)
 
-		defer func(brd *Board, sq int) {
-			if r := recover(); r != nil {
-				brd.Print()
-				brd.pieces[brd.c][PAWN].Print()
-				king_shield_masks[brd.c][sq].Print()
-			}
-		}(brd, sq)
+	placement += weight_score(brd.endgame_counter,
+		king_pst[c][MIDGAME][king_sq], king_pst[c][ENDGAME][king_sq])
 
-		// TODO: rare runtime error here (array out of bounds) during parallel search:
-		placement += weight_score(brd.endgame_counter,
-			pawn_shield_bonus[pop_count(brd.pieces[c][PAWN]&king_shield_masks[c][sq])], 0)
-
-		placement += weight_score(brd.endgame_counter,
-			king_pst[c][MIDGAME][sq], king_pst[c][ENDGAME][sq])
-	}
-
-	// king_pressure := weight_score(brd.endgame_counter,
-	// 	king_threat_bonus[king_threats+king_saftey_base[e][enemy_king_sq]], king_threat_bonus[king_threats])
-
-	king_pressure := weight_score(brd.endgame_counter,
+	placement += weight_score(brd.endgame_counter,
 		king_threat_bonus[king_threats+king_saftey_base[e][enemy_king_sq]], 0)
 
-	placement += king_pressure
 	return placement + mobility
 }
 

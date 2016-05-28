@@ -124,6 +124,7 @@ func (brd *Board) EvadesCheck(m Move) bool {
 
 		if threats == 0 {
 			fmt.Println("EvadesCheck() called from non-check position!")
+			brd.Print()
 			return true // no threats to evade.
 		}
 
@@ -288,7 +289,8 @@ func (brd *Board) PrintDetails() {
 	piece_names := [6]string{"Pawn", "Knight", "Bishop", "Rook", "Queen", "KING"}
 	side_names := [2]string{"White", "Black"}
 	print_mutex.Lock()
-	fmt.Printf("hash_key: %d, pawn_hash_key: %d\n", brd.hash_key, brd.pawn_hash_key)
+	
+	fmt.Printf("hash_key: %x, pawn_hash_key: %x\n", brd.hash_key, brd.pawn_hash_key)
 	fmt.Printf("castle: %d, enp_target: %d, halfmove_clock: %d\noccupied:\n", brd.castle, brd.enp_target, brd.halfmove_clock)
 	for i := 0; i < 2; i++ {
 		fmt.Printf("side: %s, material: %d\n", side_names[i], brd.material[i])
