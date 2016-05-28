@@ -151,7 +151,7 @@ func ReadUCICommand() {
 	uci_result := make(chan SearchResult)
 	verbose, ponder := false, false
 
-	reader := bufio.NewReader(os.Stdin)
+	reader := bufio.NewReader(os.Stdin)  // TODO: abstract this so we can mock Stdin for testing
 	for {
 		input, _ = reader.ReadString('\n')
 		log.Println("gui: " + input)

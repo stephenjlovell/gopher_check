@@ -43,7 +43,8 @@ func (b *BB) Add(sq int) {
 
 func (b BB) Print() {
 	row, sq := "", ""
-	fmt.Printf("%d\n", b)
+	// fmt.Printf("%d\n", b)
+	fmt.Println("  A B C D E F G H")
 	for i := 63; i >= 0; i-- {
 		if sq_mask_on[i]&b > 0 {
 			sq = " 1"
@@ -52,11 +53,11 @@ func (b BB) Print() {
 		}
 		row = sq + row
 		if i%8 == 0 {
-			fmt.Printf("%s\n", row)
+			fmt.Printf("%d%s\n",(i/8)+1, row)
 			row = ""
 		}
 	}
-	fmt.Printf("\n")
+	fmt.Println("  A B C D E F G H\n")
 }
 
 func sliding_attacks(piece Piece, occ BB, sq int) BB {

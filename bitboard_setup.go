@@ -24,7 +24,7 @@
 package main
 
 import (
-// "fmt"
+"fmt"
 )
 
 func setup_square_masks() {
@@ -125,13 +125,13 @@ func setup_king_masks() {
 			}
 		}
 		center = king_masks[i] | sq_mask_on[i]
-		// The king zone is the 3 x 4 square area consisting of the squares around the king and the squares facing
-		// the enemy side.
+		// The king zone is the 3 x 4 square area consisting of the squares around the king and
+		// the squares facing the enemy side.
 		king_zone_masks[WHITE][i] = center | (center << 8)
 		king_zone_masks[BLACK][i] = center | (center >> 8)
-
-		king_shield_masks[WHITE][i] = pawn_attack_masks[WHITE][i] | (sq_mask_on[i] << 8)
-		king_shield_masks[BLACK][i] = pawn_attack_masks[BLACK][i] | (sq_mask_on[i] >> 8)
+		// The king shield is the three squares adjacent to the king and closest to the enemy side.
+		king_shield_masks[WHITE][i] = (king_zone_masks[WHITE][i] ^ center)>>8
+		king_shield_masks[BLACK][i] = (king_zone_masks[BLACK][i] ^ center)<<8
 	}
 
 }
@@ -176,39 +176,23 @@ func setup_directions() {
 }
 
 func setup_pawn_structure_masks() {
-	var sq, col int
+	var col int
 	var center BB
 
 	for i := 0; i < 64; i++ {
 		col = column(i)
 		pawn_isolated_masks[i] = (king_masks[i] & (^column_masks[col]))
 
-		sq = i + 8
-		for sq < 64 {
-			pawn_passed_masks[WHITE][i] |= sq_mask_on[sq] // center row
-			sq += 8
+		pawn_passed_masks[WHITE][i] = ray_masks[NORTH][i]
+		pawn_passed_masks[BLACK][i] = ray_masks[SOUTH][i]
+		if col < 7 {
+			pawn_passed_masks[WHITE][i] |= pawn_passed_masks[WHITE][i]<<BB(1)
+			pawn_passed_masks[BLACK][i] |= pawn_passed_masks[BLACK][i]<<BB(1)
 		}
-		sq = i - 8
-		for sq >= 0 {
-			pawn_passed_masks[BLACK][i] |= sq_mask_on[sq] // center row
-			sq -= 8
+		if col > 0 {
+			pawn_passed_masks[WHITE][i] |= pawn_passed_masks[WHITE][i]>>BB(1)
+			pawn_passed_masks[BLACK][i] |= pawn_passed_masks[BLACK][i]>>BB(1)
 		}
-		center = pawn_passed_masks[WHITE][i]
-		pawn_blocked_masks[WHITE][i] = center
-		if col != 0 {
-			pawn_passed_masks[WHITE][i] |= (center >> 1)
-		} // queenside row
-		if col != 7 {
-			pawn_passed_masks[WHITE][i] |= (center << 1)
-		} // kingside row
-		center = pawn_passed_masks[BLACK][i]
-		pawn_blocked_masks[BLACK][i] = center
-		if col != 0 {
-			pawn_passed_masks[BLACK][i] |= (center >> 1)
-		} // queenside row
-		if col != 7 {
-			pawn_passed_masks[BLACK][i] |= (center << 1)
-		} // kingside row
 
 		pawn_attack_spans[WHITE][i] = pawn_passed_masks[WHITE][i] & (^column_masks[col])
 		pawn_attack_spans[BLACK][i] = pawn_passed_masks[BLACK][i] & (^column_masks[col])
@@ -220,11 +204,9 @@ func setup_pawn_structure_masks() {
 
 		pawn_promote_sq[WHITE][i] = msb(pawn_front_spans[WHITE][i])
 		pawn_promote_sq[BLACK][i] = lsb(pawn_front_spans[BLACK][i])
-
 	}
 }
 
-// Could simply use intervening[][] to replace these.
 func setup_castle_masks() {
 	castle_queenside_intervening[WHITE] |= (sq_mask_on[B1] | sq_mask_on[C1] | sq_mask_on[D1])
 	castle_kingside_intervening[WHITE] |= (sq_mask_on[F1] | sq_mask_on[G1])
@@ -233,16 +215,16 @@ func setup_castle_masks() {
 }
 
 func setup_masks() {
-	setup_square_masks() // First set up masks used to add/remove bits by their index.
-	setup_king_masks()   // For each square, calculate bitboard attack maps showing
-	setup_knight_masks() // the squares to which the given piece type may move. These are
-	setup_bishop_masks() // used as bitmasks during move generation to find pseudolegal moves.
-	setup_rook_masks()
-	setup_queen_masks()
-	setup_row_masks() // Create bitboard masks for each row and column.
-	setup_pawn_masks()
+	setup_row_masks() 		// Create bitboard masks for each row and column.
 	setup_column_masks()
+	setup_square_masks() 	// First set up masks used to add/remove bits by their index.
+	setup_knight_masks() 	// For each square, calculate bitboard attack maps showing
+	setup_bishop_masks() 	// the squares to which the given piece type may move. These are
+	setup_rook_masks()		// used as bitmasks during move generation to find pseudolegal moves.
+	setup_queen_masks()
+	setup_king_masks()
 	setup_directions()
+	setup_pawn_masks()
 	setup_pawn_structure_masks()
 	setup_castle_masks()
 }

@@ -90,7 +90,7 @@ var intervening, line_masks [64][64]BB
 
 var castle_queenside_intervening, castle_kingside_intervening [2]BB
 
-var pawn_attack_masks, pawn_blocked_masks, pawn_passed_masks, pawn_attack_spans, pawn_front_spans,
+var pawn_attack_masks, pawn_passed_masks, pawn_attack_spans, pawn_front_spans,
 	pawn_stop_masks, king_zone_masks, king_shield_masks [2][64]BB
 
 var pawn_stop_sq, pawn_promote_sq [2][64]int
