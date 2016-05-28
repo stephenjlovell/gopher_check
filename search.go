@@ -52,19 +52,19 @@ type Search struct {
 	SearchParams
 	best_score             [2]int
 	cancel                 chan bool
-	uci_result						 chan SearchResult
-	allowed_moves					 []Move
+	uci_result             chan SearchResult
+	allowed_moves          []Move
 	best_move, ponder_move Move
 	alpha, beta, nodes     int
 	side_to_move           uint8
 	gt                     *GameTimer
 	wg                     *sync.WaitGroup
-	once									 sync.Once
+	once                   sync.Once
 	sync.Mutex
 }
 
 type SearchParams struct {
-	max_depth         int
+	max_depth                             int
 	verbose, uci, ponder, restrict_search bool
 }
 
@@ -75,16 +75,16 @@ type SearchResult struct {
 func NewSearch(params SearchParams, gt *GameTimer, wg *sync.WaitGroup, uci_result chan SearchResult,
 	allowed_moves []Move) *Search {
 	s := &Search{
-		best_score:   [2]int{-INF, -INF},
-		cancel:       make(chan bool),
-		uci_result:		uci_result,
-		best_move:    NO_MOVE,
-		ponder_move:  NO_MOVE,
-		alpha:        -INF,
-		beta:         -INF,
-		gt:           gt,
-		wg:           wg,
-		SearchParams: params,
+		best_score:    [2]int{-INF, -INF},
+		cancel:        make(chan bool),
+		uci_result:    uci_result,
+		best_move:     NO_MOVE,
+		ponder_move:   NO_MOVE,
+		alpha:         -INF,
+		beta:          -INF,
+		gt:            gt,
+		wg:            wg,
+		SearchParams:  params,
 		allowed_moves: allowed_moves,
 	}
 	gt.s = s
@@ -95,14 +95,14 @@ func NewSearch(params SearchParams, gt *GameTimer, wg *sync.WaitGroup, uci_resul
 }
 
 func (s *Search) sendResult() {
-	UCIInfoString(fmt.Sprintf("Search %d aborting...\n",search_id))
+	UCIInfoString(fmt.Sprintf("Search %d aborting...\n", search_id))
 	s.once.Do(func() {
 		s.Lock()
 		if s.uci {
 			if s.ponder {
-				s.uci_result <- s.Result()  // queue result to be sent when requested by GUI.
+				s.uci_result <- s.Result() // queue result to be sent when requested by GUI.
 			} else {
-				UCIBestMove(s.Result())	// send result immediately
+				UCIBestMove(s.Result()) // send result immediately
 			}
 		}
 		s.Unlock()
@@ -110,7 +110,7 @@ func (s *Search) sendResult() {
 }
 
 func (s *Search) Result() SearchResult {
-	return SearchResult{ s.best_move, s.ponder_move }
+	return SearchResult{s.best_move, s.ponder_move}
 }
 
 func (s *Search) Abort() {
@@ -142,7 +142,7 @@ func (s *Search) Start(brd *Board) {
 		search_id += 1
 	}
 	s.gt.Stop() // s.cancel the timer to prevent it from interfering with the next search if it's not
-							// garbage collected before then.
+	// garbage collected before then.
 	s.sendResult()
 
 	s.wg.Done()

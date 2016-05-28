@@ -261,11 +261,11 @@ func major_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
 		attacks = king_masks[sq] & available
 
 		defer func(brd *Board, sq int) {
-				if r := recover(); r != nil {
-						brd.Print()
-						brd.pieces[brd.c][PAWN].Print()
-						king_shield_masks[brd.c][sq].Print()
-				}
+			if r := recover(); r != nil {
+				brd.Print()
+				brd.pieces[brd.c][PAWN].Print()
+				king_shield_masks[brd.c][sq].Print()
+			}
 		}(brd, sq)
 
 		// TODO: rare runtime error here (array out of bounds) during parallel search:

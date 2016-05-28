@@ -285,7 +285,7 @@ func (brd *Board) Copy() *Board {
 }
 
 func (brd *Board) PrintDetails() {
-	piece_names := [6]string{"Pawn","Knight","Bishop","Rook","Queen","KING" }
+	piece_names := [6]string{"Pawn", "Knight", "Bishop", "Rook", "Queen", "KING"}
 	side_names := [2]string{"White", "Black"}
 	print_mutex.Lock()
 	fmt.Printf("hash_key: %d, pawn_hash_key: %d\n", brd.hash_key, brd.pawn_hash_key)

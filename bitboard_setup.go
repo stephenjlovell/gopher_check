@@ -24,7 +24,7 @@
 package main
 
 import (
-"fmt"
+	// "fmt"
 )
 
 func setup_square_masks() {
@@ -130,8 +130,8 @@ func setup_king_masks() {
 		king_zone_masks[WHITE][i] = center | (center << 8)
 		king_zone_masks[BLACK][i] = center | (center >> 8)
 		// The king shield is the three squares adjacent to the king and closest to the enemy side.
-		king_shield_masks[WHITE][i] = (king_zone_masks[WHITE][i] ^ center)>>8
-		king_shield_masks[BLACK][i] = (king_zone_masks[BLACK][i] ^ center)<<8
+		king_shield_masks[WHITE][i] = (king_zone_masks[WHITE][i] ^ center) >> 8
+		king_shield_masks[BLACK][i] = (king_zone_masks[BLACK][i] ^ center) << 8
 	}
 
 }
@@ -186,12 +186,12 @@ func setup_pawn_structure_masks() {
 		pawn_passed_masks[WHITE][i] = ray_masks[NORTH][i]
 		pawn_passed_masks[BLACK][i] = ray_masks[SOUTH][i]
 		if col < 7 {
-			pawn_passed_masks[WHITE][i] |= pawn_passed_masks[WHITE][i]<<BB(1)
-			pawn_passed_masks[BLACK][i] |= pawn_passed_masks[BLACK][i]<<BB(1)
+			pawn_passed_masks[WHITE][i] |= pawn_passed_masks[WHITE][i] << BB(1)
+			pawn_passed_masks[BLACK][i] |= pawn_passed_masks[BLACK][i] << BB(1)
 		}
 		if col > 0 {
-			pawn_passed_masks[WHITE][i] |= pawn_passed_masks[WHITE][i]>>BB(1)
-			pawn_passed_masks[BLACK][i] |= pawn_passed_masks[BLACK][i]>>BB(1)
+			pawn_passed_masks[WHITE][i] |= pawn_passed_masks[WHITE][i] >> BB(1)
+			pawn_passed_masks[BLACK][i] |= pawn_passed_masks[BLACK][i] >> BB(1)
 		}
 
 		pawn_attack_spans[WHITE][i] = pawn_passed_masks[WHITE][i] & (^column_masks[col])
@@ -215,12 +215,12 @@ func setup_castle_masks() {
 }
 
 func setup_masks() {
-	setup_row_masks() 		// Create bitboard masks for each row and column.
+	setup_row_masks() // Create bitboard masks for each row and column.
 	setup_column_masks()
-	setup_square_masks() 	// First set up masks used to add/remove bits by their index.
-	setup_knight_masks() 	// For each square, calculate bitboard attack maps showing
-	setup_bishop_masks() 	// the squares to which the given piece type may move. These are
-	setup_rook_masks()		// used as bitmasks during move generation to find pseudolegal moves.
+	setup_square_masks() // First set up masks used to add/remove bits by their index.
+	setup_knight_masks() // For each square, calculate bitboard attack maps showing
+	setup_bishop_masks() // the squares to which the given piece type may move. These are
+	setup_rook_masks()   // used as bitmasks during move generation to find pseudolegal moves.
 	setup_queen_masks()
 	setup_king_masks()
 	setup_directions()

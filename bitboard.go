@@ -53,7 +53,7 @@ func (b BB) Print() {
 		}
 		row = sq + row
 		if i%8 == 0 {
-			fmt.Printf("%d%s\n",(i/8)+1, row)
+			fmt.Printf("%d%s\n", (i/8)+1, row)
 			row = ""
 		}
 	}

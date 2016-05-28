@@ -151,7 +151,7 @@ func ReadUCICommand() {
 	uci_result := make(chan SearchResult)
 	verbose, ponder := false, false
 
-	reader := bufio.NewReader(os.Stdin)  // TODO: abstract this so we can mock Stdin for testing
+	reader := bufio.NewReader(os.Stdin) // TODO: abstract this so we can mock Stdin for testing
 	for {
 		input, _ = reader.ReadString('\n')
 		log.Println("gui: " + input)
@@ -460,7 +460,7 @@ func UCIGo(uci_fields []string, brd *Board, wg *sync.WaitGroup, uci_result chan 
 	// 	max_depth         int
 	// 	verbose, uci, ponder, restrict_search bool
 	// }
-	search := NewSearch(SearchParams{max_depth, verbose, true, ponder, len(allowed_moves) > 0 },
+	search := NewSearch(SearchParams{max_depth, verbose, true, ponder, len(allowed_moves) > 0},
 		gt, wg, uci_result, allowed_moves)
 	go search.Start(brd) // starting the search also starts the clock
 	return search, ponder

@@ -47,20 +47,20 @@ type GameTimer struct {
 	start_time      time.Time
 	timer           *time.Timer
 	s               *Search
-	side_to_move uint8
+	side_to_move    uint8
 }
 
 func NewGameTimer(moves_played int, side_to_move uint8) *GameTimer {
 	return &GameTimer{
 		moves_remaining: max(1, MOVES_PER_GAME-moves_played),
 		remaining:       [2]time.Duration{MAX_TIME, MAX_TIME},
-		side_to_move: side_to_move,
-		start_time: time.Now(),
+		side_to_move:    side_to_move,
+		start_time:      time.Now(),
 	}
 }
 
 func (gt *GameTimer) SetMoveTime(time_limit time.Duration) {
-	gt.remaining = [2]time.Duration{ time_limit, time_limit }
+	gt.remaining = [2]time.Duration{time_limit, time_limit}
 	gt.moves_remaining = 1
 	// UCIInfoString(fmt.Sprintln(gt.TimeLimit()))
 }
@@ -75,7 +75,6 @@ func (gt *GameTimer) TimeLimit() time.Duration {
 	return (gt.remaining[gt.side_to_move] / time.Duration(gt.moves_remaining)) -
 		(time.Duration(8) * time.Millisecond) // safety margin
 }
-
 
 func (gt *GameTimer) Elapsed() time.Duration {
 	return time.Since(gt.start_time)
