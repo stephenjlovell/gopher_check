@@ -195,6 +195,9 @@ func setup_pawn_structure_masks() {
 		pawn_attack_spans[WHITE][i] = pawn_passed_masks[WHITE][i] & (^column_masks[col])
 		pawn_attack_spans[BLACK][i] = pawn_passed_masks[BLACK][i] & (^column_masks[col])
 
+		pawn_backward_spans[WHITE][i] = pawn_attack_spans[BLACK][i] | pawn_side_masks[i]
+		pawn_backward_spans[BLACK][i] = pawn_attack_spans[WHITE][i] | pawn_side_masks[i]
+
 		pawn_front_spans[WHITE][i] = pawn_passed_masks[WHITE][i] & (column_masks[col])
 		pawn_front_spans[BLACK][i] = pawn_passed_masks[BLACK][i] & (column_masks[col])
 

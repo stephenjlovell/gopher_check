@@ -209,7 +209,7 @@ func net_major_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
 		major_placement(brd, pentry, e, c, enemy_king_sq, king_sq)
 }
 
-var pawn_shield_bonus = [8]int{-9, -3, 3, 9}
+var pawn_shield_bonus = [4]int{-9, -3, 3, 9}
 
 func major_placement(brd *Board, pentry *PawnEntry, c, e uint8, king_sq,
 	enemy_king_sq int) (total_placement int) {
@@ -217,8 +217,7 @@ func major_placement(brd *Board, pentry *PawnEntry, c, e uint8, king_sq,
 	friendly := brd.Placement(c)
 	occ := brd.AllOccupied()
 
-	unguarded := ^(pentry.all_attacks[e])
-	available := (^friendly) & unguarded
+	available := (^friendly)&(^(pentry.all_attacks[e]))
 
 	var sq, mobility, placement, king_threats int
 	var b, attacks BB
@@ -226,6 +225,8 @@ func major_placement(brd *Board, pentry *PawnEntry, c, e uint8, king_sq,
 	enemy_king_zone := king_zone_masks[e][enemy_king_sq]
 
 	pawn_count := pentry.count[c]
+
+	// TODO: weight mobility based on endgame status.
 
 	for b = brd.pieces[c][KNIGHT]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
@@ -241,34 +242,38 @@ func major_placement(brd *Board, pentry *PawnEntry, c, e uint8, king_sq,
 		king_threats += pop_count(attacks & enemy_king_zone)
 		mobility += bishop_mobility[pop_count(attacks)]
 	}
-
 	if pop_count(brd.pieces[c][BISHOP]) > 1 { // bishop pairs
 		placement += 40 + bishop_pair_pawns[pentry.count[e]]
 	}
+
+	phase := endgame_phase[brd.endgame_counter]
 
 	for b = brd.pieces[c][ROOK]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
 		placement += rook_pawns[pawn_count]
 		attacks = rook_attacks(occ, sq) & available
 		king_threats += pop_count(attacks & enemy_king_zone)
-		mobility += rook_mobility[pop_count(attacks)]
+		// only reward rook mobility in the late-game.
+		mobility += weight_score(phase, 0, rook_mobility[pop_count(attacks)])
 	}
+
 	for b = brd.pieces[c][QUEEN]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
 		attacks = queen_attacks(occ, sq) & available
 		king_threats += pop_count(attacks & enemy_king_zone)
 		mobility += queen_mobility[pop_count(attacks)]
-		// queen tropism: encourage queen to move toward enemy king.
-		placement += queen_tropism_bonus[chebyshev_distance(sq, enemy_king_sq)]
+		// queen tropism: encourage queen to move toward enemy king in the late-game.
+		placement += weight_score(phase, 0,
+			queen_tropism_bonus[chebyshev_distance(sq, enemy_king_sq)])
 	}
 
-	placement += weight_score(brd.endgame_counter,
+	placement += weight_score(phase,
 		pawn_shield_bonus[pop_count(brd.pieces[c][PAWN]&king_shield_masks[c][king_sq])], 0)
 
-	placement += weight_score(brd.endgame_counter,
+	placement += weight_score(phase,
 		king_pst[c][MIDGAME][king_sq], king_pst[c][ENDGAME][king_sq])
 
-	placement += weight_score(brd.endgame_counter,
+	placement += weight_score(phase,
 		king_threat_bonus[king_threats+king_saftey_base[e][enemy_king_sq]], 0)
 
 	return placement + mobility
@@ -280,8 +285,7 @@ func major_placement(brd *Board, pentry *PawnEntry, c, e uint8, king_sq,
 // positional gain.
 // Uses the scaling function first implemented in Fruit and described here:
 // https://chessprogramming.wikispaces.com/Tapered+Eval
-func weight_score(endgame_count uint8, mg_score, eg_score int) int {
-	phase := endgame_phase[endgame_count]
+func weight_score(phase, mg_score, eg_score int) int {
 	return ((mg_score * (256 - phase)) + (eg_score * phase)) / 256
 }
 

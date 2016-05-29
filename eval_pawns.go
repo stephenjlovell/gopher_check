@@ -90,9 +90,10 @@ func pawn_structure(brd *Board, pentry *PawnEntry, c, e uint8) int {
 		sq = furthest_forward(c, b)
 		sq_row = row(sq)
 
-		if (pawn_attack_masks[c][sq]|pawn_attack_masks[e][sq])&own_pawns > 0 { // defended pawns
+		if (pawn_attack_masks[e][sq])&own_pawns > 0 { // defended pawns
 			value += defense_bonus[c][sq_row]
-		} else if (pawn_side_masks[sq] & own_pawns) > 0 { // pawn duos
+		}
+		if (pawn_side_masks[sq] & own_pawns) > 0 { // pawn duos
 			value += duo_bonus[c][sq_row]
 		}
 
@@ -109,8 +110,13 @@ func pawn_structure(brd *Board, pentry *PawnEntry, c, e uint8) int {
 			}
 		}
 
-		if pawn_attack_spans[e][pawn_stop_sq[c][sq]]&own_pawns == 0 && // backward pawns
-			pawn_stop_masks[c][sq]&(enemy_pawns|pentry.all_attacks[e]) > 0 {
+	// https://chessprogramming.wikispaces.com/Backward+Pawn
+	// backward pawns:
+	// 1. cannot be defended by friendly pawns,
+	// 2. their stop square is defended by an enemy sentry pawn,
+	// 3. their stop square is not defended by a friendly pawn
+		if (pawn_backward_spans[c][sq]&own_pawns == 0) &&
+			(pentry.all_attacks[e]&pawn_stop_masks[c][sq] > 0) {
 			value -= BACKWARD_PENALTY
 		}
 	}
