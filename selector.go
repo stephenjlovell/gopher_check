@@ -213,7 +213,7 @@ func (s *QMoveSelector) Next(is_sp bool) Move {
 				return NO_MOVE
 			}
 		}
-		switch s.stage - 1 {
+		switch s.CurrentStage() {
 		case Q_STAGE_WINNING:
 			m := s.winning[s.index].move
 			s.index++

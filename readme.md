@@ -6,13 +6,31 @@ GopherCheck currently supports a subset of the Universal Chess Interface (UCI) p
 
 ## Search Features
 
+GopherCheck supports [parallel search](https://chessprogramming.wikispaces.com/Parallel+Search "Parallel Search") with up to 8 search threads. It uses a version of iterative deepening, Negamax search known as [Principal Variation Search (PVS)](https://chessprogramming.wikispaces.com/Principal+Variation+Search "Principal Variation Search"). Notable search features include:
+
+- Shared hash table
+- Young-brothers wait concept (YBWC)
+- Null-move pruning with verification search
+- Mate-distance pruning
+- Internal iterative deepening (IID)
+- Search extensions
+  - Singular extensions
+  - Check extensions
+  - Promotion extensions
+- Search reductions
+  - Late-move reductions  
+- Pruning
+  - Futility pruning
+
+
+
 
 
 ## Evaluation Features
 
 Evaluation in GopherCheck is symmetric: values for each heuristic are calculated for both sides, and a net score is returned for the current side to move.  GopherCheck uses the following evaluation heuristics:
 
-1. Material balance - material is a simple sum of the value of each non-king piece in play.
+1. Material balance - material is a simple sum of the value of each non-king piece in play. This is the largest evaluation factor.
 
 - Lazy evaluation - if the material balance is well outside the search window, evaluation is cut short and returns the material balance. This prevents the engine from wasting a lot of time evaluating unrealistic positions.
 

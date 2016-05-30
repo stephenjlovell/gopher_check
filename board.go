@@ -245,6 +245,25 @@ func (brd *Board) ValidMove(m Move, in_check bool) bool {
 	return true
 }
 
+func (brd *Board) MayPromote(m Move) bool {
+	if m.Piece() != PAWN {
+		return false
+	}
+	if m.IsPromotion() {
+		return true
+	}
+	if brd.c == WHITE {
+		return m.To() >= A5 || brd.isPassedPawn(m)
+	} else {
+		return m.To() < A5 || brd.isPassedPawn(m)
+	}
+}
+
+func (brd *Board) isPassedPawn(m Move) bool {
+	return pawn_passed_masks[brd.c][m.To()]&brd.pieces[brd.Enemy()][PAWN] == 0
+}
+
+
 func (brd *Board) ValueAt(sq int) int {
 	return brd.squares[sq].Value()
 }
