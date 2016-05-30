@@ -312,10 +312,10 @@ func UCIInvalid(uci_fields []string) {
 }
 
 func UCIIdentify() {
-	UCISend("id name GopherCheck\n")
+	UCISend(fmt.Sprintf("id name GopherCheck %s\n", version))
 	UCISend("id author Steve Lovell\n")
-	UCISend("uciok\n")
 	UCIOption()
+	UCISend("uciok\n")
 }
 
 func UCIOption() { // option name option_name [ parameters ]
@@ -327,12 +327,8 @@ func UCIOption() { // option name option_name [ parameters ]
 var uci_ponder bool
 
 func UCISetOption(uci_fields []string) {
-	// sent to the engine when GUI user wants to change the internal parameters
-	// of the engine
-
-	// setoption name Ponder value true
 	switch uci_fields[0] {
-	case "Ponder":
+	case "Ponder":  // example: setoption name Ponder value true
 		if len(uci_fields) == 3 {
 			switch uci_fields[2] {
 			case "true":
@@ -343,6 +339,7 @@ func UCISetOption(uci_fields []string) {
 				UCIInvalid(uci_fields)
 			}
 		}
+	default:
 	}
 
 }

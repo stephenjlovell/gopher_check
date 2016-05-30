@@ -181,10 +181,12 @@ func setup() {
 	setup_load_balancer(num_cpu)
 }
 
+var version = "0.1.0"
+
 func print_name() {
-	fmt.Println("------------------------------------------------------------------")
-	fmt.Println("\u265B GopherCheck \u265B\nCopyright \u00A9 2014 Stephen J. Lovell")
-	fmt.Println("------------------------------------------------------------------\n")
+	fmt.Println("-------------------------------------------------------------------------------")
+	fmt.Printf("\u265B GopherCheck v.%s \u265B\nCopyright \u00A9 2014 Stephen J. Lovell", version)
+	fmt.Println("-------------------------------------------------------------------------------\n")
 }
 
 var profile_flag = flag.Bool("profile", false, "Set profile=true to run profiler on test suite.")

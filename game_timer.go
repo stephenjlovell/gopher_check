@@ -36,7 +36,7 @@ import (
 )
 
 const (
-	MOVES_PER_GAME = 55
+	MOVES_PER_GAME = 70
 	MAX_TIME       = time.Duration(8) * time.Hour // default search time limit
 )
 
@@ -73,7 +73,7 @@ func (gt *GameTimer) Start() {
 
 func (gt *GameTimer) TimeLimit() time.Duration {
 	return (gt.remaining[gt.side_to_move] / time.Duration(gt.moves_remaining)) -
-		(time.Duration(8) * time.Millisecond) // safety margin
+		(time.Duration(20) * time.Millisecond) // safety margin
 }
 
 func (gt *GameTimer) Elapsed() time.Duration {
