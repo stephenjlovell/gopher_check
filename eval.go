@@ -217,7 +217,7 @@ func major_placement(brd *Board, pentry *PawnEntry, c, e uint8, king_sq,
 	friendly := brd.Placement(c)
 	occ := brd.AllOccupied()
 
-	available := (^friendly)&(^(pentry.all_attacks[e]))
+	available := (^friendly) & (^(pentry.all_attacks[e]))
 
 	var sq, mobility, placement, king_threats int
 	var b, attacks BB

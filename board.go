@@ -263,7 +263,6 @@ func (brd *Board) isPassedPawn(m Move) bool {
 	return pawn_passed_masks[brd.c][m.To()]&brd.pieces[brd.Enemy()][PAWN] == 0
 }
 
-
 func (brd *Board) ValueAt(sq int) int {
 	return brd.squares[sq].Value()
 }

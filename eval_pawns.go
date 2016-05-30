@@ -110,11 +110,11 @@ func pawn_structure(brd *Board, pentry *PawnEntry, c, e uint8) int {
 			}
 		}
 
-	// https://chessprogramming.wikispaces.com/Backward+Pawn
-	// backward pawns:
-	// 1. cannot be defended by friendly pawns,
-	// 2. their stop square is defended by an enemy sentry pawn,
-	// 3. their stop square is not defended by a friendly pawn
+		// https://chessprogramming.wikispaces.com/Backward+Pawn
+		// backward pawns:
+		// 1. cannot be defended by friendly pawns,
+		// 2. their stop square is defended by an enemy sentry pawn,
+		// 3. their stop square is not defended by a friendly pawn
 		if (pawn_backward_spans[c][sq]&own_pawns == 0) &&
 			(pentry.all_attacks[e]&pawn_stop_masks[c][sq] > 0) {
 			value -= BACKWARD_PENALTY
