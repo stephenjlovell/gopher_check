@@ -25,9 +25,10 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/davecheney/profile"
 	// "math"
-	"sync"
+
 	"time"
 )
 
@@ -41,15 +42,13 @@ func RunTestSuite(test_suite string, depth, timeout int) {
 	var move_str string
 	sum, score := 0, 0
 	var gt *GameTimer
-	var wg sync.WaitGroup
 	var search *Search
 
 	start := time.Now()
 	for i, epd := range test {
-		wg.Add(1)
 		gt = NewGameTimer(0, epd.brd.c)
 		gt.SetMoveTime(time.Duration(timeout) * time.Millisecond)
-		search = NewSearch(SearchParams{depth, false, false, false, false}, gt, &wg, nil, nil)
+		search = NewSearch(SearchParams{depth, false, false, false}, gt, nil, nil)
 		search.Start(epd.brd)
 
 		move_str = ToSAN(epd.brd, search.best_move)

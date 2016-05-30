@@ -40,106 +40,57 @@ import (
 	"time"
 )
 
-// * info
-// 	the engine wants to send infos to the GUI. This should be done whenever one of the info has changed.
-// 	The engine can send only selected infos and multiple infos can be send with one info command,
-// 	e.g. "info currmove e2e4 currmovenumber 1" or
-// 	     "info depth 12 nodes 123456 nps 100000".
-// 	Also all infos belonging to the pv should be sent together
-// 	e.g. "info depth 2 score cp 214 time 1242 nodes 2124 nps 34928 pv e2e4 e7e5 g1f3"
-// 	I suggest to start sending "currmove", "currmovenumber", "currline" and "refutation" only after one second
-// 	to avoid too much traffic.
-// 	Additional info:
-// 	* depth
-// 		search depth in plies
-// 	* seldepth
-// 		selective search depth in plies,
-// 		if the engine sends seldepth there must also a "depth" be present in the same string.
-// 	* time
-// 		the time searched in ms, this should be sent together with the pv.
-// 	* nodes
-// 		x nodes searched, the engine should send this info regularly
-// 	* pv  ...
-// 		the best line found
-// 	* multipv
-// 		this for the multi pv mode.
-// 		for the best move/pv add "multipv 1" in the string when you send the pv.
-// 		in k-best mode always send all k variants in k strings together.
-// 	* score
-// 		* cp
-// 			the score from the engine's point of view in centipawns.
-// 		* mate
-// 			mate in y moves, not plies.
-// 			If the engine is getting mated use negativ values for y.
-// 		* lowerbound
-// 	      the score is just a lower bound.
-// 		* upperbound
-// 		   the score is just an upper bound.
-// 	* currmove
-// 		currently searching this move
-// 	* currmovenumber
-// 		currently searching move number x, for the first move x should be 1 not 0.
-// 	* hashfull
-// 		the hash is x permill full, the engine should send this info regularly
-// 	* nps
-// 		x nodes per second searched, the engine should send this info regularly
-// 	* tbhits
-// 		x positions where found in the endgame table bases
-// 	* cpuload
-// 		the cpu usage of the engine is x permill.
-// 	* string
-// 		any string str which will be displayed be the engine,
-// 		if there is a string command the rest of the line will be interpreted as .
-// 	* refutation   ...
-// 	   move  is refuted by the line  ... , i can be any number >= 1.
-// 	   Example: after move d1h5 is searched, the engine can send
-// 	   "info refutation d1h5 g6h5"
-// 	   if g6h5 is the best answer after d1h5 or if g6h5 refutes the move d1h5.
-// 	   if there is norefutation for d1h5 found, the engine should just send
-// 	   "info refutation d1h5"
-// 		The engine should only send this if the option "UCI_ShowRefutations" is set to true.
-// 	* currline   ...
-// 	   this is the current line the engine is calculating.  is the number of the cpu if
-// 	   the engine is running on more than one cpu.  = 1,2,3....
-// 	   if the engine is just using one cpu,  can be omitted.
-// 	   If  is greater than 1, always send all k lines in k strings together.
-// 		The engine should only send this if the option "UCI_ShowCurrLine" is set to true.
-
 type Info struct {
 	score, depth, node_count int
 	t                        time.Duration // time elapsed
 	stk                      Stack
 }
 
-func UCISend(s string) { // log the UCI command s and print to standard I/O.
+type UCIAdapter struct {
+	brd    *Board
+	search *Search
+	wg     *sync.WaitGroup
+	result chan SearchResult
+
+	move_counter int
+
+	option_ponder bool
+	option_debug  bool
+}
+
+func NewUCIAdapter() *UCIAdapter {
+	return &UCIAdapter{
+		wg:     new(sync.WaitGroup),
+		result: make(chan SearchResult),
+	}
+}
+
+func (uci *UCIAdapter) Send(s string) { // log the UCI command s and print to standard I/O.
 	log.Printf("engine: " + s)
 	fmt.Printf(s)
 }
 
-func UCIBestMove(result SearchResult) {
-	UCISend(fmt.Sprintf("bestmove %s ponder %s\n", result.best_move.ToUCI(),
+func (uci *UCIAdapter) BestMove(result SearchResult) {
+	uci.Send(fmt.Sprintf("bestmove %s ponder %s\n", result.best_move.ToUCI(),
 		result.ponder_move.ToUCI()))
 }
 
 // Printed to standard output at end of each non-trivial iterative deepening pass.
 // Score given in centipawns. Time given in milliseconds. PV given as list of moves.
 // Example: info score cp 13  depth 1 nodes 13 time 15 pv f1b5 h1h2
-func UCIInfo(info Info) {
+func (uci *UCIAdapter) Info(info Info) {
 	nps := int64(float64(info.node_count) / info.t.Seconds())
-	UCISend(fmt.Sprintf("info score cp %d depth %d nodes %d nps %d time %d pv %s\n", info.score,
+	uci.Send(fmt.Sprintf("info score cp %d depth %d nodes %d nps %d time %d pv %s\n", info.score,
 		info.depth, info.node_count, nps, int(info.t/time.Millisecond), info.stk[0].pv.ToUCI()))
 }
 
-func UCIInfoString(s string) {
-	UCISend("info string " + s)
+func (uci *UCIAdapter) InfoString(s string) {
+	uci.Send("info string " + s)
 }
 
-func ReadUCICommand() {
+func (uci *UCIAdapter) Read(reader *bufio.Reader) {
 	var input string
-	var wg sync.WaitGroup
-	var move_counter int
-	var search *Search
-	var brd *Board
+	var uci_fields []string
 
 	f, err := os.OpenFile("log.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -148,14 +99,12 @@ func ReadUCICommand() {
 	defer f.Close()
 	log.SetOutput(f)
 
-	uci_result := make(chan SearchResult)
-	verbose, ponder := false, false
+	ponder := false
 
-	reader := bufio.NewReader(os.Stdin) // TODO: abstract this so we can mock Stdin for testing
 	for {
 		input, _ = reader.ReadString('\n')
 		log.Println("gui: " + input)
-		uci_fields := strings.Fields(input)
+		uci_fields = strings.Fields(input)
 
 		if len(uci_fields) > 0 {
 			switch uci_fields[0] {
@@ -170,7 +119,7 @@ func ReadUCICommand() {
 				// 	After that the engine should sent "uciok" to acknowledge the uci mode.
 				// 	If no uciok is sent within a certain time period, the engine task will be killed by the GUI.
 			case "uci":
-				UCIIdentify()
+				uci.identify()
 				// * debug [ on | off ]
 				// 	switch the debug mode of the engine on and off.
 				// 	In debug mode the engine should sent additional infos to the GUI, e.g. with the "info string" command,
@@ -179,9 +128,9 @@ func ReadUCICommand() {
 				// 	any time, also when the engine is thinking.
 			case "debug":
 				if len(uci_fields) > 1 {
-					verbose = UCIDebug(uci_fields[1:])
+					uci.option_debug = uci.debug(uci_fields[1:])
 				}
-				UCISend("readyok\n")
+				uci.Send("readyok\n")
 				// * isready
 				// 	this is used to synchronize the engine with the GUI. When the GUI has sent a command or
 				// 	multiple commands that can take some time to complete,
@@ -193,8 +142,8 @@ func ReadUCICommand() {
 				// 	This command must always be answered with "readyok" and can be sent also when the engine is calculating
 				// 	in which case the engine should also immediately answer with "readyok" without stopping the search.
 			case "isready":
-				wg.Wait()
-				UCISend("readyok\n")
+				uci.wg.Wait()
+				uci.Send("readyok\n")
 				// * setoption name  [value ]
 				// 	this is sent to the engine when the user wants to change the internal parameters
 				// 	of the engine. For the "button" type no value is needed.
@@ -210,9 +159,9 @@ func ReadUCICommand() {
 				// 	   "setoption name NalimovPath value c:\chess\tb\4;c:\chess\tb\5\n"
 			case "setoption": // setoption name option_name
 				if len(uci_fields) > 2 && uci_fields[1] == "name" {
-					UCISetOption(uci_fields[2:])
+					uci.setOption(uci_fields[2:])
 				}
-				UCISend("readyok\n")
+				uci.Send("readyok\n")
 				// * register
 				// 	this is the command to try to register an engine or to tell the engine that registration
 				// 	will be done later. This command should always be sent if the engine	has send "registration error"
@@ -230,9 +179,9 @@ func ReadUCICommand() {
 				//
 			case "register":
 				if len(uci_fields) > 1 {
-					UCIRegister(uci_fields[1:])
+					uci.register(uci_fields[1:])
 				}
-				UCISend("readyok\n")
+				uci.Send("readyok\n")
 				// * ucinewgame
 				//    this is sent to the engine when the next search (started with "position" and "go") will be from
 				//    a different game. This can be a new game the engine should play or a new game it should analyse but
@@ -244,8 +193,8 @@ func ReadUCICommand() {
 				//    after "ucinewgame" to wait for the engine to finish its operation.
 			case "ucinewgame":
 				reset_main_tt()
-				brd = StartPos()
-				UCISend("readyok\n")
+				uci.brd = StartPos()
+				uci.Send("readyok\n")
 				// * position [fen  | startpos ]  moves  ....
 				// 	set up the position described in fenstring on the internal board and
 				// 	play the moves on the internal chess board.
@@ -253,98 +202,125 @@ func ReadUCICommand() {
 				// 	Note: no "new" command is needed. However, if this position is from a different game than
 				// 	the last position sent to the engine, the GUI should have sent a "ucinewgame" inbetween.
 			case "position":
-				wg.Wait()
-				brd = UCIPosition(uci_fields[1:])
-				UCISend("readyok\n")
+				uci.wg.Wait()
+				uci.position(uci_fields[1:])
+				uci.Send("readyok\n")
 				// * go
 				// 	start calculating on the current position set up with the "position" command.
 				// 	There are a number of commands that can follow this command, all will be sent in the same string.
 				// 	If one command is not send its value should be interpreted as it would not influence the search.
 			case "go":
-				search, ponder = UCIGo(uci_fields[1:], brd.Copy(), &wg, uci_result, move_counter, verbose) // parse any parameters given by GUI and begin searching.
-				if !uci_ponder || !ponder {
-					move_counter += 1
+				ponder = uci.start(uci_fields[1:]) // parse any parameters given by GUI and begin searching.
+				if !uci.option_ponder || !ponder {
+					uci.move_counter++
 				}
 				// * stop
 				// 	stop calculating as soon as possible,
 				// 	don't forget the "bestmove" and possibly the "ponder" token when finishing the search
 			case "stop": // stop calculating and return a result as soon as possible.
-				if search != nil {
-					search.Abort()
+				if uci.search != nil {
+					uci.search.Abort()
 					if ponder {
-						UCIBestMove(<-uci_result)
+						uci.BestMove(<-uci.result)
 					}
 				}
 				// * ponderhit
 				// 	the user has played the expected move. This will be sent if the engine was told to ponder on the same move
 				// 	the user has played. The engine should continue searching but switch from pondering to normal search.
 			case "ponderhit":
-				if search != nil && ponder {
-					search.gt.Start()
-					UCIBestMove(<-uci_result)
+				if uci.search != nil && ponder {
+					uci.search.gt.Start()
+					uci.BestMove(<-uci.result)
 				}
-				move_counter += 1
+				uci.move_counter++
 			case "quit": // quit the program as soon as possible
 				return
 
 			case "print": // Not a UCI command. Used to print the board for debugging from console
-				brd.Print() // while in UCI mode.
+				uci.brd.Print() // while in UCI mode.
 			default:
-				UCIInvalid(uci_fields)
+				uci.invalid(uci_fields)
 			}
 		}
 	}
 }
 
-func UCIDebug(uci_fields []string) bool {
+func (uci *UCIAdapter) debug(uci_fields []string) bool {
 	switch uci_fields[0] {
 	case "on":
 		return true
 	case "off":
 	default:
-		UCIInvalid(uci_fields)
+		uci.invalid(uci_fields)
 	}
 	return false
 }
 
-func UCIInvalid(uci_fields []string) {
-	UCIInfoString("invalid command.\n")
+func (uci *UCIAdapter) invalid(uci_fields []string) {
+	uci.InfoString("invalid command.\n")
 }
 
-func UCIIdentify() {
-	UCISend(fmt.Sprintf("id name GopherCheck %s\n", version))
-	UCISend("id author Steve Lovell\n")
-	UCIOption()
-	UCISend("uciok\n")
+func (uci *UCIAdapter) identify() {
+	uci.Send(fmt.Sprintf("id name GopherCheck %s\n", version))
+	uci.Send("id author Steve Lovell\n")
+	uci.option()
+	uci.Send("uciok\n")
 }
 
-func UCIOption() { // option name option_name [ parameters ]
+func (uci *UCIAdapter) option() { // option name option_name [ parameters ]
 	// tells the GUI which parameters can be changed in the engine.
-	UCISend("option name Ponder type check default false\n")
+	uci.Send("option name Ponder type check default false\n")
 
 }
 
-var uci_ponder bool
+// Engine: option name Hash type spin default 16 min 4 max 1024
+// Engine: option name Search Time type spin default 0 min 0 max 3600
+// Engine: option name Search Depth type spin default 0 min 0 max 20
+// Engine: option name Ponder type check default false
+// Engine: option name OwnBook type check default true
+// Engine: option name BookFile type string default performance.bin
+// Engine: option name MultiPV type spin default 1 min 1 max 10
+// Engine: option name NullMove Pruning type combo default Always var Always var Fail High var Never
+// Engine: option name NullMove Reduction type spin default 3 min 1 max 4
+// Engine: option name Verification Search type combo default Always var Always var Endgame var Never
+// Engine: option name Verification Reduction type spin default 5 min 1 max 6
+// Engine: option name History Pruning type check default true
+// Engine: option name History Threshold type spin default 70 min 0 max 100
+// Engine: option name Futility Pruning type check default true
+// Engine: option name Futility Margin type spin default 100 min 0 max 500
+// Engine: option name Extended Futility Margin type spin default 300 min 0 max 900
+// Engine: option name Delta Pruning type check default true
+// Engine: option name Delta Margin type spin default 50 min 0 max 500
+// Engine: option name Quiescence Check Plies type spin default 1 min 0 max 2
+// Engine: option name Material type spin default 100 min 0 max 400
+// Engine: option name Piece Activity type spin default 100 min 0 max 400
+// Engine: option name King Safety type spin default 100 min 0 max 400
+// Engine: option name Pawn Structure type spin default 100 min 0 max 400
+// Engine: option name Passed Pawns type spin default 100 min 0 max 400
+// Engine: option name Toga Lazy Eval type check default true
+// Engine: option name Toga Lazy Eval Margin type spin default 200 min 0 max 900
+// Engine: option name Toga King Safety type check default false
+// Engine: option name Toga King Safety Margin type spin default 1700 min 500 max 3000
+// Engine: option name Toga Extended History Pruning type check default false
 
-func UCISetOption(uci_fields []string) {
+func (uci *UCIAdapter) setOption(uci_fields []string) {
 	switch uci_fields[0] {
-	case "Ponder":  // example: setoption name Ponder value true
+	case "Ponder": // example: setoption name Ponder value true
 		if len(uci_fields) == 3 {
 			switch uci_fields[2] {
 			case "true":
-				uci_ponder = true
+				uci.option_ponder = true
 			case "false":
-				uci_ponder = false
+				uci.option_ponder = false
 			default:
-				UCIInvalid(uci_fields)
+				uci.invalid(uci_fields)
 			}
 		}
 	default:
 	}
-
 }
 
-func UCIRegister(uci_fields []string) {
+func (uci *UCIAdapter) register(uci_fields []string) {
 	// The following tokens are allowed:
 	// * later
 	//    the user doesn't want to register the engine now.
@@ -355,20 +331,18 @@ func UCIRegister(uci_fields []string) {
 	// Example:
 	//    "register later"
 	//    "register name Stefan MK code 4359874324"
-
 }
 
 // * go
 // 	start calculating on the current position set up with the "position" command.
 // 	There are a number of commands that can follow this command, all will be sent in the same string.
 // 	If one command is not send its value should be interpreted as it would not influence the search.
-func UCIGo(uci_fields []string, brd *Board, wg *sync.WaitGroup, uci_result chan SearchResult, move_counter int,
-	verbose bool) (*Search, bool) {
+func (uci *UCIAdapter) start(uci_fields []string) bool {
 	var time_limit int
 	max_depth := MAX_DEPTH
-	gt := NewGameTimer(move_counter, brd.c) // TODO: this will be inaccurate in pondering mode.
+	gt := NewGameTimer(uci.move_counter, uci.brd.c) // TODO: this will be inaccurate in pondering mode.
 	ponder := false
-	allowed_moves := make([]Move, 0)
+	var allowed_moves []Move
 	for len(uci_fields) > 0 {
 		// fmt.Println(uci_fields[0])
 		switch uci_fields[0] {
@@ -380,14 +354,14 @@ func UCIGo(uci_fields []string, brd *Board, wg *sync.WaitGroup, uci_result chan 
 		case "searchmoves":
 			uci_fields = uci_fields[1:]
 			for len(uci_fields) > 0 && IsMove(uci_fields[0]) {
-				allowed_moves = append(allowed_moves, ParseMove(brd, uci_fields[0]))
+				allowed_moves = append(allowed_moves, ParseMove(uci.brd, uci_fields[0]))
 				uci_fields = uci_fields[1:]
 			}
 
 		// 	* ponder
 		// 		start searching in pondering mode.
 		case "ponder":
-			if uci_ponder {
+			if uci.option_ponder {
 				ponder = true
 			}
 			uci_fields = uci_fields[1:]
@@ -423,11 +397,11 @@ func UCIGo(uci_fields []string, brd *Board, wg *sync.WaitGroup, uci_result chan 
 			uci_fields = uci_fields[2:]
 
 		case "nodes": // search x nodes only
-			UCIInvalid(uci_fields)
+			uci.invalid(uci_fields)
 			uci_fields = uci_fields[2:]
 
 		case "mate": // search for a mate in x moves
-			UCIInvalid(uci_fields)
+			uci.invalid(uci_fields)
 			uci_fields = uci_fields[2:]
 
 		case "movetime": // search exactly x mseconds
@@ -443,48 +417,46 @@ func UCIGo(uci_fields []string, brd *Board, wg *sync.WaitGroup, uci_result chan 
 			uci_fields = uci_fields[1:]
 		}
 	}
-	wg.Add(1)
+	uci.wg.Add(1)
 
 	// type SearchParams struct {
 	// 	max_depth         int
-	// 	verbose, uci, ponder, restrict_search bool
+	// 	verbose, ponder, restrict_search bool
 	// }
-	search := NewSearch(SearchParams{max_depth, verbose, true, ponder, len(allowed_moves) > 0},
-		gt, wg, uci_result, allowed_moves)
-	go search.Start(brd) // starting the search also starts the clock
-	return search, ponder
+	uci.search = NewSearch(SearchParams{max_depth, uci.option_debug, ponder, len(allowed_moves) > 0},
+		gt, uci, allowed_moves)
+	go uci.search.Start(uci.brd.Copy()) // starting the search also starts the clock
+	return ponder
 }
 
 // position [fen  | startpos ]  moves  ....
-func UCIPosition(uci_fields []string) *Board {
-	var brd *Board
+func (uci *UCIAdapter) position(uci_fields []string) {
 	if len(uci_fields) == 0 {
-		brd = StartPos()
+		uci.brd = StartPos()
 	} else if uci_fields[0] == "startpos" {
-		brd = StartPos()
+		uci.brd = StartPos()
 		uci_fields = uci_fields[1:]
 		if len(uci_fields) > 1 && uci_fields[0] == "moves" {
-			PlayMoveSequence(brd, uci_fields[1:])
+			uci.playMoveSequence(uci_fields[1:])
 		}
 	} else if uci_fields[0] == "fen" {
-		brd = ParseFENSlice(uci_fields[1:])
+		uci.brd = ParseFENSlice(uci_fields[1:])
 		if len(uci_fields) > 7 {
-			PlayMoveSequence(brd, uci_fields[7:])
+			uci.playMoveSequence(uci_fields[7:])
 		}
 	} else {
-		UCIInvalid(uci_fields)
+		uci.invalid(uci_fields)
 	}
-	return brd
 }
 
-func PlayMoveSequence(brd *Board, uci_fields []string) {
+func (uci *UCIAdapter) playMoveSequence(uci_fields []string) {
 	var move Move
 	if uci_fields[0] == "moves" {
 		uci_fields = uci_fields[1:]
 	}
 	for _, move_str := range uci_fields {
-		move = ParseMove(brd, move_str)
-		make_move(brd, move)
+		move = ParseMove(uci.brd, move_str)
+		make_move(uci.brd, move)
 	}
 }
 

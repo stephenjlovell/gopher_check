@@ -31,12 +31,15 @@ import (
 const (
 	MAX_DEPTH       = 32
 	MAX_PLY         = MAX_DEPTH * 2
+	COMMS_MIN       = 7 // minimum depth at which to send info to GUI.
+)
+
+const (
 	MIN_SPLIT       = 2 // set >= MAX_PLY to disable parallel search.
 	F_PRUNE_MAX     = 2 // should always be >= than MIN_SPLIT
 	LMR_MIN         = 2
 	IID_MIN         = 4
-	MAX_CHECK_DEPTH = -2
-	COMMS_MIN       = 8 // minimum depth at which to send info to GUI.
+	MIN_CHECK_DEPTH = -2
 )
 
 const (
@@ -52,38 +55,36 @@ type Search struct {
 	SearchParams
 	best_score             [2]int
 	cancel                 chan bool
-	uci_result             chan SearchResult
 	allowed_moves          []Move
 	best_move, ponder_move Move
 	alpha, beta, nodes     int
 	side_to_move           uint8
 	gt                     *GameTimer
 	wg                     *sync.WaitGroup
+	uci										 *UCIAdapter
 	once                   sync.Once
 	sync.Mutex
 }
 
 type SearchParams struct {
 	max_depth                             int
-	verbose, uci, ponder, restrict_search bool
+	verbose, ponder, restrict_search bool
 }
 
 type SearchResult struct {
 	best_move, ponder_move Move
 }
 
-func NewSearch(params SearchParams, gt *GameTimer, wg *sync.WaitGroup, uci_result chan SearchResult,
-	allowed_moves []Move) *Search {
+func NewSearch(params SearchParams, gt *GameTimer, uci *UCIAdapter, allowed_moves []Move) *Search {
 	s := &Search{
 		best_score:    [2]int{-INF, -INF},
 		cancel:        make(chan bool),
-		uci_result:    uci_result,
+		uci:					uci,
 		best_move:     NO_MOVE,
 		ponder_move:   NO_MOVE,
 		alpha:         -INF,
 		beta:          -INF,
 		gt:            gt,
-		wg:            wg,
 		SearchParams:  params,
 		allowed_moves: allowed_moves,
 	}
@@ -98,11 +99,11 @@ func (s *Search) sendResult() {
 	// UCIInfoString(fmt.Sprintf("Search %d aborting...\n", search_id))
 	s.once.Do(func() {
 		s.Lock()
-		if s.uci {
+		if s.uci != nil {
 			if s.ponder {
-				s.uci_result <- s.Result() // queue result to be sent when requested by GUI.
+				s.uci.result <- s.Result() // queue result to be sent when requested by GUI.
 			} else {
-				UCIBestMove(s.Result()) // send result immediately
+				s.uci.BestMove(s.Result()) // send result immediately
 			}
 		}
 		s.Unlock()
@@ -131,8 +132,8 @@ func (s *Search) moveAllowed(m Move) bool {
 }
 
 func (s *Search) sendInfo(str string) {
-	if s.uci {
-		UCIInfoString(str)
+	if s.uci != nil {
+		s.uci.InfoString(str)
 	} else if s.verbose {
 		fmt.Printf(str)
 	}
@@ -152,8 +153,9 @@ func (s *Search) Start(brd *Board) {
 	s.gt.Stop() // s.cancel the timer to prevent it from interfering with the next search if it's not
 	// garbage collected before then.
 	s.sendResult()
-
-	s.wg.Done()
+	if s.uci != nil {
+		s.uci.wg.Done()
+	}
 }
 
 func (s *Search) iterativeDeepening(brd *Board) int {
@@ -187,8 +189,8 @@ func (s *Search) iterativeDeepening(brd *Board) int {
 			s.sendInfo("Nil PV returned to ID\n")
 		}
 		// nodes_per_iteration[d] += total
-		if d >= COMMS_MIN && (s.verbose || s.uci) { // don't print info for first few plies to reduce communication traffic.
-			UCIInfo(Info{guess, d, sum, s.gt.Elapsed(), stk})
+		if d >= COMMS_MIN && (s.verbose || s.uci != nil) { // don't print info for first few plies to reduce communication traffic.
+			s.uci.Info(Info{guess, d, sum, s.gt.Elapsed(), stk})
 		}
 	}
 
@@ -595,7 +597,7 @@ func (s *Search) quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) 
 
 	legal_moves := false
 	memento := brd.NewMemento()
-	selector := NewQMoveSelector(brd, this_stk, &s.htable, in_check, depth >= MAX_CHECK_DEPTH)
+	selector := NewQMoveSelector(brd, this_stk, &s.htable, in_check, depth >= MIN_CHECK_DEPTH)
 
 	var may_promote, gives_check bool
 	for m := selector.Next(false); m != NO_MOVE; m = selector.Next(false) {

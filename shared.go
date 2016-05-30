@@ -24,11 +24,11 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
-	// "math/rand"
+	"os"
 	"runtime"
-	// "sync/atomic"
 )
 
 const (
@@ -184,9 +184,9 @@ func setup() {
 var version = "0.1.0"
 
 func print_name() {
-	fmt.Println("-------------------------------------------------------------------------------")
+	fmt.Printf("-------------------------------------------------------------------------------\n")
 	fmt.Printf("\u265B GopherCheck v.%s \u265B\nCopyright \u00A9 2014 Stephen J. Lovell", version)
-	fmt.Println("-------------------------------------------------------------------------------\n")
+	fmt.Printf("-------------------------------------------------------------------------------\n\n")
 }
 
 var profile_flag = flag.Bool("profile", false, "Set profile=true to run profiler on test suite.")
@@ -200,6 +200,7 @@ func main() {
 	if *profile_flag {
 		RunProfiledTestSuite("test_suites/wac_300.epd", 9, 6000)
 	} else {
-		ReadUCICommand()
+		uci := NewUCIAdapter()
+		uci.Read(bufio.NewReader(os.Stdin))
 	}
 }

@@ -23,10 +23,6 @@
 
 package main
 
-import (
-// "fmt"
-)
-
 func attack_map(brd *Board, occ BB, sq int) BB {
 	return ((pawn_attack_masks[BLACK][sq] & brd.pieces[WHITE][PAWN]) | // Pawns
 		(pawn_attack_masks[WHITE][sq] & brd.pieces[BLACK][PAWN])) |
