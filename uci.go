@@ -386,14 +386,6 @@ func UCIGo(uci_fields []string, brd *Board, wg *sync.WaitGroup, uci_result chan 
 
 		// 	* ponder
 		// 		start searching in pondering mode.
-		// 		Do not exit the search in ponder mode, even if it's mate!
-		// 		This means that the last move sent in in the position string is the ponder move.
-		// 		The engine can do what it wants to do, but after a "ponderhit" command
-		// 		it should execute the suggested move to ponder on. This means that the ponder move sent by
-		// 		the GUI can be interpreted as a recommendation about which move to ponder. However, if the
-		// 		engine decides to ponder on a different move, it should not display any mainlines as they are
-		// 		likely to be misinterpreted by the GUI because the GUI expects the engine to ponder
-		// 	   on the suggested move.
 		case "ponder":
 			if uci_ponder {
 				ponder = true

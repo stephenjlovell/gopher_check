@@ -36,7 +36,7 @@ import (
 )
 
 const (
-	MOVES_PER_GAME = 70
+	AVG_MOVES_PER_GAME = 50
 	MAX_TIME       = time.Duration(8) * time.Hour // default search time limit
 )
 
@@ -52,7 +52,7 @@ type GameTimer struct {
 
 func NewGameTimer(moves_played int, side_to_move uint8) *GameTimer {
 	return &GameTimer{
-		moves_remaining: max(1, MOVES_PER_GAME-moves_played),
+		moves_remaining: max(20, AVG_MOVES_PER_GAME-moves_played),
 		remaining:       [2]time.Duration{MAX_TIME, MAX_TIME},
 		side_to_move:    side_to_move,
 		start_time:      time.Now(),
