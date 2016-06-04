@@ -23,9 +23,7 @@
 
 package main
 
-import (
 // "fmt"
-)
 
 const (
 	MAX_ENDGAME_COUNT = 24
@@ -35,6 +33,20 @@ const (
 	MIDGAME = iota
 	ENDGAME
 )
+
+var chebyshev_distance_table [64][64]int
+
+func chebyshev_distance(from, to int) int {
+	return chebyshev_distance_table[from][to]
+}
+
+func setup_chebyshev_distance() {
+	for from := 0; from < 64; from++ {
+		for to := 0; to < 64; to++ {
+			chebyshev_distance_table[from][to] = max(abs(row(from)-row(to)), abs(column(from)-column(to)))
+		}
+	}
+}
 
 // 0 indicates endgame.  Initial position phase is 24.  Maximum possible is 48.
 var endgame_phase [64]int
@@ -176,7 +188,7 @@ func evaluate(brd *Board, alpha, beta int, side_to_move uint8) int {
 	// the largest likely placement evaluation, return the material as an approximate evaluation.
 	// This prevents the engine from wasting a lot of time evaluating unrealistic positions.
 	score := int(brd.material[c] - brd.material[e])
-	if score+piece_values[BISHOP] < alpha || score-piece_values[BISHOP] > beta {
+	if score+BISHOP_VALUE < alpha || score-BISHOP_VALUE > beta {
 		return score
 	}
 

@@ -23,75 +23,32 @@
 
 package main
 
-import (
-	"bufio"
-	"flag"
-	"fmt"
-	"os"
-	"runtime"
+const ( // type
+	PAWN = iota
+	KNIGHT
+	BISHOP
+	ROOK
+	QUEEN
+	KING
+	EMPTY // no piece located at this square
 )
 
-func max(a, b int) int {
-	if a > b {
-		return a
-	} else {
-		return b
-	}
-}
-func min(a, b int) int {
-	if a > b {
-		return b
-	} else {
-		return a
-	}
-}
-func abs(x int) int {
-	if x < 0 {
-		return -x
-	} else {
-		return x
-	}
-}
+const (
+	PAWN_VALUE   = 100 // piece values are given in centipawns
+	KNIGHT_VALUE = 320
+	BISHOP_VALUE = 333
+	ROOK_VALUE   = 510
+	QUEEN_VALUE  = 880
+	KING_VALUE   = 5000
+)
 
-func assert(statement bool, failure_message string) {
-	if !statement {
-		panic("\nassertion failed: " + failure_message + "\n")
-	}
-}
+type Piece uint8
 
-func setup() {
-	num_cpu := runtime.NumCPU()
-	runtime.GOMAXPROCS(num_cpu)
-	setup_chebyshev_distance()
-	setup_masks()
-	setup_magic_move_gen()
-	setup_eval()
-	setup_rand()
-	setup_zobrist()
-	reset_main_tt()
-	setup_load_balancer(num_cpu)
-}
+var piece_values = [8]int{PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE, KING_VALUE} // default piece values
 
-var version = "0.1.0"
+var promote_values = [8]int{0, KNIGHT_VALUE - PAWN_VALUE, BISHOP_VALUE - PAWN_VALUE, ROOK_VALUE - PAWN_VALUE,
+	QUEEN_VALUE - PAWN_VALUE}
 
-func print_name() {
-	fmt.Printf("-------------------------------------------------------------------------------\n")
-	fmt.Printf("\u265B GopherCheck v.%s \u265B\nCopyright \u00A9 2014 Stephen J. Lovell", version)
-	fmt.Printf("-------------------------------------------------------------------------------\n\n")
-}
+func (pc Piece) Value() int { return piece_values[pc] }
 
-var profile_flag = flag.Bool("profile", false, "Set profile=true to run profiler on test suite.")
-
-func main() {
-	print_name()
-	setup()
-
-	flag.Parse()
-
-	if *profile_flag {
-		RunProfiledTestSuite("test_suites/wac_300.epd", 9, 6000)
-	} else {
-		uci := NewUCIAdapter()
-		uci.Read(bufio.NewReader(os.Stdin))
-	}
-}
+func (pc Piece) PromoteValue() int { return promote_values[pc] }

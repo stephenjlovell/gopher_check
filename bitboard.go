@@ -57,7 +57,7 @@ func (b BB) Print() {
 			row = ""
 		}
 	}
-	fmt.Println("  A B C D E F G H\n")
+	fmt.Printf("  A B C D E F G H\n\n")
 }
 
 func sliding_attacks(piece Piece, occ BB, sq int) BB {

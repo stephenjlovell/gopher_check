@@ -29,9 +29,16 @@ import (
 )
 
 const (
-	MAX_DEPTH       = 32
-	MAX_PLY         = MAX_DEPTH * 2
-	COMMS_MIN       = 7 // minimum depth at which to send info to GUI.
+	INF      = 10000            // an arbitrarily large score used for initial bounds
+	NO_SCORE = INF - 1          // sentinal value indicating a meaningless score.
+	MATE     = NO_SCORE - 1     // maximum checkmate score (i.e. mate in 0)
+	MIN_MATE = MATE - MAX_STACK // minimum possible checkmate score (mate in MAX_STACK)
+)
+
+const (
+	MAX_DEPTH = 32
+	MAX_PLY   = MAX_DEPTH * 2
+	COMMS_MIN = 7 // minimum depth at which to send info to GUI.
 )
 
 const (
@@ -43,7 +50,7 @@ const (
 )
 
 const (
-	Y_CUT = iota
+	Y_CUT = iota // YBWC node types
 	Y_ALL
 	Y_PV
 )
@@ -61,13 +68,13 @@ type Search struct {
 	side_to_move           uint8
 	gt                     *GameTimer
 	wg                     *sync.WaitGroup
-	uci										 *UCIAdapter
+	uci                    *UCIAdapter
 	once                   sync.Once
 	sync.Mutex
 }
 
 type SearchParams struct {
-	max_depth                             int
+	max_depth                        int
 	verbose, ponder, restrict_search bool
 }
 
@@ -79,7 +86,7 @@ func NewSearch(params SearchParams, gt *GameTimer, uci *UCIAdapter, allowed_move
 	s := &Search{
 		best_score:    [2]int{-INF, -INF},
 		cancel:        make(chan bool),
-		uci:					uci,
+		uci:           uci,
 		best_move:     NO_MOVE,
 		ponder_move:   NO_MOVE,
 		alpha:         -INF,
@@ -253,7 +260,7 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, node_type,
 
 	this_stk.hash_key = brd.hash_key
 	if stk.IsRepetition(ply, brd.halfmove_clock) { // check for draw by threefold repetition
-		return -piece_values[KNIGHT] - ply, 1
+		return -KNIGHT_VALUE - ply, 1
 	}
 
 	in_check = this_stk.in_check
@@ -262,7 +269,7 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, node_type,
 		if is_checkmate(brd, in_check) {
 			return ply - MATE, 1
 		} else {
-			return -piece_values[KNIGHT] - ply, 1
+			return -KNIGHT_VALUE - ply, 1
 		}
 	}
 
@@ -320,7 +327,7 @@ search_moves:
 	} else if ply > 0 && alpha > -MIN_MATE {
 		if depth <= F_PRUNE_MAX && !brd.PawnsOnly() {
 			can_prune = true
-			if eval+piece_values[BISHOP] < alpha {
+			if eval+BISHOP_VALUE < alpha {
 				f_prune = true
 			}
 		}
@@ -567,7 +574,7 @@ func (s *Search) quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) 
 
 	this_stk.hash_key = brd.hash_key
 	if stk.IsRepetition(ply, brd.halfmove_clock) { // check for draw by threefold repetition
-		return -piece_values[KNIGHT] - ply, 1
+		return -KNIGHT_VALUE - ply, 1
 	}
 
 	in_check := this_stk.in_check
@@ -575,7 +582,7 @@ func (s *Search) quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) 
 		if is_checkmate(brd, in_check) {
 			return ply - MATE, 1
 		} else {
-			return -piece_values[KNIGHT] - ply, 1
+			return -KNIGHT_VALUE - ply, 1
 		}
 	}
 
@@ -609,7 +616,7 @@ func (s *Search) quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) 
 		gives_check = brd.InCheck()
 
 		if !in_check && !gives_check && !may_promote && alpha > -MIN_MATE &&
-			best+m.CapturedPiece().Value()+piece_values[ROOK] < alpha {
+			best+m.CapturedPiece().Value()+ROOK_VALUE < alpha {
 			unmake_move(brd, m, memento)
 			continue
 		}

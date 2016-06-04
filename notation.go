@@ -363,6 +363,8 @@ func IsMove(str string) bool {
 	return match
 }
 
+func Square(row, column int) int { return (row << 3) + column }
+
 func ParseSquare(str string) int {
 	column := column_chars[string(str[0])]
 	row, _ := strconv.ParseInt(string(str[1]), 10, 5)

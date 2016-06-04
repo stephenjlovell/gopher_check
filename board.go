@@ -28,12 +28,12 @@ import (
 	"sync"
 )
 
+const ( // color
+	BLACK = iota
+	WHITE
+)
+
 var print_mutex sync.Mutex
-
-type Piece uint8
-
-func (pc Piece) Value() int        { return piece_values[pc] }
-func (pc Piece) PromoteValue() int { return promote_values[pc] }
 
 // When spawning new goroutines for subtree search, a deep copy of the Board struct will have to be made
 // and passed to the new goroutine.  Keep this struct as small as possible.
@@ -369,6 +369,10 @@ func EmptyBoard() *Board {
 	}
 	return brd
 }
+
+func on_board(sq int) bool { return 0 <= sq && sq <= 63 }
+func row(sq int) int       { return sq >> 3 }
+func column(sq int) int    { return sq & 7 }
 
 var piece_graphics = [2][6]string{
 	{"\u265F", "\u265E", "\u265D", "\u265C", "\u265B", "\u265A"},

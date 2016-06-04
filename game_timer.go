@@ -32,12 +32,12 @@ package main
 
 import (
 	"time"
-	// "fmt"
 )
 
 const (
 	AVG_MOVES_PER_GAME = 50
-	MAX_TIME       = time.Duration(8) * time.Hour // default search time limit
+	MAX_TIME           = time.Duration(8) * time.Hour          // default search time limit
+	SAFETY_MARGIN      = time.Duration(100) * time.Millisecond // minimal amount of time to keep on clock
 )
 
 type GameTimer struct {
@@ -52,7 +52,7 @@ type GameTimer struct {
 
 func NewGameTimer(moves_played int, side_to_move uint8) *GameTimer {
 	return &GameTimer{
-		moves_remaining: max(20, AVG_MOVES_PER_GAME-moves_played),
+		moves_remaining: max(1, AVG_MOVES_PER_GAME-moves_played),
 		remaining:       [2]time.Duration{MAX_TIME, MAX_TIME},
 		side_to_move:    side_to_move,
 		start_time:      time.Now(),
@@ -62,18 +62,14 @@ func NewGameTimer(moves_played int, side_to_move uint8) *GameTimer {
 func (gt *GameTimer) SetMoveTime(time_limit time.Duration) {
 	gt.remaining = [2]time.Duration{time_limit, time_limit}
 	gt.moves_remaining = 1
-	// UCIInfoString(fmt.Sprintln(gt.TimeLimit()))
 }
 
 func (gt *GameTimer) Start() {
-	// UCIInfoString(fmt.Sprint(gt.TimeLimit()) +
-	// 	fmt.Sprintf(" with %d moves remaining\n", gt.moves_remaining))
 	gt.timer = time.AfterFunc(gt.TimeLimit(), gt.s.Abort)
 }
 
 func (gt *GameTimer) TimeLimit() time.Duration {
-	return (gt.remaining[gt.side_to_move] / time.Duration(gt.moves_remaining)) -
-		(time.Duration(20) * time.Millisecond) // safety margin
+	return (gt.remaining[gt.side_to_move] - SAFETY_MARGIN) / time.Duration(gt.moves_remaining)
 }
 
 func (gt *GameTimer) Elapsed() time.Duration {

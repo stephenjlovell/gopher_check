@@ -23,9 +23,62 @@
 
 package main
 
-import (
 // "fmt"
+
+const ( // direction codes (0...8)
+	NW = iota
+	NE
+	SE
+	SW
+	NORTH // 4
+	EAST
+	SOUTH
+	WEST // 7
+	DIR_INVALID
 )
+
+const (
+	OFF_SINGLE = iota
+	OFF_DOUBLE
+	OFF_LEFT
+	OFF_RIGHT
+)
+
+var pawn_from_offsets = [2][4]int{{8, 16, 9, 7}, {-8, -16, -7, -9}}
+var knight_offsets = [8]int{-17, -15, -10, -6, 6, 10, 15, 17}
+var bishop_offsets = [4]int{7, 9, -7, -9}
+var rook_offsets = [4]int{8, 1, -8, -1}
+var king_offsets = [8]int{-9, -7, 7, 9, -8, -1, 1, 8}
+var pawn_attack_offsets = [4]int{9, 7, -9, -7}
+var pawn_advance_offsets = [4]int{8, 16, -8, -16}
+
+var directions [64][64]int
+
+var opposite_dir = [16]int{SE, SW, NW, NE, SOUTH, WEST, NORTH, EAST, DIR_INVALID}
+
+// var middle_rows BB
+
+var mask_of_length [65]uint64
+
+var row_masks, column_masks [8]BB
+
+var pawn_isolated_masks, pawn_side_masks, pawn_doubled_masks, knight_masks, bishop_masks, rook_masks,
+	queen_masks, king_masks, sq_mask_on, sq_mask_off [64]BB
+
+var intervening, line_masks [64][64]BB
+
+var castle_queenside_intervening, castle_kingside_intervening [2]BB
+
+var pawn_attack_masks, pawn_passed_masks, pawn_attack_spans, pawn_backward_spans, pawn_front_spans,
+	pawn_stop_masks, king_zone_masks, king_shield_masks [2][64]BB
+
+var ray_masks [8][64]BB
+
+var pawn_stop_sq, pawn_promote_sq [2][64]int
+
+func manhattan_distance(from, to int) int {
+	return abs(row(from)-row(to)) + abs(column(from)-column(to))
+}
 
 func setup_square_masks() {
 	for i := 0; i < 64; i++ {

@@ -40,10 +40,11 @@ import (
 	"time"
 )
 
+// Info
 type Info struct {
-	score, depth, node_count int
-	t                        time.Duration // time elapsed
-	stk                      Stack
+	score, depth, nodeCount int
+	t                       time.Duration // time elapsed
+	stk                     Stack
 }
 
 type UCIAdapter struct {
@@ -79,9 +80,9 @@ func (uci *UCIAdapter) BestMove(result SearchResult) {
 // Score given in centipawns. Time given in milliseconds. PV given as list of moves.
 // Example: info score cp 13  depth 1 nodes 13 time 15 pv f1b5 h1h2
 func (uci *UCIAdapter) Info(info Info) {
-	nps := int64(float64(info.node_count) / info.t.Seconds())
+	nps := int64(float64(info.nodeCount) / info.t.Seconds())
 	uci.Send(fmt.Sprintf("info score cp %d depth %d nodes %d nps %d time %d pv %s\n", info.score,
-		info.depth, info.node_count, nps, int(info.t/time.Millisecond), info.stk[0].pv.ToUCI()))
+		info.depth, info.nodeCount, nps, int(info.t/time.Millisecond), info.stk[0].pv.ToUCI()))
 }
 
 func (uci *UCIAdapter) InfoString(s string) {
@@ -272,6 +273,8 @@ func (uci *UCIAdapter) option() { // option name option_name [ parameters ]
 	uci.Send("option name Ponder type check default false\n")
 
 }
+
+// some example options from Toga 1.3.1:
 
 // Engine: option name Hash type spin default 16 min 4 max 1024
 // Engine: option name Search Time type spin default 0 min 0 max 3600
