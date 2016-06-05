@@ -85,16 +85,17 @@ var profile_flag = flag.Bool("profile", false, "Runs profiler on test suite.")
 var version_flag = flag.Bool("version", false, "Prints version number and exits.")
 
 func main() {
-	print_name()
-	setup()
-
 	flag.Parse()
 	if *version_flag {
 		print_name()
-	} else if *profile_flag {
-		RunProfiledTestSuite("test_suites/wac_300.epd", 9, 6000)
 	} else {
-		uci := NewUCIAdapter()
-		uci.Read(bufio.NewReader(os.Stdin))
+		setup()
+		if *profile_flag {
+			print_name()
+			RunProfiledTestSuite("test_suites/wac_300.epd", 9, 6000)
+		} else {
+			uci := NewUCIAdapter()
+			uci.Read(bufio.NewReader(os.Stdin))
+		}
 	}
 }

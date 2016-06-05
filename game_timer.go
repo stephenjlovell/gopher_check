@@ -35,9 +35,10 @@ import (
 )
 
 const (
-	AVG_MOVES_PER_GAME = 50
-	MAX_TIME           = time.Duration(8) * time.Hour          // default search time limit
-	SAFETY_MARGIN      = time.Duration(100) * time.Millisecond // minimal amount of time to keep on clock
+	AVG_MOVES_PER_GAME  = 55
+	MIN_MOVES_REMAINING = 15
+	MAX_TIME            = time.Duration(8) * time.Hour          // default search time limit
+	SAFETY_MARGIN       = time.Duration(500) * time.Millisecond // minimal amount of time to keep on clock
 )
 
 type GameTimer struct {
@@ -52,7 +53,7 @@ type GameTimer struct {
 
 func NewGameTimer(moves_played int, side_to_move uint8) *GameTimer {
 	return &GameTimer{
-		moves_remaining: max(1, AVG_MOVES_PER_GAME-moves_played),
+		moves_remaining: max(MIN_MOVES_REMAINING, AVG_MOVES_PER_GAME-moves_played),
 		remaining:       [2]time.Duration{MAX_TIME, MAX_TIME},
 		side_to_move:    side_to_move,
 		start_time:      time.Now(),
@@ -61,6 +62,7 @@ func NewGameTimer(moves_played int, side_to_move uint8) *GameTimer {
 
 func (gt *GameTimer) SetMoveTime(time_limit time.Duration) {
 	gt.remaining = [2]time.Duration{time_limit, time_limit}
+	gt.inc = [2]time.Duration{0, 0}
 	gt.moves_remaining = 1
 }
 

@@ -1,6 +1,6 @@
 # GopherCheck
 
-An open-source, UCI chess engine written in Go!
+An open-source, UCI chess engine written in Go! Available under the MIT License.
 
 GopherCheck supports a subset of the Universal Chess Interface (UCI) protocol. To use GopherCheck, you'll need a UCI-compatible chess GUI such as [Arena Chess](http://www.playwitharena.com/ "Arena Chess") or [Scid vs. PC](http://scidvspc.sourceforge.net/ "Scid vs. PC").
 
@@ -9,6 +9,14 @@ GopherCheck supports a subset of the Universal Chess Interface (UCI) protocol. T
 To compile from source, you'll need the [latest version of Go](https://golang.org/doc/install). Once you've set up your Go workspace, run [go get](https://golang.org/cmd/go/#hdr-Download_and_install_packages_and_dependencies) to download and install GopherCheck:
 
     $ go get -u github.com/stephenjlovell/gopher_check
+
+You can display the currently installed version number by passing the --version flag:
+
+    $ gopher_check --version
+    ---------------------------------------
+     ♛ GopherCheck v.0.1.0 ♛
+     Copyright © 2014 Stephen J. Lovell
+    ---------------------------------------
 
 ## Search Features
 

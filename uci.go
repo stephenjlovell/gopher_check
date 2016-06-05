@@ -386,7 +386,8 @@ func (uci *UCIAdapter) start(uci_fields []string) bool {
 		// 	* movestogo: there are x moves to the next time control, this will only be sent if x > 0,
 		// 		if you don't get this and get the wtime and btime it's sudden death
 		case "movestogo":
-			gt.moves_remaining, _ = strconv.Atoi(uci_fields[1])
+			remaining, _ := strconv.Atoi(uci_fields[1])
+			gt.moves_remaining = remaining
 			uci_fields = uci_fields[2:]
 
 		case "depth": // search x plies only
