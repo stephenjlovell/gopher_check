@@ -325,15 +325,10 @@ func (uci *UCIAdapter) setOption(uci_fields []string) {
 
 func (uci *UCIAdapter) register(uci_fields []string) {
 	// The following tokens are allowed:
-	// * later
-	//    the user doesn't want to register the engine now.
-	// * name
-	//    the engine should be registered with the name
-	// * code
-	//    the engine should be registered with the code
-	// Example:
-	//    "register later"
-	//    "register name Stefan MK code 4359874324"
+	// * later - the user doesn't want to register the engine now.
+	// * name - the engine should be registered with the name
+	// * code - the engine should be registered with the code
+	// Examples: "register later"  "register name Stefan MK code 4359874324"
 }
 
 // * go
@@ -361,8 +356,7 @@ func (uci *UCIAdapter) start(uci_fields []string) bool {
 				uci_fields = uci_fields[1:]
 			}
 
-		// 	* ponder
-		// 		start searching in pondering mode.
+		// 	* ponder - start searching in pondering mode.
 		case "ponder":
 			if uci.option_ponder {
 				ponder = true

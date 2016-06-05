@@ -75,20 +75,23 @@ func setup() {
 var version = "0.1.0"
 
 func print_name() {
-	fmt.Printf("-------------------------------------------------------------------------------\n")
-	fmt.Printf("\u265B GopherCheck v.%s \u265B\nCopyright \u00A9 2014 Stephen J. Lovell", version)
-	fmt.Printf("-------------------------------------------------------------------------------\n\n")
+	fmt.Printf("\n---------------------------------------\n")
+	fmt.Printf(" \u265B GopherCheck v.%s \u265B\n", version)
+	fmt.Printf(" Copyright \u00A9 2014 Stephen J. Lovell\n")
+	fmt.Printf("---------------------------------------\n\n")
 }
 
-var profile_flag = flag.Bool("profile", false, "Set profile=true to run profiler on test suite.")
+var profile_flag = flag.Bool("profile", false, "Runs profiler on test suite.")
+var version_flag = flag.Bool("version", false, "Prints version number and exits.")
 
 func main() {
 	print_name()
 	setup()
 
 	flag.Parse()
-
-	if *profile_flag {
+	if *version_flag {
+		print_name()
+	} else if *profile_flag {
 		RunProfiledTestSuite("test_suites/wac_300.epd", 9, 6000)
 	} else {
 		uci := NewUCIAdapter()

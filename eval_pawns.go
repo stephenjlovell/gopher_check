@@ -23,9 +23,7 @@
 
 package main
 
-import (
 // "fmt"
-)
 
 const (
 	DOUBLED_PENALTY  = 20
@@ -123,16 +121,16 @@ func pawn_structure(brd *Board, pentry *PawnEntry, c, e uint8) int {
 	return value
 }
 
-func net_pawn_placement(brd *Board, pentry *PawnEntry, c, e, side_to_move uint8) int {
-	return pentry.value[c] + net_passed_pawns(brd, pentry, c, e, side_to_move)
+func net_pawn_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
+	return pentry.value[c] + net_passed_pawns(brd, pentry, c, e)
 }
 
-func net_passed_pawns(brd *Board, pentry *PawnEntry, c, e, side_to_move uint8) int {
-	return eval_passed_pawns(brd, c, e, side_to_move, pentry.passed_pawns[c]) -
-		eval_passed_pawns(brd, e, c, side_to_move, pentry.passed_pawns[e])
+func net_passed_pawns(brd *Board, pentry *PawnEntry, c, e uint8) int {
+	return eval_passed_pawns(brd, c, e, pentry.passed_pawns[c]) -
+		eval_passed_pawns(brd, e, c, pentry.passed_pawns[e])
 }
 
-func eval_passed_pawns(brd *Board, c, e, side_to_move uint8, passed_pawns BB) int {
+func eval_passed_pawns(brd *Board, c, e uint8, passed_pawns BB) int {
 	var value, sq int
 	enemy_king_sq := brd.KingSq(e)
 	for ; passed_pawns > 0; passed_pawns.Clear(sq) {
@@ -143,7 +141,7 @@ func eval_passed_pawns(brd *Board, c, e, side_to_move uint8, passed_pawns BB) in
 		}
 		// pawn race: Assign a bonus if the pawn is closer to its promote square than the enemy king.
 		promote_square := pawn_promote_sq[c][sq]
-		if side_to_move == c {
+		if brd.c == c {
 			if chebyshev_distance(sq, promote_square) < (chebyshev_distance(enemy_king_sq, promote_square)) {
 				value += passed_pawn_bonus[c][row(sq)]
 			}

@@ -70,7 +70,7 @@ func NewLoadBalancer(num_workers uint8) *Balancer {
 		b.workers[i] = &Worker{
 			mask:      1 << i,
 			index:     i,
-			sp_list:   make(SPList, 0, MAX_PLY),
+			sp_list:   make(SPList, 0, MAX_DEPTH),
 			stk:       NewStack(),
 			ptt:       NewPawnTT(),
 			assign_sp: make(chan *SplitPoint, 1),

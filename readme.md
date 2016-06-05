@@ -2,29 +2,31 @@
 
 An open-source, UCI chess engine written in Go!
 
-GopherCheck currently supports a subset of the Universal Chess Interface (UCI) protocol. To use GopherCheck, you'll need a UCI-compatible chess GUI.
+GopherCheck supports a subset of the Universal Chess Interface (UCI) protocol. To use GopherCheck, you'll need a UCI-compatible chess GUI such as [Arena Chess](http://www.playwitharena.com/ "Arena Chess") or [Scid vs. PC](http://scidvspc.sourceforge.net/ "Scid vs. PC").
+
+## Installation
+
+To compile from source, you'll need the [latest version of Go](https://golang.org/doc/install). Once you've set up your Go workspace, run [go get](https://golang.org/cmd/go/#hdr-Download_and_install_packages_and_dependencies) to download and install GopherCheck:
+
+    $ go get -u github.com/stephenjlovell/gopher_check
 
 ## Search Features
 
-GopherCheck supports [parallel search](https://chessprogramming.wikispaces.com/Parallel+Search "Parallel Search") with up to 8 search threads. It uses a version of iterative deepening, Negamax search known as [Principal Variation Search (PVS)](https://chessprogramming.wikispaces.com/Principal+Variation+Search "Principal Variation Search"). Notable search features include:
+GopherCheck supports [parallel search](https://chessprogramming.wikispaces.com/Parallel+Search "Parallel Search"), with up to 8 search threads. It uses a version of iterative deepening, nega-max search known as [Principal Variation Search (PVS)](https://chessprogramming.wikispaces.com/Principal+Variation+Search "Principal Variation Search"). Notable search features include:
 
 - Shared hash table
 - Young-brothers wait concept (YBWC)
 - Null-move pruning with verification search
 - Mate-distance pruning
 - Internal iterative deepening (IID)
-- Search extensions
+- Search extensions:
   - Singular extensions
   - Check extensions
   - Promotion extensions
-- Search reductions
+- Search reductions:
   - Late-move reductions  
-- Pruning
+- Pruning:
   - Futility pruning
-
-
-
-
 
 ## Evaluation Features
 
@@ -49,7 +51,7 @@ Evaluation in GopherCheck is symmetric: values for each heuristic are calculated
     - Pawn duos - Pawns that are side by side to one another create an interlocking wall of defended squares. A small bonus is given to each pawn that has at least one other pawn directly to its left or right.
     - Doubled/tripled pawns - A penalty is given for each pawn on the same file (column) as another friendly pawn. Having multiple pawns on the same file (column) limits their ability to advance, as they can easily be blocked by a single enemy piece and cannot defend one another.
     - Backward pawns - A small penalty is given to backward pawns, i.e.:
-      - they cannot be defended by friendly pawns,
+      - they cannot be defended by friendly pawns (no friendly pawn can move up to defend them),
       - their stop square is defended by an enemy sentry pawn,
       - their stop square is not defended by a friendly pawn
 

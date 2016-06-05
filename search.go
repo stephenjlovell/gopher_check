@@ -28,6 +28,17 @@ import (
 	"sync"
 )
 
+const ( // TODO: expose these as options via UCI interface.
+	MIN_SPLIT       = 2  // Do not begin parallel search below this depth.
+	F_PRUNE_MAX     = 2  // Do not use futility pruning when above this depth.
+	LMR_MIN         = 2  // Do not use late move reductions below this depth.
+	IID_MIN         = 4  // Do not use internal iterative deepening below this depth.
+	NULL_MOVE_MIN   = 3  // Do not use null-move pruning below this depth.
+	MIN_CHECK_DEPTH = -2 // During Q-Search, consider all evasions when in check at or above this depth.
+
+	DRAW_VALUE = -KNIGHT_VALUE // The value to assign to a draw
+)
+
 const (
 	INF      = 10000            // an arbitrarily large score used for initial bounds
 	NO_SCORE = INF - 1          // sentinal value indicating a meaningless score.
@@ -36,17 +47,8 @@ const (
 )
 
 const (
-	MAX_DEPTH = 32
-	MAX_PLY   = MAX_DEPTH * 2
-	COMMS_MIN = 7 // minimum depth at which to send info to GUI.
-)
-
-const (
-	MIN_SPLIT       = 2 // set >= MAX_PLY to disable parallel search.
-	F_PRUNE_MAX     = 2 // should always be >= than MIN_SPLIT
-	LMR_MIN         = 2
-	IID_MIN         = 4
-	MIN_CHECK_DEPTH = -2
+	MAX_DEPTH = 32 // default maximum search depth
+	COMMS_MIN = 7  // minimum depth at which to send info to GUI.
 )
 
 const (
@@ -260,7 +262,7 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, node_type,
 
 	this_stk.hash_key = brd.hash_key
 	if stk.IsRepetition(ply, brd.halfmove_clock) { // check for draw by threefold repetition
-		return -KNIGHT_VALUE - ply, 1
+		return DRAW_VALUE - ply, 1
 	}
 
 	in_check = this_stk.in_check
@@ -269,7 +271,7 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, node_type,
 		if is_checkmate(brd, in_check) {
 			return ply - MATE, 1
 		} else {
-			return -KNIGHT_VALUE - ply, 1
+			return DRAW_VALUE - ply, 1
 		}
 	}
 
@@ -277,13 +279,13 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, node_type,
 	first_move, hash_result = main_tt.probe(brd, depth, null_depth, alpha, beta, &score)
 	hash_score = score
 
-	eval = evaluate(brd, alpha, beta, s.side_to_move)
+	eval = evaluate(brd, alpha, beta)
 	this_stk.eval = eval
 
 	if node_type != Y_PV {
 		if (hash_result & CUTOFF_FOUND) > 0 { // Hash hit valid for current bounds.
 			return score, sum
-		} else if !in_check && this_stk.can_null && hash_result != AVOID_NULL && depth > 2 &&
+		} else if !in_check && this_stk.can_null && hash_result != AVOID_NULL && depth >= NULL_MOVE_MIN &&
 			!brd.PawnsOnly() && eval >= beta { // Null-move pruning
 
 			score, subtotal = s.nullMake(brd, stk, beta, null_depth, ply, checked)
@@ -574,7 +576,7 @@ func (s *Search) quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) 
 
 	this_stk.hash_key = brd.hash_key
 	if stk.IsRepetition(ply, brd.halfmove_clock) { // check for draw by threefold repetition
-		return -KNIGHT_VALUE - ply, 1
+		return DRAW_VALUE - ply, 1
 	}
 
 	in_check := this_stk.in_check
@@ -582,14 +584,14 @@ func (s *Search) quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) 
 		if is_checkmate(brd, in_check) {
 			return ply - MATE, 1
 		} else {
-			return -KNIGHT_VALUE - ply, 1
+			return DRAW_VALUE - ply, 1
 		}
 	}
 
 	score, best, sum, total := -INF, -INF, 1, 0
 
 	if !in_check {
-		score = evaluate(brd, alpha, beta, s.side_to_move) // stand pat
+		score = evaluate(brd, alpha, beta) // stand pat
 		this_stk.eval = score
 		if score > best {
 			if score > alpha {

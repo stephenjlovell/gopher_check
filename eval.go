@@ -23,7 +23,10 @@
 
 package main
 
-// "fmt"
+const ( // TODO: expose these options via UCI interface.
+	LAZY_EVAL_MARGIN = BISHOP_VALUE
+	TEMPO_BONUS      = 5
+)
 
 const (
 	MAX_ENDGAME_COUNT = 24
@@ -182,13 +185,13 @@ var queen_mobility = [32]int{-24, -18, -12, -6, -3, 0, 2, 3, 4, 5, 6, 7, 8, 9, 1
 
 var queen_tropism_bonus = [8]int{0, 12, 9, 6, 3, 0, -3, -6}
 
-func evaluate(brd *Board, alpha, beta int, side_to_move uint8) int {
+func evaluate(brd *Board, alpha, beta int) int {
 	c, e := brd.c, brd.Enemy()
 	// lazy evaluation: if material balance is already outside the search window by an amount that outweighs
 	// the largest likely placement evaluation, return the material as an approximate evaluation.
 	// This prevents the engine from wasting a lot of time evaluating unrealistic positions.
-	score := int(brd.material[c] - brd.material[e])
-	if score+BISHOP_VALUE < alpha || score-BISHOP_VALUE > beta {
+	score := int(brd.material[c]-brd.material[e]) + TEMPO_BONUS
+	if score+LAZY_EVAL_MARGIN < alpha || score-LAZY_EVAL_MARGIN > beta {
 		return score
 	}
 
@@ -198,21 +201,10 @@ func evaluate(brd *Board, alpha, beta int, side_to_move uint8) int {
 		set_pawn_structure(brd, pentry) // evaluate pawn structure and save to pentry.
 	}
 
-	score += net_pawn_placement(brd, pentry, c, e, side_to_move)
+	score += net_pawn_placement(brd, pentry, c, e)
 	score += net_major_placement(brd, pentry, c, e)
 
-	score += tempo_bonus(c, side_to_move)
-	// TODO: minor bug: tempo bonus may be inaccurate when score extracted from TT.
-
 	return score
-}
-
-func tempo_bonus(c, side_to_move uint8) int {
-	if c == side_to_move {
-		return 5
-	} else {
-		return -5
-	}
 }
 
 func net_major_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
@@ -237,8 +229,6 @@ func major_placement(brd *Board, pentry *PawnEntry, c, e uint8, king_sq,
 	enemy_king_zone := king_zone_masks[e][enemy_king_sq]
 
 	pawn_count := pentry.count[c]
-
-	// TODO: weight mobility based on endgame status.
 
 	for b = brd.pieces[c][KNIGHT]; b > 0; b.Clear(sq) {
 		sq = furthest_forward(c, b)
@@ -274,8 +264,7 @@ func major_placement(brd *Board, pentry *PawnEntry, c, e uint8, king_sq,
 		attacks = queen_attacks(occ, sq) & available
 		king_threats += pop_count(attacks & enemy_king_zone)
 		mobility += queen_mobility[pop_count(attacks)]
-		// queen tropism: encourage queen to move toward enemy king in the late-game.
-		placement += weight_score(phase, 0,
+		placement += weight_score(phase, 0, // encourage queen to move toward enemy king in the late-game.
 			queen_tropism_bonus[chebyshev_distance(sq, enemy_king_sq)])
 	}
 
@@ -302,25 +291,20 @@ func weight_score(phase, mg_score, eg_score int) int {
 }
 
 func setup_eval() {
-	// Main PST
-	for piece := PAWN; piece < KING; piece++ {
+	for piece := PAWN; piece < KING; piece++ { // Main PST
 		for sq := 0; sq < 64; sq++ {
 			main_pst[WHITE][piece][sq] = main_pst[BLACK][piece][square_mirror[sq]]
 		}
 	}
-	// King PST
-	for endgame := 0; endgame < 2; endgame++ {
+	for endgame := 0; endgame < 2; endgame++ { // King PST
 		for sq := 0; sq < 64; sq++ {
 			king_pst[WHITE][endgame][sq] = king_pst[BLACK][endgame][square_mirror[sq]]
 		}
 	}
-	// King saftey counters
-	for sq := 0; sq < 64; sq++ {
+	for sq := 0; sq < 64; sq++ { // King saftey counters
 		king_saftey_base[WHITE][sq] = king_saftey_base[BLACK][square_mirror[sq]]
 	}
-	// Endgame phase scaling factor
-	for i := 0; i <= 24; i++ {
+	for i := 0; i <= 24; i++ { // Endgame phase scaling factor
 		endgame_phase[i] = (((MAX_ENDGAME_COUNT - i) * 256) + (MAX_ENDGAME_COUNT / 2)) / MAX_ENDGAME_COUNT
-		// fmt.Printf("endgame counter:%d,  phase:%d\n", i, endgame_phase[i])
 	}
 }

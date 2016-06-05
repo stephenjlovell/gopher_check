@@ -43,10 +43,8 @@ import (
 func TestPlayingStrength(t *testing.T) {
 	print_name()
 	setup()
-	// cancel := make(chan bool)
-	// defer close(cancel)
-	// load_balancer.KeepPrinting(cancel)
+
 	depth := MAX_DEPTH
-	timeout := 1500
-	RunTestSuite("test_suites/wac_300.epd", depth, timeout)
+	timeout := 2000
+	RunTestSuite("test_suites/challenging.epd", depth, timeout)
 }
