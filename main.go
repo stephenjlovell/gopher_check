@@ -29,6 +29,8 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+
+	"github.com/pkg/profile"
 )
 
 func max(a, b int) int {
@@ -81,7 +83,8 @@ func print_name() {
 	fmt.Printf("---------------------------------------\n\n")
 }
 
-var profile_flag = flag.Bool("profile", false, "Runs profiler on test suite.")
+var cpu_profile_flag = flag.Bool("cpuprofile", false, "Runs cpu profiler on test suite.")
+var mem_profile_flag = flag.Bool("memprofile", false, "Runs memory profiler on test suite.")
 var version_flag = flag.Bool("version", false, "Prints version number and exits.")
 
 func main() {
@@ -90,9 +93,14 @@ func main() {
 		print_name()
 	} else {
 		setup()
-		if *profile_flag {
+		if *cpu_profile_flag {
 			print_name()
-			RunProfiledTestSuite("test_suites/wac_300.epd", 9, 6000)
+			defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
+			RunTestSuite("test_suites/wac_75.epd", MAX_DEPTH, 5000)
+		} else if *mem_profile_flag {
+			print_name()
+			defer profile.Start(profile.MemProfile, profile.ProfilePath(".")).Stop()
+			RunTestSuite("test_suites/wac_75.epd", MAX_DEPTH, 5000)
 		} else {
 			uci := NewUCIAdapter()
 			uci.Read(bufio.NewReader(os.Stdin))

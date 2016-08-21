@@ -25,17 +25,8 @@ package main
 
 import (
 	"fmt"
-
-	"github.com/davecheney/profile"
-	// "math"
-
 	"time"
 )
-
-func RunProfiledTestSuite(test_suite string, depth, timeout int) {
-	defer profile.Start(profile.MemProfile).Stop()
-	RunTestSuite(test_suite, depth, timeout)
-}
 
 func RunTestSuite(test_suite string, depth, timeout int) {
 	test := load_epd_file(test_suite)

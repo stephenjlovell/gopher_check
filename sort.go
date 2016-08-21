@@ -45,6 +45,8 @@ func mvv_lva(victim, attacker Piece) uint64 { // returns value between 0 and 64
 	return uint64(((victim+1)<<3)-attacker) << 22
 }
 
+// TODO: promotions not ordered correctly.
+
 // Promotion Captures:
 // if undefended, gain is promote_values[promoted_piece] + piece_values[captured_piece]
 // is defended, gain is SEE score.

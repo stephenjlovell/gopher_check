@@ -20,7 +20,7 @@ You can display the currently installed version number by passing the --version 
 
 ## Search Features
 
-GopherCheck supports [parallel search](https://chessprogramming.wikispaces.com/Parallel+Search "Parallel Search"), with up to 8 search threads. It uses a version of iterative deepening, nega-max search known as [Principal Variation Search (PVS)](https://chessprogramming.wikispaces.com/Principal+Variation+Search "Principal Variation Search"). Notable search features include:
+GopherCheck supports [parallel search](https://chessprogramming.wikispaces.com/Parallel+Search "Parallel Search") with up to 8 search threads. It uses a version of iterative deepening, nega-max search known as [Principal Variation Search (PVS)](https://chessprogramming.wikispaces.com/Principal+Variation+Search "Principal Variation Search"). Notable search features include:
 
 - Shared hash table
 - Young-brothers wait concept (YBWC)

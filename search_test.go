@@ -23,11 +23,7 @@
 
 package main
 
-import (
-	// "fmt"
-	"testing"
-	// "github.com/davecheney/profile"
-)
+import "testing"
 
 // func BenchmarkSearch(b *testing.B) {
 // 	setup()
@@ -46,5 +42,5 @@ func TestPlayingStrength(t *testing.T) {
 
 	depth := MAX_DEPTH
 	timeout := 2000
-	RunTestSuite("test_suites/challenging.epd", depth, timeout)
+	RunTestSuite("test_suites/wac_300.epd", depth, timeout)
 }

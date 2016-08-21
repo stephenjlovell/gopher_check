@@ -37,7 +37,7 @@ func get_non_captures(brd *Board, htable *HistoryTable, remaining_moves *MoveLis
 		e := brd.Enemy()
 		if c == WHITE {
 			if (castle&C_WQ > uint8(0)) && castle_queenside_intervening[WHITE]&occ == 0 &&
-				!is_attacked_by(brd, occ, B1, e, c) && !is_attacked_by(brd, occ, C1, e, c) && !is_attacked_by(brd, occ, D1, e, c) {
+				!is_attacked_by(brd, occ, C1, e, c) && !is_attacked_by(brd, occ, D1, e, c) {
 				m = NewRegularMove(E1, C1, KING)
 				remaining_moves.Push(&SortItem{m, htable.Probe(KING, c, C1) | 1})
 			}
@@ -48,7 +48,7 @@ func get_non_captures(brd *Board, htable *HistoryTable, remaining_moves *MoveLis
 			}
 		} else {
 			if (castle&C_BQ > uint8(0)) && castle_queenside_intervening[BLACK]&occ == 0 &&
-				!is_attacked_by(brd, occ, B8, e, c) && !is_attacked_by(brd, occ, C8, e, c) && !is_attacked_by(brd, occ, D8, e, c) {
+				!is_attacked_by(brd, occ, C8, e, c) && !is_attacked_by(brd, occ, D8, e, c) {
 				m = NewRegularMove(E8, C8, KING)
 				remaining_moves.Push(&SortItem{m, htable.Probe(KING, c, C8) | 1})
 			}
@@ -136,7 +136,6 @@ func get_non_captures(brd *Board, htable *HistoryTable, remaining_moves *MoveLis
 // Pawn promotions are also generated during get_captures routine.
 func get_captures(brd *Board, htable *HistoryTable, winning, losing *MoveList) {
 	var from, to int
-	var sort uint64
 	var m Move
 
 	c, e := brd.c, brd.Enemy()
@@ -173,30 +172,20 @@ func get_captures(brd *Board, htable *HistoryTable, winning, losing *MoveList) {
 	for ; promotion_captures_left > 0; promotion_captures_left.Clear(to) {
 		to = furthest_forward(c, promotion_captures_left)
 		from = to + pawn_from_offsets[c][OFF_LEFT]
-		m = NewMove(from, to, PAWN, brd.squares[to], QUEEN)
-		sort = SortPromotion(brd, m)
-		winning.Push(&SortItem{m, sort})
+		get_promotion_captures(brd, winning, from, to, brd.squares[to])
 	}
 
 	for ; promotion_captures_right > 0; promotion_captures_right.Clear(to) {
 		to = furthest_forward(c, promotion_captures_right)
 		from = to + pawn_from_offsets[c][OFF_RIGHT]
-		m = NewMove(from, to, PAWN, brd.squares[to], QUEEN)
-		sort = SortPromotion(brd, m)
-		winning.Push(&SortItem{m, sort})
+		get_promotion_captures(brd, winning, from, to, brd.squares[to])
 	}
 
 	// promotion advances
 	for ; promotion_advances > 0; promotion_advances.Clear(to) {
 		to = furthest_forward(c, promotion_advances)
 		from = to + pawn_from_offsets[c][OFF_SINGLE]
-		m = NewPromotion(from, to, PAWN, QUEEN)
-		sort = SortPromotion(brd, m)
-		if sort >= SORT_WINNING {
-			winning.Push(&SortItem{m, sort})
-		} else {
-			losing.Push(&SortItem{m, sort})
-		}
+		get_promotion_advances(brd, winning, losing, from, to)
 	}
 
 	// regular pawn attacks
@@ -325,31 +314,25 @@ func get_winning_captures(brd *Board, htable *HistoryTable, winning *MoveList) {
 
 		promotion_advances = ((brd.pieces[c][PAWN] >> 8) & row_masks[0]) & (^occ)
 	}
-	var sort uint64
+
 	// promotion captures
 	for ; promotion_captures_left > 0; promotion_captures_left.Clear(to) {
 		to = furthest_forward(c, promotion_captures_left)
 		from = to + pawn_from_offsets[c][OFF_LEFT]
-		m = NewMove(from, to, PAWN, brd.squares[to], QUEEN)
-		sort = SortPromotion(brd, m)
-		winning.Push(&SortItem{m, sort})
+		get_promotion_captures(brd, winning, from, to, brd.squares[to])
 	}
 
 	for ; promotion_captures_right > 0; promotion_captures_right.Clear(to) {
 		to = furthest_forward(c, promotion_captures_right)
 		from = to + pawn_from_offsets[c][OFF_RIGHT]
-		m = NewMove(from, to, PAWN, brd.squares[to], QUEEN)
-		sort = SortPromotion(brd, m)
-		winning.Push(&SortItem{m, sort})
+		get_promotion_captures(brd, winning, from, to, brd.squares[to])
 	}
 
 	// promotion advances
 	for ; promotion_advances > 0; promotion_advances.Clear(to) {
 		to = furthest_forward(c, promotion_advances)
 		from = to + pawn_from_offsets[c][OFF_SINGLE]
-		m = NewPromotion(from, to, PAWN, QUEEN)
-		sort = SortPromotion(brd, m)
-		winning.Push(&SortItem{m, sort})
+		get_promotion_captures(brd, winning, from, to, EMPTY)
 	}
 
 	// regular pawn attacks
@@ -470,8 +453,6 @@ func get_evasions(brd *Board, htable *HistoryTable, winning, losing, remaining_m
 	}
 
 	var m Move
-	var sort uint64
-
 	if threat_count == 1 { // Attempt to capture or block the attack with any piece if there's only one attacker.
 		// Pawns
 		var single_advances, double_advances, left_temp, right_temp, left_attacks, right_attacks BB
@@ -510,18 +491,14 @@ func get_evasions(brd *Board, htable *HistoryTable, winning, losing, remaining_m
 			to = furthest_forward(c, promotion_captures_left)
 			from = to + pawn_from_offsets[c][OFF_LEFT]
 			if pinned_can_move(brd, from, to, c, e) {
-				m = NewMove(from, to, PAWN, brd.squares[to], QUEEN)
-				sort = SortPromotion(brd, m)
-				winning.Push(&SortItem{m, sort})
+				get_promotion_captures(brd, winning, from, to, brd.squares[to])
 			}
 		}
 		for ; promotion_captures_right > 0; promotion_captures_right.Clear(to) {
 			to = furthest_forward(c, promotion_captures_right)
 			from = to + pawn_from_offsets[c][OFF_RIGHT]
 			if pinned_can_move(brd, from, to, c, e) {
-				m = NewMove(from, to, PAWN, brd.squares[to], QUEEN)
-				sort = SortPromotion(brd, m)
-				winning.Push(&SortItem{m, sort})
+				get_promotion_captures(brd, winning, from, to, brd.squares[to])
 			}
 		}
 		// promotion advances
@@ -529,13 +506,7 @@ func get_evasions(brd *Board, htable *HistoryTable, winning, losing, remaining_m
 			to = furthest_forward(c, promotion_advances)
 			from = to + pawn_from_offsets[c][OFF_SINGLE]
 			if pinned_can_move(brd, from, to, c, e) {
-				m = NewPromotion(from, to, PAWN, QUEEN)
-				sort = SortPromotion(brd, m)
-				if sort >= SORT_WINNING {
-					winning.Push(&SortItem{m, sort})
-				} else {
-					remaining_moves.Push(&SortItem{m, sort})
-				}
+				get_promotion_advances(brd, winning, remaining_moves, from, to)
 			}
 		}
 		// regular pawn attacks
@@ -846,4 +817,26 @@ func get_checks(brd *Board, htable *HistoryTable, remaining_moves *MoveList) {
 		}
 	}
 
+}
+
+func get_promotion_advances(brd *Board, winning, losing *MoveList, from, to int) {
+	var m Move
+	var sort uint64
+	for pc := Piece(QUEEN); pc >= KNIGHT; pc-- {
+		m = NewMove(from, to, PAWN, EMPTY, pc)
+		sort = SortPromotion(brd, m)
+		if sort >= SORT_WINNING {
+			winning.Push(&SortItem{m, sort})
+		} else {
+			losing.Push(&SortItem{m, sort})
+		}
+	}
+}
+
+func get_promotion_captures(brd *Board, winning *MoveList, from, to int, captured_piece Piece) {
+	var m Move
+	for pc := Piece(QUEEN); pc >= KNIGHT; pc-- {
+		m = NewMove(from, to, PAWN, captured_piece, pc)
+		winning.Push(&SortItem{m, SortPromotion(brd, m)})
+	}
 }

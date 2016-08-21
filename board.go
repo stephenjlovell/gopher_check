@@ -122,9 +122,13 @@ func (brd *Board) EvadesCheck(m Move) bool {
 		king_sq := brd.KingSq(c)
 		threats := color_attack_map(brd, occ, king_sq, e, c)
 
+		// TODO: EvadesCheck() called from non-check position in rare cases. Example:
+		// 5r1k/1b3p1p/pp3p1q/3n4/1P2R3/P2B1PP1/7P/6K1 w - - 0 1
+
 		if threats == 0 {
 			fmt.Println("EvadesCheck() called from non-check position!")
-			brd.Print()
+			m.Print()
+			brd.PrintDetails()
 			return true // no threats to evade.
 		}
 

@@ -23,14 +23,12 @@
 
 package main
 
-import (
-// "fmt"
+const (
+	C_WQ = 8 // White castle queen side
+	C_WK = 4 // White castle king side
+	C_BQ = 2 // Black castle queen side
+	C_BK = 1 // Black castle king side
 )
-
-var C_WQ uint8 = 8 // White castle queen side
-var C_WK uint8 = 4 // White castle king side
-var C_BQ uint8 = 2 // Black castle queen side
-var C_BK uint8 = 1 // Black castle king side
 
 func make_move(brd *Board, move Move) {
 	c := brd.c
@@ -57,6 +55,9 @@ func make_move(brd *Board, move Move) {
 			}
 		case PAWN: // Destination square will be empty if en passant capture
 			if enp_target != SQ_INVALID && brd.TypeAt(to) == EMPTY {
+				// fmt.Println(move.ToString())
+				// brd.Print()
+
 				brd.pawn_hash_key ^= pawn_zobrist(int(enp_target), brd.Enemy())
 				remove_piece(brd, PAWN, int(enp_target), brd.Enemy())
 				brd.squares[enp_target] = EMPTY
@@ -266,27 +267,27 @@ func update_castle_rights(brd *Board, sq int) {
 	switch sq { // if brd.castle remains unchanged, hash key will be unchanged.
 	case A1:
 		brd.hash_key ^= castle_zobrist(brd.castle)
-		brd.castle &= (^C_WQ)
+		brd.castle &= (^uint8(C_WQ))
 		brd.hash_key ^= castle_zobrist(brd.castle)
 	case E1: // white king starting position
 		brd.hash_key ^= castle_zobrist(brd.castle)
-		brd.castle &= (^(C_WK | C_WQ))
+		brd.castle &= (^uint8(C_WK | C_WQ))
 		brd.hash_key ^= castle_zobrist(brd.castle)
 	case H1:
 		brd.hash_key ^= castle_zobrist(brd.castle)
-		brd.castle &= (^C_WK)
+		brd.castle &= (^uint8(C_WK))
 		brd.hash_key ^= castle_zobrist(brd.castle)
 	case A8:
 		brd.hash_key ^= castle_zobrist(brd.castle)
-		brd.castle &= (^C_BQ)
+		brd.castle &= (^uint8(C_BQ))
 		brd.hash_key ^= castle_zobrist(brd.castle)
 	case E8: // black king starting position
 		brd.hash_key ^= castle_zobrist(brd.castle)
-		brd.castle &= (^(C_BK | C_BQ))
+		brd.castle &= (^uint8(C_BK | C_BQ))
 		brd.hash_key ^= castle_zobrist(brd.castle)
 	case H8:
 		brd.hash_key ^= castle_zobrist(brd.castle)
-		brd.castle &= (^C_BK)
+		brd.castle &= (^uint8(C_BK))
 		brd.hash_key ^= castle_zobrist(brd.castle)
 	}
 }
