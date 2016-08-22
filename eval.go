@@ -202,7 +202,7 @@ func evaluate(brd *Board, alpha, beta int) int {
 	}
 
 	score += net_pawn_placement(brd, pentry, c, e)
-	score += net_major_placement(brd, pentry, c, e)
+	score += net_major_placement(brd, pentry, c, e) // 3x as expensive as pawn eval...
 
 	return score
 }

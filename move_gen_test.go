@@ -30,7 +30,8 @@ import (
 	"time"
 )
 
-var legal_max_tree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860, 84998978956, 2439530234167}
+// var legal_max_tree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860, 84998978956, 2439530234167}
+var legal_max_tree = [10]int{1, 24, 496, 9483, 182838, 3605103, 71179139}
 
 // func TestLegalMoveGen(t *testing.T) {
 // 	legal_movegen(Perft)
@@ -43,7 +44,11 @@ var legal_max_tree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 31959
 func legal_movegen(fn func(brd *Board, htable *HistoryTable, stk Stack, depth, ply int) int) {
 	setup()
 	htable := new(HistoryTable)
-	brd := StartPos()
+	// brd := StartPos()
+	brd := ParseFENString("n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1")
+	// brd := ParseFENString("5r1k/1b3p1p/pp3p1q/3n4/1P2R3/P2B1PP1/7P/6K1 w - - 0 1")
+
+	brd.Print()
 	copy := brd.Copy()
 	depth := 5
 	start := time.Now()
@@ -54,39 +59,32 @@ func legal_movegen(fn func(brd *Board, htable *HistoryTable, stk Stack, depth, p
 
 	fmt.Printf("%d nodes at depth %d. %d NPS\n", sum, depth, nps)
 
-	fmt.Printf("%d total nodes in check\n", check_count)
-	fmt.Printf("%d total capture nodes\n", capture_count)
-
 	CompareBoards(copy, brd)
 	assert(*brd == *copy, "move generation did not return to initial board state.")
 	assert(sum == legal_max_tree[depth], "Expected "+strconv.Itoa(legal_max_tree[depth])+
 		" nodes, got "+strconv.Itoa(sum))
 }
 
-var check_count int
-var capture_count int
-var parallel_count int
-
 func Perft(brd *Board, htable *HistoryTable, stk Stack, depth, ply int) int {
-	if depth == 0 {
-		return 1
-	}
 	sum := 0
 	in_check := brd.InCheck()
-	if in_check {
-		check_count += 1
-	}
 	this_stk := stk[ply]
 	memento := brd.NewMemento()
 	generator := NewMoveSelector(brd, &this_stk, htable, in_check, NO_MOVE)
+
 	for m, _ := generator.Next(SP_NONE); m != NO_MOVE; m, _ = generator.Next(SP_NONE) {
-		if m.IsCapture() {
-			capture_count += 1
+		if depth > 1 {
+			make_move(brd, m)
+			sum += Perft(brd, htable, stk, depth-1, ply+1)
+			// if depth-1 > 0 {
+			// 	fmt.Printf("%s\n", m.ToUCI())
+			// }
+			unmake_move(brd, m, memento)
+		} else {
+			sum += 1
 		}
-		make_move(brd, m)
-		sum += Perft(brd, htable, stk, depth-1, ply+1)
-		unmake_move(brd, m, memento)
 	}
+
 	return sum
 }
 

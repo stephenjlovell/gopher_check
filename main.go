@@ -29,9 +29,12 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"sync"
 
 	"github.com/pkg/profile"
 )
+
+var setup_once sync.Once
 
 func max(a, b int) int {
 	if a > b {
@@ -62,19 +65,21 @@ func assert(statement bool, failure_message string) {
 }
 
 func setup() {
-	num_cpu := runtime.NumCPU()
-	runtime.GOMAXPROCS(num_cpu)
-	setup_chebyshev_distance()
-	setup_masks()
-	setup_magic_move_gen()
-	setup_eval()
-	setup_rand()
-	setup_zobrist()
-	reset_main_tt()
-	setup_load_balancer(num_cpu)
+	setup_once.Do(func() {
+		num_cpu := runtime.NumCPU()
+		runtime.GOMAXPROCS(num_cpu)
+		setup_chebyshev_distance()
+		setup_masks()
+		setup_magic_move_gen()
+		setup_eval()
+		setup_rand()
+		setup_zobrist()
+		reset_main_tt()
+		setup_load_balancer(num_cpu)
+	})
 }
 
-var version = "0.1.0"
+var version = "0.1.1"
 
 func print_name() {
 	fmt.Printf("\n---------------------------------------\n")
@@ -97,10 +102,11 @@ func main() {
 			print_name()
 			defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
 			RunTestSuite("test_suites/wac_75.epd", MAX_DEPTH, 5000)
+			// run 'go tool pprof -text gopher_check cpu.pprof > cpu_prof.txt' to output profile to text
 		} else if *mem_profile_flag {
 			print_name()
 			defer profile.Start(profile.MemProfile, profile.ProfilePath(".")).Stop()
-			RunTestSuite("test_suites/wac_75.epd", MAX_DEPTH, 5000)
+			RunTestSuite("test_suites/wac_150.epd", MAX_DEPTH, 5000)
 		} else {
 			uci := NewUCIAdapter()
 			uci.Read(bufio.NewReader(os.Stdin))

@@ -332,7 +332,7 @@ func get_winning_captures(brd *Board, htable *HistoryTable, winning *MoveList) {
 	for ; promotion_advances > 0; promotion_advances.Clear(to) {
 		to = furthest_forward(c, promotion_advances)
 		from = to + pawn_from_offsets[c][OFF_SINGLE]
-		get_promotion_captures(brd, winning, from, to, EMPTY)
+		get_promotion_advances(brd, winning, winning, from, to)
 	}
 
 	// regular pawn attacks
@@ -824,8 +824,8 @@ func get_promotion_advances(brd *Board, winning, losing *MoveList, from, to int)
 	var sort uint64
 	for pc := Piece(QUEEN); pc >= KNIGHT; pc-- {
 		m = NewMove(from, to, PAWN, EMPTY, pc)
-		sort = SortPromotion(brd, m)
-		if sort >= SORT_WINNING {
+		sort = sort_promotion_advances(brd, from, to, pc)
+		if sort >= SORT_WINNING_PROMOTION {
 			winning.Push(&SortItem{m, sort})
 		} else {
 			losing.Push(&SortItem{m, sort})
@@ -837,6 +837,6 @@ func get_promotion_captures(brd *Board, winning *MoveList, from, to int, capture
 	var m Move
 	for pc := Piece(QUEEN); pc >= KNIGHT; pc-- {
 		m = NewMove(from, to, PAWN, captured_piece, pc)
-		winning.Push(&SortItem{m, SortPromotion(brd, m)})
+		winning.Push(&SortItem{m, sort_promotion_captures(brd, from, to, captured_piece, pc)})
 	}
 }

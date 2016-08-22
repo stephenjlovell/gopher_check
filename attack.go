@@ -23,6 +23,8 @@
 
 package main
 
+import "fmt"
+
 func attack_map(brd *Board, occ BB, sq int) BB {
 	return ((pawn_attack_masks[BLACK][sq] & brd.pieces[WHITE][PAWN]) | // Pawns
 		(pawn_attack_masks[WHITE][sq] & brd.pieces[BLACK][PAWN])) |
@@ -135,6 +137,7 @@ func get_see(brd *Board, from, to int, captured_piece Piece) int {
 		// this move is illegal and will be discarded by search.  return the lowest possible
 		// SEE value so that this move will be put at end of list.  If cutoff occurs before then,
 		// the cost of detecting the illegal move will be saved.
+		fmt.Println("king capture detected in get_see()!")
 		return SEE_MIN
 	}
 	t = brd.TypeAt(from)
