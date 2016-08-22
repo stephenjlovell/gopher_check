@@ -38,6 +38,7 @@ type EPD struct {
 	brd         *Board
 	best_moves  []string
 	avoid_moves []string
+	node_count	map[int]int
 	id          string
 }
 
@@ -66,7 +67,9 @@ func load_epd_file(dir string) []*EPD {
 
 // 2k4B/bpp1qp2/p1b5/7p/1PN1n1p1/2Pr4/P5PP/R3QR1K b - - bm Ng3+ g3; id "WAC.273";
 func ParseEPDString(str string) *EPD {
-	epd := &EPD{}
+	epd := &EPD{
+		node_count: make(map[int]int),
+	}
 	epd_fields := strings.Split(str, ";")
 	fen_fields := strings.Split(epd_fields[0], " ")
 
@@ -75,14 +78,16 @@ func ParseEPDString(str string) *EPD {
 	bm := regexp.MustCompile("bm")
 	am := regexp.MustCompile("am")
 	id := regexp.MustCompile("id")
+	depth := regexp.MustCompile("D[1-9][0-9]?")
 	var loc []int
-	var move_fields, id_fields []string
+	var sub_fields []string
+	var d, node_count int64
 	for _, field := range epd_fields {
 		loc = bm.FindStringIndex(field)
 		if loc != nil {
 			field = field[loc[1]:]
-			move_fields = strings.Split(field, " ")
-			for _, move_field := range move_fields {
+			sub_fields = strings.Split(field, " ")
+			for _, move_field := range sub_fields {
 				epd.best_moves = append(epd.best_moves, move_field)
 			}
 			continue
@@ -90,16 +95,25 @@ func ParseEPDString(str string) *EPD {
 		loc = am.FindStringIndex(field)
 		if loc != nil {
 			field = field[:loc[1]+1]
-			move_fields = strings.Split(field, " ")
-			for _, move_field := range move_fields {
+			sub_fields = strings.Split(field, " ")
+			for _, move_field := range sub_fields {
 				epd.avoid_moves = append(epd.avoid_moves, move_field)
 			}
 			continue
 		}
 		loc = id.FindStringIndex(field)
 		if loc != nil {
-			id_fields = strings.Split(field, " ")
-			epd.id = strings.Join(id_fields[2:], "")
+			sub_fields = strings.Split(field, " ")
+			epd.id = strings.Join(sub_fields[2:], "")
+		}
+
+		loc = depth.FindStringIndex(field)
+		if loc != nil { // map each depth to expected node count
+			// fmt.Println(field)
+			sub_fields = strings.Split(field, " ")
+			d, _ = strconv.ParseInt(sub_fields[0][1:], 10, 64)
+			node_count, _ = strconv.ParseInt(sub_fields[1], 10, 64)
+			epd.node_count[int(d)] = int(node_count)
 		}
 	}
 	return epd

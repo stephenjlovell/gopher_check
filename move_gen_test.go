@@ -26,7 +26,7 @@ package main
 import (
 	"fmt"
 	"strconv"
-	// "testing"
+	"testing"
 	"time"
 )
 
@@ -34,35 +34,48 @@ import (
 var legal_max_tree = [10]int{1, 24, 496, 9483, 182838, 3605103, 71179139}
 
 // func TestLegalMoveGen(t *testing.T) {
-// 	legal_movegen(Perft)
+// 	setup()
+// 	depth := 5
+// 	legal_movegen(Perft, StartPos(), depth, legal_max_tree[depth], true)
 // }
 
 // func TestMoveValidation(t *testing.T) {
-// 	legal_movegen(PerftValidation)
+// 	setup()
+// 	depth := 5
+// 	legal_movegen(PerftValidation, StartPos(), depth, legal_max_tree[depth], true)
 // }
-
-func legal_movegen(fn func(brd *Board, htable *HistoryTable, stk Stack, depth, ply int) int) {
+//
+func TestPerftSuite(t *testing.T) {
 	setup()
-	htable := new(HistoryTable)
-	// brd := StartPos()
-	brd := ParseFENString("n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1")
-	// brd := ParseFENString("5r1k/1b3p1p/pp3p1q/3n4/1P2R3/P2B1PP1/7P/6K1 w - - 0 1")
+	depth := 4
+	test_positions := load_epd_file("test_suites/perftsuite.epd")  // http://www.rocechess.ch/perft.html
+	for i, epd := range test_positions {
+		if expected, ok := epd.node_count[depth]; ok {
+			fmt.Printf("%d.", i+1)
+			epd.brd.Print()
+			legal_movegen(Perft, epd.brd, depth, expected, false)
+		}
+	}
+}
 
-	brd.Print()
+
+func legal_movegen(fn func(*Board, *HistoryTable, Stack, int, int) int, brd *Board, depth, expected int, verbose bool) {
+	htable := new(HistoryTable)
 	copy := brd.Copy()
-	depth := 5
 	start := time.Now()
 	stk := make(Stack, MAX_STACK, MAX_STACK)
 	sum := fn(brd, htable, stk, depth, 0)
-	elapsed := time.Since(start)
-	nps := int64(float64(sum) / elapsed.Seconds())
 
-	fmt.Printf("%d nodes at depth %d. %d NPS\n", sum, depth, nps)
-
-	CompareBoards(copy, brd)
+	if verbose {
+		elapsed := time.Since(start)
+		nps := int64(float64(sum) / elapsed.Seconds())
+		fmt.Printf("%d nodes at depth %d. %d NPS\n", sum, depth, nps)
+		fmt.Printf("%d total nodes in check\n", check_count)
+		fmt.Printf("%d total capture nodes\n", capture_count)
+		CompareBoards(copy, brd)
+	}
 	assert(*brd == *copy, "move generation did not return to initial board state.")
-	assert(sum == legal_max_tree[depth], "Expected "+strconv.Itoa(legal_max_tree[depth])+
-		" nodes, got "+strconv.Itoa(sum))
+	assert(sum == expected, "Expected " + strconv.Itoa(expected) + " nodes, got "+strconv.Itoa(sum))
 }
 
 func Perft(brd *Board, htable *HistoryTable, stk Stack, depth, ply int) int {
@@ -71,7 +84,6 @@ func Perft(brd *Board, htable *HistoryTable, stk Stack, depth, ply int) int {
 	this_stk := stk[ply]
 	memento := brd.NewMemento()
 	generator := NewMoveSelector(brd, &this_stk, htable, in_check, NO_MOVE)
-
 	for m, _ := generator.Next(SP_NONE); m != NO_MOVE; m, _ = generator.Next(SP_NONE) {
 		if depth > 1 {
 			make_move(brd, m)
