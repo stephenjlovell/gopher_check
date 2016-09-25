@@ -42,7 +42,6 @@ var legal_max_tree = [10]int{1, 24, 496, 9483, 182838, 3605103, 71179139}
 // }
 
 func legal_movegen(fn func(brd *Board, htable *HistoryTable, stk Stack, depth, ply int) int) {
-	setup()
 	htable := new(HistoryTable)
 	// brd := StartPos()
 	brd := ParseFENString("n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1")
