@@ -112,7 +112,7 @@ func (b *Balancer) AddSP(w *Worker, sp *SplitPoint) {
 FlushIdle: // If there are any idle workers, assign them now.
 	for {
 		select {
-		case idle := <-load_balancer.done:
+		case idle := <-b.done:
 			sp.AddServant(idle.mask)
 			idle.assign_sp <- sp
 		default:

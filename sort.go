@@ -97,7 +97,7 @@ type SortItem struct {
 	order uint64
 }
 
-type MoveList []*SortItem
+type MoveList []SortItem
 
 func (l *MoveList) Sort() {
 	sort.Sort(l)
@@ -117,6 +117,6 @@ func (l MoveList) Swap(i, j int) {
 	l[i], l[j] = l[j], l[i]
 }
 
-func (l *MoveList) Push(item *SortItem) {
+func (l *MoveList) Push(item SortItem) {
 	*l = append(*l, item)
 }

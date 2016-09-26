@@ -2,6 +2,8 @@
 
 To Do:
 
+TODO: add proper error handling in UCI adapter.
+
 BUG: 'orphaned' workers occasionally still processing at completion of search - can interfere
      with next search.
 

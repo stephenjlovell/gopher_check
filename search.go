@@ -446,6 +446,7 @@ search_moves:
 			case SP_SERVANT:
 				return NO_SCORE, sum // servant aborts its search and reports the nodes searched as overhead.
 			case SP_NONE:
+				selector.Recycle()
 				return NO_SCORE, sum
 			default:
 				s.sendInfo("unknown SP type\n")
@@ -499,6 +500,7 @@ search_moves:
 					if score >= beta {
 						store_cutoff(this_stk, &s.htable, m, brd.c, total) // what happens on refutation of main pv?
 						main_tt.store(brd, m, depth, LOWER_BOUND, score)
+						selector.Recycle()
 						return score, sum
 					}
 					alpha = score
@@ -547,6 +549,7 @@ search_moves:
 	case SP_SERVANT:
 		return NO_SCORE, 0
 	default:
+		selector.Recycle()
 	}
 
 	if legal_searched > 0 {
@@ -609,7 +612,7 @@ func (s *Search) quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) 
 	selector := NewQMoveSelector(brd, this_stk, &s.htable, in_check, depth >= MIN_CHECK_DEPTH)
 
 	var may_promote, gives_check bool
-	for m := selector.Next(false); m != NO_MOVE; m = selector.Next(false) {
+	for m := selector.Next(); m != NO_MOVE; m = selector.Next() {
 
 		may_promote = brd.MayPromote(m)
 
@@ -633,6 +636,7 @@ func (s *Search) quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) 
 		if score > best {
 			if score > alpha {
 				if score >= beta {
+					selector.Recycle()
 					return score, sum
 				}
 				alpha = score
@@ -642,6 +646,7 @@ func (s *Search) quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) 
 		legal_moves = true
 	}
 
+	selector.Recycle()
 	if in_check && !legal_moves {
 		return ply - MATE, 1 // detect checkmate.
 	}

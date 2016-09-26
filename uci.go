@@ -47,6 +47,7 @@ type Info struct {
 	stk                     Stack
 }
 
+// TODO: add proper error handling in UCI adapter.
 type UCIAdapter struct {
 	brd    *Board
 	search *Search

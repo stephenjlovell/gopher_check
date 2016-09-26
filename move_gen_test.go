@@ -26,7 +26,7 @@ package main
 import (
 	"fmt"
 	"strconv"
-	"testing"
+	// "testing"
 	"time"
 )
 
@@ -45,18 +45,19 @@ var legal_max_tree = [10]int{1, 24, 496, 9483, 182838, 3605103, 71179139}
 // 	legal_movegen(PerftValidation, StartPos(), depth, legal_max_tree[depth], true)
 // }
 //
-func TestPerftSuite(t *testing.T) {
-	setup()
-	depth := 4
-	test_positions := load_epd_file("test_suites/perftsuite.epd")  // http://www.rocechess.ch/perft.html
-	for i, epd := range test_positions {
-		if expected, ok := epd.node_count[depth]; ok {
-			fmt.Printf("%d.", i+1)
-			epd.brd.Print()
-			legal_movegen(Perft, epd.brd, depth, expected, false)
-		}
-	}
-}
+
+// func TestPerftSuite(t *testing.T) {
+// 	setup()
+// 	depth := 4
+// 	test_positions := load_epd_file("test_suites/perftsuite.epd")  // http://www.rocechess.ch/perft.html
+// 	for i, epd := range test_positions {
+// 		if expected, ok := epd.node_count[depth]; ok {
+// 			fmt.Printf("%d.", i+1)
+// 			epd.brd.Print()
+// 			legal_movegen(Perft, epd.brd, depth, expected, false)
+// 		}
+// 	}
+// }
 
 
 func legal_movegen(fn func(*Board, *HistoryTable, Stack, int, int) int, brd *Board, depth, expected int, verbose bool) {
@@ -70,8 +71,6 @@ func legal_movegen(fn func(*Board, *HistoryTable, Stack, int, int) int, brd *Boa
 		elapsed := time.Since(start)
 		nps := int64(float64(sum) / elapsed.Seconds())
 		fmt.Printf("%d nodes at depth %d. %d NPS\n", sum, depth, nps)
-		fmt.Printf("%d total nodes in check\n", check_count)
-		fmt.Printf("%d total capture nodes\n", capture_count)
 		CompareBoards(copy, brd)
 	}
 	assert(*brd == *copy, "move generation did not return to initial board state.")

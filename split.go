@@ -79,7 +79,6 @@ func (sp *SplitPoint) Order() int {
 	searched := sp.legal_searched
 	node_type := sp.node_type
 	sp.RUnlock()
-
 	return (max(searched, 16) << 3) | node_type
 }
 

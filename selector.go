@@ -50,11 +50,13 @@ const (
 	Q_STAGE_CHECKS
 )
 
-type SelectorInterface interface { // concrete Selector types must implement this interface
-	Next(bool) Move
-	NextBatch() bool
-	CurrentStage() int
-}
+var move_list_pool chan MoveList = make(chan MoveList, 200)
+
+// type SelectorInterface interface { // concrete Selector types must implement this interface
+// 	Next(bool) Move
+// 	NextBatch() bool
+// 	CurrentStage() int
+// }
 
 type AbstractSelector struct {
 	sync.Mutex
@@ -69,6 +71,27 @@ type AbstractSelector struct {
 	losing          MoveList
 	remaining_moves MoveList
 }
+
+
+func (s *AbstractSelector) allocate() MoveList {
+	var moves MoveList
+	select {
+  case moves = <-move_list_pool:
+	default:
+		moves = make(MoveList, 0, 32)
+	}
+	return moves
+}
+
+func (s *AbstractSelector) recycleList(moves MoveList) {
+	if moves != nil {
+		select {
+		case move_list_pool <- moves[0:0]:
+		default:
+		}
+	}
+}
+
 
 func (s *AbstractSelector) CurrentStage() int {
 	return s.stage - 1
@@ -92,26 +115,19 @@ func NewMoveSelector(brd *Board, this_stk *StackItem, htable *HistoryTable, in_c
 			this_stk:        this_stk,
 			htable:          htable,
 			in_check:        in_check,
-			winning:         MoveList{},
-			losing:          MoveList{},
-			remaining_moves: MoveList{},
 		},
 		first_move: first_move,
 	}
 }
 
-func NewQMoveSelector(brd *Board, this_stk *StackItem, htable *HistoryTable, in_check, can_check bool) SelectorInterface {
+func NewQMoveSelector(brd *Board, this_stk *StackItem, htable *HistoryTable, in_check, can_check bool) *QMoveSelector {
 	return &QMoveSelector{
 		AbstractSelector: AbstractSelector{
 			brd:             brd,
 			this_stk:        this_stk,
 			htable:          htable,
 			in_check:        in_check,
-			winning:         MoveList{},
-			losing:          MoveList{},
-			remaining_moves: MoveList{},
 		},
-		checks:    MoveList{},
 		can_check: can_check,
 	}
 }
@@ -181,8 +197,13 @@ func (s *MoveSelector) NextBatch() bool {
 		s.finished = 1
 	case STAGE_WINNING:
 		if s.in_check {
+			s.winning = s.allocate()
+			s.losing = s.allocate()
+			s.remaining_moves = s.allocate()
 			get_evasions(s.brd, s.htable, &s.winning, &s.losing, &s.remaining_moves)
 		} else {
+			s.winning = s.allocate()
+			s.losing = s.allocate()
 			get_captures(s.brd, s.htable, &s.winning, &s.losing)
 		}
 		s.winning.Sort()
@@ -194,6 +215,7 @@ func (s *MoveSelector) NextBatch() bool {
 		s.finished = len(s.losing)
 	case STAGE_REMAINING:
 		if !s.in_check {
+			s.remaining_moves = s.allocate()
 			get_non_captures(s.brd, s.htable, &s.remaining_moves)
 		}
 		s.remaining_moves.Sort()
@@ -206,7 +228,13 @@ func (s *MoveSelector) NextBatch() bool {
 	return done
 }
 
-func (s *QMoveSelector) Next(is_sp bool) Move {
+func (s *MoveSelector) Recycle() {
+	s.recycleList(s.winning)
+	s.recycleList(s.losing)
+	s.recycleList(s.remaining_moves)
+}
+
+func (s *QMoveSelector) Next() Move {
 	for {
 		for s.index == s.finished {
 			if s.NextBatch() {
@@ -249,8 +277,12 @@ func (s *QMoveSelector) NextBatch() bool {
 	switch s.stage {
 	case Q_STAGE_WINNING:
 		if s.in_check {
+			s.winning = s.allocate()
+			s.losing = s.allocate()
+			s.remaining_moves = s.allocate()
 			get_evasions(s.brd, s.htable, &s.winning, &s.losing, &s.remaining_moves)
 		} else {
+			s.winning = s.allocate()
 			get_winning_captures(s.brd, s.htable, &s.winning)
 		}
 		s.winning.Sort()
@@ -263,6 +295,7 @@ func (s *QMoveSelector) NextBatch() bool {
 		s.finished = len(s.remaining_moves)
 	case Q_STAGE_CHECKS:
 		if !s.in_check && s.can_check {
+			s.checks = s.allocate()
 			get_checks(s.brd, s.htable, &s.checks)
 			s.checks.Sort()
 		}
@@ -272,4 +305,11 @@ func (s *QMoveSelector) NextBatch() bool {
 	}
 	s.stage++
 	return done
+}
+
+func (s *QMoveSelector) Recycle() {
+	s.recycleList(s.winning)
+	s.recycleList(s.losing)
+	s.recycleList(s.remaining_moves)
+	s.recycleList(s.checks)
 }
