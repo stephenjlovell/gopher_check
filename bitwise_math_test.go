@@ -68,7 +68,6 @@ var bb_result BB
 
 func BenchmarkPopCount(b *testing.B) {
 	var bb BB
-	setup()
 	test := load_epd_file("test_suites/wac_300.epd")
 	b.ResetTimer()
 
@@ -83,7 +82,6 @@ func BenchmarkPopCount(b *testing.B) {
 
 func BenchmarkLSB(b *testing.B) {
 	var bb BB
-	setup()
 	test := load_epd_file("test_suites/wac_300.epd")
 	b.ResetTimer()
 
@@ -96,7 +94,6 @@ func BenchmarkLSB(b *testing.B) {
 }
 
 func BenchmarkLSBRand(b *testing.B) {
-	setup()
 	rng := NewRngKiss(74)
 	bb := rng.RandomBB(BB(MAX_RAND))
 	for i := 0; i < b.N; i++ {

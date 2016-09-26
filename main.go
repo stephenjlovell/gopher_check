@@ -29,12 +29,9 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"sync"
 
 	"github.com/pkg/profile"
 )
-
-var setup_once sync.Once
 
 func max(a, b int) int {
 	if a > b {
@@ -64,19 +61,17 @@ func assert(statement bool, failure_message string) {
 	}
 }
 
-func setup() {
-	setup_once.Do(func() {
-		num_cpu := runtime.NumCPU()
-		runtime.GOMAXPROCS(num_cpu)
-		setup_chebyshev_distance()
-		setup_masks()
-		setup_magic_move_gen()
-		setup_eval()
-		setup_rand()
-		setup_zobrist()
-		reset_main_tt()
-		setup_load_balancer(num_cpu)
-	})
+func init() {
+	num_cpu := runtime.NumCPU()
+	runtime.GOMAXPROCS(num_cpu)
+	setup_chebyshev_distance()
+	setup_masks()
+	setup_magic_move_gen()
+	setup_eval()
+	setup_rand()
+	setup_zobrist()
+	reset_main_tt()
+	setup_load_balancer(num_cpu)
 }
 
 var version = "0.1.1"
@@ -97,7 +92,6 @@ func main() {
 	if *version_flag {
 		print_name()
 	} else {
-		setup()
 		if *cpu_profile_flag {
 			print_name()
 			defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()

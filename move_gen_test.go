@@ -59,7 +59,6 @@ var legal_max_tree = [10]int{1, 24, 496, 9483, 182838, 3605103, 71179139}
 // 	}
 // }
 
-
 func legal_movegen(fn func(*Board, *HistoryTable, Stack, int, int) int, brd *Board, depth, expected int, verbose bool) {
 	htable := new(HistoryTable)
 	copy := brd.Copy()
