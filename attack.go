@@ -39,12 +39,10 @@ func attack_map(brd *Board, occ BB, sq int) BB {
 		(pawn_attack_masks[WHITE][sq] & brd.pieces[BLACK][PAWN])) | // Pawns
 		(knight_masks[sq] & (brd.pieces[WHITE][KNIGHT] | brd.pieces[BLACK][KNIGHT])) | // Knights
 		(king_masks[sq] & (brd.pieces[WHITE][KING] | brd.pieces[BLACK][KING])) // Kings
-	if b_sliders := (brd.pieces[WHITE][BISHOP]|brd.pieces[BLACK][BISHOP]|brd.pieces[WHITE][QUEEN]|brd.pieces[BLACK][QUEEN]);
-		b_sliders & bishop_masks[sq] > 0 {
+	if b_sliders := (brd.pieces[WHITE][BISHOP] | brd.pieces[BLACK][BISHOP] | brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]); b_sliders&bishop_masks[sq] > 0 {
 		bb |= (bishop_attacks(occ, sq) & b_sliders) // Bishops and Queens
 	}
-	if r_sliders := (brd.pieces[WHITE][ROOK]|brd.pieces[BLACK][ROOK]|brd.pieces[WHITE][QUEEN]|brd.pieces[BLACK][QUEEN]);
-		r_sliders & rook_masks[sq] > 0 {
+	if r_sliders := (brd.pieces[WHITE][ROOK] | brd.pieces[BLACK][ROOK] | brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]); r_sliders&rook_masks[sq] > 0 {
 		bb |= (rook_attacks(occ, sq) & r_sliders) // Rooks and Queens
 	}
 	return bb
@@ -60,12 +58,10 @@ func color_attack_map(brd *Board, occ BB, sq int, c, e uint8) BB {
 	bb := (pawn_attack_masks[e][sq] & brd.pieces[c][PAWN]) | // Pawns
 		(knight_masks[sq] & brd.pieces[c][KNIGHT]) | // Knights
 		(king_masks[sq] & brd.pieces[c][KING]) // Kings
-	if b_sliders := (brd.pieces[c][BISHOP]|brd.pieces[c][QUEEN]);
-		b_sliders & bishop_masks[sq] > 0 {
+	if b_sliders := (brd.pieces[c][BISHOP] | brd.pieces[c][QUEEN]); b_sliders&bishop_masks[sq] > 0 {
 		bb |= (bishop_attacks(occ, sq) & b_sliders) // Bishops and Queens
 	}
-	if r_sliders := (brd.pieces[c][ROOK]|brd.pieces[c][QUEEN]);
-		r_sliders & rook_masks[sq] > 0 {
+	if r_sliders := (brd.pieces[c][ROOK] | brd.pieces[c][QUEEN]); r_sliders&rook_masks[sq] > 0 {
 		bb |= (rook_attacks(occ, sq) & r_sliders) // Rooks and Queens
 	}
 	return bb

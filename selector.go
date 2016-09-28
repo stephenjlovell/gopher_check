@@ -80,7 +80,7 @@ type AbstractSelector struct {
 
 func (s *AbstractSelector) allocate() MoveList {
 	select {
-  case moves := <-move_list_pool:
+	case moves := <-move_list_pool:
 		return moves
 	default:
 		return make(MoveList, 0, 32)
@@ -95,7 +95,6 @@ func (s *AbstractSelector) recycleList(moves MoveList) {
 		}
 	}
 }
-
 
 func (s *AbstractSelector) CurrentStage() int {
 	return s.stage - 1
@@ -115,10 +114,10 @@ type QMoveSelector struct {
 func NewMoveSelector(brd *Board, this_stk *StackItem, htable *HistoryTable, in_check bool, first_move Move) *MoveSelector {
 	return &MoveSelector{
 		AbstractSelector: AbstractSelector{
-			brd:             brd,
-			this_stk:        this_stk,
-			htable:          htable,
-			in_check:        in_check,
+			brd:      brd,
+			this_stk: this_stk,
+			htable:   htable,
+			in_check: in_check,
 		},
 		first_move: first_move,
 	}
@@ -127,10 +126,10 @@ func NewMoveSelector(brd *Board, this_stk *StackItem, htable *HistoryTable, in_c
 func NewQMoveSelector(brd *Board, this_stk *StackItem, htable *HistoryTable, in_check, can_check bool) *QMoveSelector {
 	return &QMoveSelector{
 		AbstractSelector: AbstractSelector{
-			brd:             brd,
-			this_stk:        this_stk,
-			htable:          htable,
-			in_check:        in_check,
+			brd:      brd,
+			this_stk: this_stk,
+			htable:   htable,
+			in_check: in_check,
 		},
 		can_check: can_check,
 	}

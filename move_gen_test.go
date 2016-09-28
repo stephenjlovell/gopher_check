@@ -73,7 +73,7 @@ func legal_movegen(fn func(*Board, *HistoryTable, Stack, int, int) int, brd *Boa
 		CompareBoards(copy, brd)
 	}
 	assert(*brd == *copy, "move generation did not return to initial board state.")
-	assert(sum == expected, "Expected " + strconv.Itoa(expected) + " nodes, got "+strconv.Itoa(sum))
+	assert(sum == expected, "Expected "+strconv.Itoa(expected)+" nodes, got "+strconv.Itoa(sum))
 }
 
 func Perft(brd *Board, htable *HistoryTable, stk Stack, depth, ply int) int {

@@ -38,7 +38,7 @@ type EPD struct {
 	brd         *Board
 	best_moves  []string
 	avoid_moves []string
-	node_count	map[int]int
+	node_count  map[int]int
 	id          string
 }
 

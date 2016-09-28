@@ -28,7 +28,6 @@ import (
 	"time"
 )
 
-
 func RunTestSuite(test_suite string, depth, timeout int) {
 	test := load_epd_file(test_suite)
 	var move_str string

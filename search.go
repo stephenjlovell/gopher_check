@@ -532,7 +532,7 @@ search_moves:
 		// All moves at this SP may have been consumed, but servant workers may still be busy evaluating
 		// subtrees rooted at this SP.  If that's the case, offer to help only those workers assigned to
 		// this split point.
-		brd.worker.HelpServants(sp)  // Blocks until all servants have finished processing.
+		brd.worker.HelpServants(sp) // Blocks until all servants have finished processing.
 
 		sp.Lock() // make sure to capture any improvements contributed by servant workers:
 		alpha, best, best_move = sp.alpha, sp.best, sp.best_move
