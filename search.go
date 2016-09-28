@@ -532,7 +532,7 @@ search_moves:
 		// All moves at this SP may have been consumed, but servant workers may still be busy evaluating
 		// subtrees rooted at this SP.  If that's the case, offer to help only those workers assigned to
 		// this split point.
-		brd.worker.HelpServants(sp)
+		brd.worker.HelpServants(sp)  // Blocks until all servants have finished processing.
 
 		sp.Lock() // make sure to capture any improvements contributed by servant workers:
 		alpha, best, best_move = sp.alpha, sp.best, sp.best_move
@@ -540,12 +540,9 @@ search_moves:
 		if node_type == Y_PV {
 			stk[ply].pv = this_stk.pv
 		}
-
-		// assert(sp.servant_mask == 0 || sp.cancel, "Orphaned servants detected")
-
-		sp.cancel = true // any servant contributions have been captured.  Make sure any orphaned servants.
+		sp.cancel = true
 		sp.Unlock()
-
+		selector.Recycle() // since all servants have finished processing, we can safely recycle the move buffers.
 	case SP_SERVANT:
 		return NO_SCORE, 0
 	default:

@@ -95,11 +95,12 @@ func main() {
 		if *cpu_profile_flag {
 			print_name()
 			defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
-			RunTestSuite("test_suites/wac_75.epd", MAX_DEPTH, 5000)
+			RunTestSuite("test_suites/wac_300.epd", MAX_DEPTH, 5000)
 			// run 'go tool pprof -text gopher_check cpu.pprof > cpu_prof.txt' to output profile to text
 		} else if *mem_profile_flag {
 			print_name()
-			defer profile.Start(profile.MemProfile, profile.ProfilePath(".")).Stop()
+			defer profile.Start(profile.MemProfileRate(64), profile.ProfilePath(".")).Stop()
+			// run 'go tool pprof -text --alloc_objects gopher_check mem.pprof > mem_profile.txt' to output profile to text
 			RunTestSuite("test_suites/wac_150.epd", MAX_DEPTH, 5000)
 		} else {
 			uci := NewUCIAdapter()

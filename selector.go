@@ -50,7 +50,13 @@ const (
 	Q_STAGE_CHECKS
 )
 
-var move_list_pool chan MoveList = make(chan MoveList, 200)
+var move_list_pool chan MoveList = make(chan MoveList, 100)
+
+func init() {
+	for i := 0; i <= 99; i++ {
+		move_list_pool <- make(MoveList, 0, 32)
+	}
+}
 
 // type SelectorInterface interface { // concrete Selector types must implement this interface
 // 	Next(bool) Move
@@ -60,9 +66,6 @@ var move_list_pool chan MoveList = make(chan MoveList, 200)
 
 type AbstractSelector struct {
 	sync.Mutex
-	brd             *Board
-	this_stk        *StackItem
-	htable          *HistoryTable
 	stage           int
 	index           int
 	finished        int
@@ -70,17 +73,18 @@ type AbstractSelector struct {
 	winning         MoveList
 	losing          MoveList
 	remaining_moves MoveList
+	brd             *Board
+	this_stk        *StackItem
+	htable          *HistoryTable
 }
 
-
 func (s *AbstractSelector) allocate() MoveList {
-	var moves MoveList
 	select {
-  case moves = <-move_list_pool:
+  case moves := <-move_list_pool:
+		return moves
 	default:
-		moves = make(MoveList, 0, 32)
+		return make(MoveList, 0, 32)
 	}
-	return moves
 }
 
 func (s *AbstractSelector) recycleList(moves MoveList) {

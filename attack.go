@@ -26,31 +26,65 @@ package main
 import "fmt"
 
 func attack_map(brd *Board, occ BB, sq int) BB {
-	return ((pawn_attack_masks[BLACK][sq] & brd.pieces[WHITE][PAWN]) | // Pawns
-		(pawn_attack_masks[WHITE][sq] & brd.pieces[BLACK][PAWN])) |
+	// return ((pawn_attack_masks[BLACK][sq] & brd.pieces[WHITE][PAWN]) | // Pawns
+	// 	(pawn_attack_masks[WHITE][sq] & brd.pieces[BLACK][PAWN])) |
+	// 	(knight_masks[sq] & (brd.pieces[WHITE][KNIGHT] | brd.pieces[BLACK][KNIGHT])) | // Knights
+	// 	(bishop_attacks(occ, sq) & (brd.pieces[WHITE][BISHOP] | brd.pieces[BLACK][BISHOP] | // Bishops and Queens
+	// 		brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN])) |
+	// 	(rook_attacks(occ, sq) & (brd.pieces[WHITE][ROOK] | brd.pieces[BLACK][ROOK] | // Rooks and Queens
+	// 		brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN])) |
+	// 	(king_masks[sq] & (brd.pieces[WHITE][KING] | brd.pieces[BLACK][KING])) // Kings
+
+	bb := ((pawn_attack_masks[BLACK][sq] & brd.pieces[WHITE][PAWN]) |
+		(pawn_attack_masks[WHITE][sq] & brd.pieces[BLACK][PAWN])) | // Pawns
 		(knight_masks[sq] & (brd.pieces[WHITE][KNIGHT] | brd.pieces[BLACK][KNIGHT])) | // Knights
-		(bishop_attacks(occ, sq) & (brd.pieces[WHITE][BISHOP] | brd.pieces[BLACK][BISHOP] | // Bishops and Queens
-			brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN])) |
-		(rook_attacks(occ, sq) & (brd.pieces[WHITE][ROOK] | brd.pieces[BLACK][ROOK] | // Rooks and Queens
-			brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN])) |
 		(king_masks[sq] & (brd.pieces[WHITE][KING] | brd.pieces[BLACK][KING])) // Kings
+	if b_sliders := (brd.pieces[WHITE][BISHOP]|brd.pieces[BLACK][BISHOP]|brd.pieces[WHITE][QUEEN]|brd.pieces[BLACK][QUEEN]);
+		b_sliders & bishop_masks[sq] > 0 {
+		bb |= (bishop_attacks(occ, sq) & b_sliders) // Bishops and Queens
+	}
+	if r_sliders := (brd.pieces[WHITE][ROOK]|brd.pieces[BLACK][ROOK]|brd.pieces[WHITE][QUEEN]|brd.pieces[BLACK][QUEEN]);
+		r_sliders & rook_masks[sq] > 0 {
+		bb |= (rook_attacks(occ, sq) & r_sliders) // Rooks and Queens
+	}
+	return bb
 }
 
 func color_attack_map(brd *Board, occ BB, sq int, c, e uint8) BB {
-	return (pawn_attack_masks[e][sq] & brd.pieces[c][PAWN]) | // Pawns
+	// return (pawn_attack_masks[e][sq] & brd.pieces[c][PAWN]) | // Pawns
+	// 	(knight_masks[sq] & brd.pieces[c][KNIGHT]) | // Knights
+	// 	(bishop_attacks(occ, sq) & (brd.pieces[c][BISHOP] | brd.pieces[c][QUEEN])) | // Bishops and Queens
+	// 	(rook_attacks(occ, sq) & (brd.pieces[c][ROOK] | brd.pieces[c][QUEEN])) | // Rooks and Queens
+	// 	(king_masks[sq] & brd.pieces[c][KING]) // Kings
+
+	bb := (pawn_attack_masks[e][sq] & brd.pieces[c][PAWN]) | // Pawns
 		(knight_masks[sq] & brd.pieces[c][KNIGHT]) | // Knights
-		(bishop_attacks(occ, sq) & (brd.pieces[c][BISHOP] | brd.pieces[c][QUEEN])) | // Bishops and Queens
-		(rook_attacks(occ, sq) & (brd.pieces[c][ROOK] | brd.pieces[c][QUEEN])) | // Rooks and Queens
 		(king_masks[sq] & brd.pieces[c][KING]) // Kings
+	if b_sliders := (brd.pieces[c][BISHOP]|brd.pieces[c][QUEEN]);
+		b_sliders & bishop_masks[sq] > 0 {
+		bb |= (bishop_attacks(occ, sq) & b_sliders) // Bishops and Queens
+	}
+	if r_sliders := (brd.pieces[c][ROOK]|brd.pieces[c][QUEEN]);
+		r_sliders & rook_masks[sq] > 0 {
+		bb |= (rook_attacks(occ, sq) & r_sliders) // Rooks and Queens
+	}
+	return bb
 }
 
-func attacks_after_move(brd *Board, occ, enemy_occ BB, sq int, c, e uint8) BB {
-	return (pawn_attack_masks[e][sq] & brd.pieces[c][PAWN] & enemy_occ) | // Pawns
-		(knight_masks[sq] & brd.pieces[c][KNIGHT] & enemy_occ) | // Knights
-		(bishop_attacks(occ, sq) & (brd.pieces[c][BISHOP] | brd.pieces[c][QUEEN]&enemy_occ)) | // Bishops and Queens
-		(rook_attacks(occ, sq) & (brd.pieces[c][ROOK] | brd.pieces[c][QUEEN]&enemy_occ)) | // Rooks and Queens
-		(king_masks[sq] & brd.pieces[c][KING]) // Kings
-}
+// // attacks_after_move(brd, occ, occ&brd.occupied[e], king_sq, e, c)
+//
+// func attacks_after_move(brd *Board, all_occ, attacker_occ BB, sq int, attacker, defender uint8) BB {
+//
+// 	return (pawn_attack_masks[defender][sq] & brd.pieces[attacker][PAWN] & attacker_occ) | // Pawns
+//
+// 		(knight_masks[sq] & brd.pieces[attacker][KNIGHT]) | // Knights
+//
+// 		(bishop_attacks(all_occ, sq) & (brd.pieces[attacker][BISHOP]|brd.pieces[attacker][QUEEN])) | // Bishops and Queens
+//
+// 		(rook_attacks(all_occ, sq) & (brd.pieces[attacker][ROOK]|brd.pieces[attacker][QUEEN])) | // Rooks and Queens
+//
+// 		(king_masks[sq] & brd.pieces[attacker][KING]) // Kings
+// }
 
 func is_attacked_by(brd *Board, occ BB, sq int, attacker, defender uint8) bool {
 	if pawn_attack_masks[defender][sq]&brd.pieces[attacker][PAWN] > 0 { // Pawns
@@ -59,13 +93,13 @@ func is_attacked_by(brd *Board, occ BB, sq int, attacker, defender uint8) bool {
 	if knight_masks[sq]&(brd.pieces[attacker][KNIGHT]) > 0 { // Knights
 		return true
 	}
+	if king_masks[sq]&(brd.pieces[attacker][KING]) > 0 { // Kings
+		return true
+	}
 	if bishop_attacks(occ, sq)&(brd.pieces[attacker][BISHOP]|brd.pieces[attacker][QUEEN]) > 0 { // Bishops and Queens
 		return true
 	}
 	if rook_attacks(occ, sq)&(brd.pieces[attacker][ROOK]|brd.pieces[attacker][QUEEN]) > 0 { // Rooks and Queens
-		return true
-	}
-	if king_masks[sq]&(brd.pieces[attacker][KING]) > 0 { // Kings
 		return true
 	}
 	return false
@@ -217,12 +251,11 @@ func is_checkmate(brd *Board, in_check bool) bool {
 		return false
 	}
 	c := brd.c
-	var to int
 	e := brd.Enemy()
+	var to int
 	from := brd.KingSq(c)
-	target := ^brd.occupied[c]
 	occ := brd.AllOccupied()
-	for t := king_masks[from] & target; t > 0; t.Clear(to) { // generate to squares
+	for t := king_masks[from] & (^brd.occupied[c]); t > 0; t.Clear(to) { // generate to squares
 		to = furthest_forward(c, t)
 		if !is_attacked_by(brd, occ_after_move(occ, from, to), to, e, c) {
 			return false

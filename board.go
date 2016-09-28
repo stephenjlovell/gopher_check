@@ -115,10 +115,10 @@ func (brd *Board) EvadesCheck(m Move) bool {
 	piece, from, to := m.Piece(), m.From(), m.To()
 	c, e := brd.c, brd.Enemy()
 
-	occ := brd.AllOccupied()
 	if piece == KING {
 		return !is_attacked_by(brd, occ_after_move(brd.AllOccupied(), from, to), to, e, c)
 	} else {
+		occ := brd.AllOccupied()
 		king_sq := brd.KingSq(c)
 		threats := color_attack_map(brd, occ, king_sq, e, c)
 
@@ -144,8 +144,10 @@ func (brd *Board) EvadesCheck(m Move) bool {
 		}
 		if brd.enp_target != SQ_INVALID && piece == PAWN && m.CapturedPiece() == PAWN && // En-passant
 			brd.TypeAt(to) == EMPTY {
-			occ = occ_after_move(brd.AllOccupied(), from, to) & sq_mask_off[brd.enp_target]
-			return attacks_after_move(brd, occ, occ&brd.occupied[e], king_sq, e, c) == 0
+			occ = occ_after_move(occ, from, to) & sq_mask_off[brd.enp_target]
+
+			return color_attack_map(brd, occ, king_sq, e, c) == 0
+			// return attacks_after_move(brd, occ, occ&brd.occupied[e], king_sq, e, c) == 0
 		}
 	}
 	return true

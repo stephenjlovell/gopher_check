@@ -863,9 +863,8 @@ func get_promotion_advances(brd *Board, winning, losing *MoveList, from, to int)
 }
 
 func get_promotion_captures(brd *Board, winning *MoveList, from, to int, captured_piece Piece) {
-	var m Move
-	m = NewMove(from, to, PAWN, captured_piece, QUEEN)
-	winning.Push(SortItem{m, sort_promotion_captures(brd, from, to, captured_piece, QUEEN)})
-	m = NewMove(from, to, PAWN, captured_piece, KNIGHT)
-	winning.Push(SortItem{m, sort_promotion_captures(brd, from, to, captured_piece, KNIGHT)})
+	winning.Push(SortItem{NewMove(from, to, PAWN, captured_piece, QUEEN),
+												sort_promotion_captures(brd, from, to, captured_piece, QUEEN)})
+	winning.Push(SortItem{NewMove(from, to, PAWN, captured_piece, KNIGHT),
+												sort_promotion_captures(brd, from, to, captured_piece, KNIGHT)})
 }
