@@ -1,0 +1,17 @@
+{
+	"ImportPath": "github.com/stephenjlovell/gopher_check",
+	"GoVersion": "go1.7",
+	"GodepVersion": "v74",
+	"Deps": [
+		{
+			"ImportPath": "github.com/Workiva/go-datastructures/queue",
+			"Comment": "v1.0.28",
+			"Rev": "9398e38ebb7eb017f923e6aca1e0f5aa32461685"
+		},
+		{
+			"ImportPath": "github.com/pkg/profile",
+			"Comment": "v1.2.0-4-g303fad7",
+			"Rev": "303fad789382e54372c3b92956e55fadf81b413d"
+		}
+	]
+}
