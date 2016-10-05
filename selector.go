@@ -66,12 +66,12 @@ type AbstractSelector struct {
 }
 
 func (s *AbstractSelector) allocate() MoveList {
-	return *recycler.AttemptReuse()
+	return recycler.AttemptReuse()
 }
 
-func (s *AbstractSelector) recycleList(moves *MoveList) {
-	if *moves != nil {
-		recycler.Recycle(moves)
+func (s *AbstractSelector) recycleList(moves MoveList) {
+	if moves != nil {
+		recycler.Recycle(moves[0:0])
 	}
 }
 
@@ -212,9 +212,9 @@ func (s *MoveSelector) NextBatch() bool {
 }
 
 func (s *MoveSelector) Recycle() {
-	s.recycleList(&s.winning)
-	s.recycleList(&s.losing)
-	s.recycleList(&s.remaining_moves)
+	s.recycleList(s.winning)
+	s.recycleList(s.losing)
+	s.recycleList(s.remaining_moves)
 	// s.winning, s.losing, s.remaining_moves = nil, nil, nil
 }
 
@@ -292,9 +292,9 @@ func (s *QMoveSelector) NextBatch() bool {
 }
 
 func (s *QMoveSelector) Recycle() {
-	s.recycleList(&s.winning)
-	s.recycleList(&s.losing)
-	s.recycleList(&s.remaining_moves)
-	s.recycleList(&s.checks)
+	s.recycleList(s.winning)
+	s.recycleList(s.losing)
+	s.recycleList(s.remaining_moves)
+	s.recycleList(s.checks)
 	s.winning, s.losing, s.remaining_moves, s.checks = nil, nil, nil, nil
 }
