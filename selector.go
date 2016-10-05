@@ -34,6 +34,7 @@ package main
 
 import (
 	"sync"
+	// "fmt"
 )
 
 const (
@@ -50,20 +51,6 @@ const (
 	Q_STAGE_CHECKS
 )
 
-var move_list_pool chan MoveList = make(chan MoveList, 100)
-
-func init() {
-	for i := 0; i <= 99; i++ {
-		move_list_pool <- make(MoveList, 0, 32)
-	}
-}
-
-// type SelectorInterface interface { // concrete Selector types must implement this interface
-// 	Next(bool) Move
-// 	NextBatch() bool
-// 	CurrentStage() int
-// }
-
 type AbstractSelector struct {
 	sync.Mutex
 	stage           int
@@ -79,20 +66,12 @@ type AbstractSelector struct {
 }
 
 func (s *AbstractSelector) allocate() MoveList {
-	select {
-  case moves := <-move_list_pool:
-		return moves
-	default:
-		return make(MoveList, 0, 32)
-	}
+	return *recycler.AttemptReuse()
 }
 
-func (s *AbstractSelector) recycleList(moves MoveList) {
-	if moves != nil {
-		select {
-		case move_list_pool <- moves[0:0]:
-		default:
-		}
+func (s *AbstractSelector) recycleList(moves *MoveList) {
+	if *moves != nil {
+		recycler.Recycle(moves)
 	}
 }
 
@@ -233,9 +212,10 @@ func (s *MoveSelector) NextBatch() bool {
 }
 
 func (s *MoveSelector) Recycle() {
-	s.recycleList(s.winning)
-	s.recycleList(s.losing)
-	s.recycleList(s.remaining_moves)
+	s.recycleList(&s.winning)
+	s.recycleList(&s.losing)
+	s.recycleList(&s.remaining_moves)
+	// s.winning, s.losing, s.remaining_moves = nil, nil, nil
 }
 
 func (s *QMoveSelector) Next() Move {
@@ -312,8 +292,9 @@ func (s *QMoveSelector) NextBatch() bool {
 }
 
 func (s *QMoveSelector) Recycle() {
-	s.recycleList(s.winning)
-	s.recycleList(s.losing)
-	s.recycleList(s.remaining_moves)
-	s.recycleList(s.checks)
+	s.recycleList(&s.winning)
+	s.recycleList(&s.losing)
+	s.recycleList(&s.remaining_moves)
+	s.recycleList(&s.checks)
+	s.winning, s.losing, s.remaining_moves, s.checks = nil, nil, nil, nil
 }
