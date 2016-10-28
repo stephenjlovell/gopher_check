@@ -23,22 +23,45 @@
 
 package main
 
-import "testing"
+import "github.com/stephenjlovell/go-datastructures/queue"
 
-// func BenchmarkSearch(b *testing.B) {
-// 	setup()
-// 	verbose = false
-// 	depth := MAX_DEPTH
-// 	for n := 0; n < b.N; n++ {
-// 		brd := ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-// 		Start(brd, depth, 4000)
-// 		fmt.Printf(".")
-// 	}
-// }
+func init() {
+	recycler = NewRecycler()
+}
 
-func TestPlayingStrength(t *testing.T) {
-	print_name()
-	depth := MAX_DEPTH
-	timeout := 2000
-	RunTestSuite("test_suites/wac_75.epd", depth, timeout)
+var recycler *Recycler
+
+type Recycler struct {
+	ring *queue.RingBuffer
+}
+
+func NewRecycler() *Recycler {
+	r := &Recycler{
+		ring: queue.NewRingBuffer(512),
+	}
+	r.init()
+	return r
+}
+
+func (r *Recycler) init() {
+	for i := uint64(0); i < 512/uint64(2); i++ {
+		r.ring.Offer(NewMoveList())
+	}
+}
+
+func (r *Recycler) Recycle(moves MoveList) {
+	r.ring.Offer(moves)
+}
+
+func (r *Recycler) AttemptReuse() MoveList {
+	moves, err := r.ring.TryGet()
+	if err != nil {
+		panic(err)
+	}
+	if moves != nil {
+		// fmt.Printf("-")
+		return moves.(MoveList)
+	}
+	// fmt.Printf("+")
+	return NewMoveList()
 }

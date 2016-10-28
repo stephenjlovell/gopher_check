@@ -93,11 +93,15 @@ func mvv_lva(victim, attacker Piece) uint64 { // returns value between 0 and 64
 }
 
 type SortItem struct {
-	move  Move
 	order uint64
+	move  Move
 }
 
 type MoveList []SortItem
+
+func NewMoveList() MoveList {
+	return make(MoveList, 0, 8)
+}
 
 func (l *MoveList) Sort() {
 	sort.Sort(l)

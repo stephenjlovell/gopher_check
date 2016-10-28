@@ -481,6 +481,7 @@ search_moves:
 						if sp_type == SP_MASTER {
 							load_balancer.RemoveSP(brd.worker)
 							main_tt.store(brd, m, depth, LOWER_BOUND, score)
+							// selector.Recycle()
 							return score, sum
 						} else { // sp_type == SP_SERVANT
 							return NO_SCORE, 0
@@ -542,7 +543,8 @@ search_moves:
 		}
 		sp.cancel = true
 		sp.Unlock()
-		selector.Recycle() // since all servants have finished processing, we can safely recycle the move buffers.
+
+		// selector.Recycle() // since all servants have finished processing, we can safely recycle the move buffers.
 	case SP_SERVANT:
 		return NO_SCORE, 0
 	default:

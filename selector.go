@@ -32,9 +32,9 @@ package main
 // 1. Evasions or winning captures/promotions get_best_moves(). Specialized futility pruning.
 // 2. Non-captures that give check via get_checks().
 
-import (
-	"sync"
-)
+import "sync"
+
+// "fmt"
 
 const (
 	STAGE_FIRST = iota
@@ -49,20 +49,6 @@ const (
 	Q_STAGE_REMAINING
 	Q_STAGE_CHECKS
 )
-
-var move_list_pool chan MoveList = make(chan MoveList, 100)
-
-func init() {
-	for i := 0; i <= 99; i++ {
-		move_list_pool <- make(MoveList, 0, 32)
-	}
-}
-
-// type SelectorInterface interface { // concrete Selector types must implement this interface
-// 	Next(bool) Move
-// 	NextBatch() bool
-// 	CurrentStage() int
-// }
 
 type AbstractSelector struct {
 	sync.Mutex
@@ -79,20 +65,12 @@ type AbstractSelector struct {
 }
 
 func (s *AbstractSelector) allocate() MoveList {
-	select {
-	case moves := <-move_list_pool:
-		return moves
-	default:
-		return make(MoveList, 0, 32)
-	}
+	return recycler.AttemptReuse()
 }
 
 func (s *AbstractSelector) recycleList(moves MoveList) {
 	if moves != nil {
-		select {
-		case move_list_pool <- moves[0:0]:
-		default:
-		}
+		recycler.Recycle(moves[0:0])
 	}
 }
 
@@ -204,10 +182,12 @@ func (s *MoveSelector) NextBatch() bool {
 			s.losing = s.allocate()
 			s.remaining_moves = s.allocate()
 			get_evasions(s.brd, s.htable, &s.winning, &s.losing, &s.remaining_moves)
+			// fmt.Printf("%t,%t,%t,", len(s.winning) > 8, len(s.losing) > 8, len(s.remaining_moves) > 8)
 		} else {
 			s.winning = s.allocate()
 			s.losing = s.allocate()
 			get_captures(s.brd, s.htable, &s.winning, &s.losing)
+			// fmt.Printf("%t,%t,", len(s.winning) > 8, len(s.losing) > 8)
 		}
 		s.winning.Sort()
 		s.finished = len(s.winning)
@@ -220,6 +200,7 @@ func (s *MoveSelector) NextBatch() bool {
 		if !s.in_check {
 			s.remaining_moves = s.allocate()
 			get_non_captures(s.brd, s.htable, &s.remaining_moves)
+			// fmt.Printf("%t,", len(s.remaining_moves) > 8)
 		}
 		s.remaining_moves.Sort()
 		s.finished = len(s.remaining_moves)
@@ -235,6 +216,7 @@ func (s *MoveSelector) Recycle() {
 	s.recycleList(s.winning)
 	s.recycleList(s.losing)
 	s.recycleList(s.remaining_moves)
+	// s.winning, s.losing, s.remaining_moves = nil, nil, nil
 }
 
 func (s *QMoveSelector) Next() Move {
@@ -315,4 +297,5 @@ func (s *QMoveSelector) Recycle() {
 	s.recycleList(s.losing)
 	s.recycleList(s.remaining_moves)
 	s.recycleList(s.checks)
+	// s.winning, s.losing, s.remaining_moves, s.checks = nil, nil, nil, nil
 }

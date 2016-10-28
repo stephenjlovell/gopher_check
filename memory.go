@@ -61,7 +61,7 @@ func reset_main_tt() {
 }
 
 type TT [SLOT_COUNT]Slot
-type Slot [4]Bucket // 512 bits
+type Slot [4]Bucket // sized to fit in a single cache line
 
 // data stores the following: (54 bits total)
 // depth remaining - 5 bits

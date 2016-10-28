@@ -23,22 +23,32 @@
 
 package main
 
-import "testing"
+import (
+	"fmt"
+	"math/rand"
+	"runtime"
+	"sync"
+	"testing"
+	"time"
+)
 
-// func BenchmarkSearch(b *testing.B) {
-// 	setup()
-// 	verbose = false
-// 	depth := MAX_DEPTH
-// 	for n := 0; n < b.N; n++ {
-// 		brd := ParseFENString("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-// 		Start(brd, depth, 4000)
-// 		fmt.Printf(".")
-// 	}
-// }
-
-func TestPlayingStrength(t *testing.T) {
-	print_name()
-	depth := MAX_DEPTH
-	timeout := 2000
-	RunTestSuite("test_suites/wac_75.epd", depth, timeout)
+func TestRecyclerThreadSafety(t *testing.T) {
+	r := NewRecycler()
+	count := runtime.NumCPU()
+	var wg sync.WaitGroup
+	wg.Add(count)
+	for i := 0; i < count; i++ {
+		go func(r *Recycler) {
+			defer wg.Done()
+			var moves MoveList
+			for j := 0; j < 100; j++ {
+				moves = r.AttemptReuse()
+				time.Sleep(time.Microsecond * time.Duration(rand.Intn(1000)))
+				fmt.Println(len(moves))
+				// r.g.Dump()
+				r.Recycle(moves)
+			}
+		}(r)
+	}
+	wg.Wait()
 }
