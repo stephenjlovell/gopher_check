@@ -33,7 +33,7 @@ import (
 )
 
 func TestRecyclerThreadSafety(t *testing.T) {
-	r := NewRecycler()
+	r := NewRecycler(512)
 	count := runtime.NumCPU()
 	var wg sync.WaitGroup
 	wg.Add(count)

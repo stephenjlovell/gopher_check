@@ -23,45 +23,65 @@
 
 package main
 
-import "github.com/stephenjlovell/go-datastructures/queue"
+// import "github.com/stephenjlovell/go-datastructures/queue"
+import "sync"
 
 func init() {
-	recycler = NewRecycler()
+	recycler = NewRecycler(512)
 }
 
 var recycler *Recycler
 
 type Recycler struct {
-	ring *queue.RingBuffer
+	// ring *queue.RingBuffer
+	stack []MoveList
+	sync.Mutex
 }
 
-func NewRecycler() *Recycler {
+func NewRecycler(capacity uint64) *Recycler {
 	r := &Recycler{
-		ring: queue.NewRingBuffer(512),
+		// ring: queue.NewRingBuffer(512),
+		stack: make([]MoveList, capacity/2, capacity),
 	}
 	r.init()
 	return r
 }
 
 func (r *Recycler) init() {
-	for i := uint64(0); i < 512/uint64(2); i++ {
-		r.ring.Offer(NewMoveList())
+	for i := 0; i < len(r.stack); i++ {
+		// r.ring.Offer(NewMoveList())
+		r.stack[0] = NewMoveList()
 	}
 }
 
 func (r *Recycler) Recycle(moves MoveList) {
-	r.ring.Offer(moves)
+	// r.ring.Offer(moves)
+	r.Lock()
+	if len(r.stack) < cap(r.stack) {
+		r.stack = append(r.stack, moves)
+	}
+	r.Unlock()
 }
 
 func (r *Recycler) AttemptReuse() MoveList {
-	moves, err := r.ring.TryGet()
-	if err != nil {
-		panic(err)
+	// moves, err := r.ring.TryGet()
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// if moves != nil {
+	// 	// fmt.Printf("-")
+	// 	return moves.(MoveList)
+	// }
+	// // fmt.Printf("+")
+	// return NewMoveList()
+	var moves MoveList
+	r.Lock()
+	if len(r.stack) > 0 {
+		moves, r.stack = r.stack[len(r.stack)-1], r.stack[:len(r.stack)-1]
 	}
-	if moves != nil {
-		// fmt.Printf("-")
-		return moves.(MoveList)
+	r.Unlock()
+	if moves == nil {
+		moves = NewMoveList()
 	}
-	// fmt.Printf("+")
-	return NewMoveList()
+	return moves
 }

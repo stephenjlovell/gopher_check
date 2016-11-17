@@ -40,5 +40,5 @@ func TestPlayingStrength(t *testing.T) {
 	print_name()
 	depth := MAX_DEPTH
 	timeout := 2000
-	RunTestSuite("test_suites/wac_75.epd", depth, timeout)
+	RunTestSuite("test_suites/wac_300.epd", depth, timeout)
 }
