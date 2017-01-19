@@ -10,12 +10,12 @@ import (
 )
 
 var result int // hacks to make sure compiler doesn't eliminate func under test.
-var bb_result BB
+var bbResult BB
 
 //
 // func BenchmarkScanDown(b *testing.B) {
 // 	setup()
-// 	test := load_epd_file("test_suites/wac_300.epd")
+// 	test := loadEpdFile("test_suites/wac300.epd")
 //
 // 	b.ResetTimer()
 // 	var sq int
@@ -23,16 +23,16 @@ var bb_result BB
 // 		occ := epd.brd.AllOccupied()
 // 		sq = epd.brd.KingSq(epd.brd.c)
 // 		for i := 0; i < b.N; i++ {
-// 			bb_result = scan_down(occ, SW, sq)
-// 			bb_result = scan_down(occ, SOUTH, sq)
-// 			bb_result = scan_down(occ, SE, sq)
+// 			bbResult = scanDown(occ, SW, sq)
+// 			bbResult = scanDown(occ, SOUTH, sq)
+// 			bbResult = scanDown(occ, SE, sq)
 // 		}
 // 	}
 // }
 //
 // func BenchmarkScanUp(b *testing.B) {
 // 	setup()
-// 	test := load_epd_file("test_suites/wac_300.epd")
+// 	test := loadEpdFile("test_suites/wac300.epd")
 //
 // 	b.ResetTimer()
 // 	var sq int
@@ -40,9 +40,9 @@ var bb_result BB
 // 		occ := epd.brd.AllOccupied()
 // 		sq = epd.brd.KingSq(epd.brd.c)
 // 		for i := 0; i < b.N; i++ {
-// 			bb_result = scan_up(occ, NW, sq)
-// 			bb_result = scan_up(occ, NORTH, sq)
-// 			bb_result = scan_up(occ, NE, sq)
+// 			bbResult = scanUp(occ, NW, sq)
+// 			bbResult = scanUp(occ, NORTH, sq)
+// 			bbResult = scanUp(occ, NE, sq)
 // 		}
 // 	}
 // }
@@ -50,13 +50,13 @@ var bb_result BB
 
 func BenchmarkPopCount(b *testing.B) {
 	var bb BB
-	test := load_epd_file("test_suites/wac_300.epd")
+	test := loadEpdFile("test_suites/wac300.epd")
 	b.ResetTimer()
 
 	for _, epd := range test {
 		bb = epd.brd.occupied[WHITE]
 		for i := 0; i < b.N; i++ {
-			result = pop_count(bb)
+			result = popCount(bb)
 		}
 	}
 
@@ -64,7 +64,7 @@ func BenchmarkPopCount(b *testing.B) {
 
 func BenchmarkLSB(b *testing.B) {
 	var bb BB
-	test := load_epd_file("test_suites/wac_300.epd")
+	test := loadEpdFile("test_suites/wac300.epd")
 	b.ResetTimer()
 
 	for _, epd := range test {

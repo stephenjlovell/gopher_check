@@ -25,49 +25,49 @@ const (
 // TODO: promotions not ordered correctly.
 
 // Promotion Captures:
-// if undefended, gain is promote_values[promoted_piece] + piece_values[captured_piece]
+// if undefended, gain is promoteValues[promotedPiece] + pieceValues[capturedPiece]
 // is defended, gain is SEE score.
 // Non-capture promotions:
-// if square undefended, gain is promote_values[promoted_piece].
-// If defended, gain is SEE score where captured_piece == EMPTY
+// if square undefended, gain is promoteValues[promotedPiece].
+// If defended, gain is SEE score where capturedPiece == EMPTY
 
-// func sort_promotion(brd *Board, m Move) uint64 {
-// 	if is_attacked_by(brd, brd.AllOccupied()&sq_mask_off[m.From()],
+// func sortPromotion(brd *Board, m Move) uint64 {
+// 	if isAttackedBy(brd, brd.AllOccupied()&sqMaskOff[m.From()],
 // 		m.To(), brd.Enemy(), brd.c) { // defended
-// 		if get_see(brd, m.From(), m.To(), m.CapturedPiece()) >= 0 {
-// 			return SORT_WINNING_PROMOTION | mvv_lva(m.CapturedPiece(), PAWN)
+// 		if getSee(brd, m.From(), m.To(), m.CapturedPiece()) >= 0 {
+// 			return SORT_WINNING_PROMOTION | mvvLva(m.CapturedPiece(), PAWN)
 // 		} else {
-// 			return mvv_lva(m.CapturedPiece(), PAWN)
+// 			return mvvLva(m.CapturedPiece(), PAWN)
 // 		}
 // 	} else {
 // 		// val = m.PromotedTo().PromoteValue() + m.CapturedPiece().Value() // undefended
-// 		return SORT_WINNING_PROMOTION | mvv_lva(m.CapturedPiece(), PAWN)
+// 		return SORT_WINNING_PROMOTION | mvvLva(m.CapturedPiece(), PAWN)
 // 	}
 // }
 
-func sort_promotion_advances(brd *Board, from, to int, promoted_to Piece) uint64 {
-	if is_attacked_by(brd, brd.AllOccupied()&sq_mask_off[from],
+func sortPromotionAdvances(brd *Board, from, to int, promotedTo Piece) uint64 {
+	if isAttackedBy(brd, brd.AllOccupied()&sqMaskOff[from],
 		to, brd.Enemy(), brd.c) { // defended
-		see := get_see(brd, from, to, EMPTY)
+		see := getSee(brd, from, to, EMPTY)
 		if see >= 0 {
 			return SORT_WINNING_PROMOTION | uint64(see)
 		} else {
 			return uint64(SORT_LOSING_PROMOTION + see)
 		}
 	} else { // undefended
-		return SORT_WINNING_PROMOTION | uint64(promoted_to.PromoteValue())
+		return SORT_WINNING_PROMOTION | uint64(promotedTo.PromoteValue())
 	}
 }
 
-func sort_promotion_captures(brd *Board, from, to int, captured_piece, promoted_to Piece) uint64 {
-	if is_attacked_by(brd, brd.AllOccupied()&sq_mask_off[from], to, brd.Enemy(), brd.c) { // defended
-		return uint64(SORT_WINNING_PROMOTION + get_see(brd, from, to, captured_piece))
+func sortPromotionCaptures(brd *Board, from, to int, capturedPiece, promotedTo Piece) uint64 {
+	if isAttackedBy(brd, brd.AllOccupied()&sqMaskOff[from], to, brd.Enemy(), brd.c) { // defended
+		return uint64(SORT_WINNING_PROMOTION + getSee(brd, from, to, capturedPiece))
 	} else { // undefended
-		return SORT_WINNING_PROMOTION | uint64(promoted_to.PromoteValue()+captured_piece.Value())
+		return SORT_WINNING_PROMOTION | uint64(promotedTo.PromoteValue()+capturedPiece.Value())
 	}
 }
 
-func mvv_lva(victim, attacker Piece) uint64 { // returns value between 0 and 64
+func mvvLva(victim, attacker Piece) uint64 { // returns value between 0 and 64
 	return uint64(((victim+1)<<3)-attacker) << 22
 }
 
@@ -84,12 +84,12 @@ func NewMoveList() MoveList {
 
 func (l *MoveList) Sort() {
 	sort.Sort(l)
-	// print_mutex.Lock()
+	// printMutex.Lock()
 	// fmt.Println("-------------")
 	// for i, item := range *l {
 	// 	fmt.Printf("%d  %s  %b\n", i+1, item.move.ToString(), item.order)
 	// }
-	// print_mutex.Unlock()
+	// printMutex.Unlock()
 }
 
 func (l MoveList) Len() int { return len(l) }

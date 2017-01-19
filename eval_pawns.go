@@ -13,24 +13,24 @@ const (
 	BACKWARD_PENALTY = 4
 )
 
-var passed_pawn_bonus = [2][8]int{
+var passedPawnBonus = [2][8]int{
 	{0, 192, 96, 48, 24, 12, 6, 0},
 	{0, 6, 12, 24, 48, 96, 192, 0},
 }
-var tarrasch_bonus = [2][8]int{
+var tarraschBonus = [2][8]int{
 	{0, 12, 8, 4, 2, 0, 0, 0},
 	{0, 0, 0, 2, 4, 8, 12, 0},
 }
-var defense_bonus = [2][8]int{
+var defenseBonus = [2][8]int{
 	{0, 12, 8, 6, 5, 4, 3, 0},
 	{0, 3, 4, 5, 6, 8, 12, 0},
 }
-var duo_bonus = [2][8]int{
+var duoBonus = [2][8]int{
 	{0, 0, 2, 1, 1, 1, 0, 0},
 	{0, 0, 1, 1, 1, 2, 0, 0},
 }
 
-var promote_row = [2][2]int{
+var promoteRow = [2][2]int{
 	{1, 2},
 	{6, 5},
 }
@@ -45,47 +45,47 @@ var promote_row = [2][2]int{
 //   -Double/tripled pawns - Penalty for having multiple pawns on the same file.
 //   -Backward pawns
 
-func set_pawn_structure(brd *Board, pentry *PawnEntry) {
-	pentry.key = brd.pawn_hash_key
-	set_pawn_maps(brd, pentry, WHITE)
-	set_pawn_maps(brd, pentry, BLACK)
-	pentry.value[WHITE] = pawn_structure(brd, pentry, WHITE, BLACK) -
-		pawn_structure(brd, pentry, BLACK, WHITE)
+func setPawnStructure(brd *Board, pentry *PawnEntry) {
+	pentry.key = brd.pawnHashKey
+	setPawnMaps(brd, pentry, WHITE)
+	setPawnMaps(brd, pentry, BLACK)
+	pentry.value[WHITE] = pawnStructure(brd, pentry, WHITE, BLACK) -
+		pawnStructure(brd, pentry, BLACK, WHITE)
 	pentry.value[BLACK] = -pentry.value[WHITE]
 }
 
-func set_pawn_maps(brd *Board, pentry *PawnEntry, c uint8) {
-	pentry.left_attacks[c], pentry.right_attacks[c] = pawn_attacks(brd, c)
-	pentry.all_attacks[c] = pentry.left_attacks[c] | pentry.right_attacks[c]
-	pentry.count[c] = uint8(pop_count(brd.pieces[c][PAWN]))
-	pentry.passed_pawns[c] = 0
+func setPawnMaps(brd *Board, pentry *PawnEntry, c uint8) {
+	pentry.leftAttacks[c], pentry.rightAttacks[c] = pawnAttacks(brd, c)
+	pentry.allAttacks[c] = pentry.leftAttacks[c] | pentry.rightAttacks[c]
+	pentry.count[c] = uint8(popCount(brd.pieces[c][PAWN]))
+	pentry.passedPawns[c] = 0
 }
 
-// pawn_structure() sets the remaining pentry attributes for side c
-func pawn_structure(brd *Board, pentry *PawnEntry, c, e uint8) int {
+// pawnStructure() sets the remaining pentry attributes for side c
+func pawnStructure(brd *Board, pentry *PawnEntry, c, e uint8) int {
 
-	var value, sq, sq_row int
-	own_pawns, enemy_pawns := brd.pieces[c][PAWN], brd.pieces[e][PAWN]
-	for b := own_pawns; b > 0; b.Clear(sq) {
-		sq = furthest_forward(c, b)
-		sq_row = row(sq)
+	var value, sq, sqRow int
+	ownPawns, enemyPawns := brd.pieces[c][PAWN], brd.pieces[e][PAWN]
+	for b := ownPawns; b > 0; b.Clear(sq) {
+		sq = furthestForward(c, b)
+		sqRow = row(sq)
 
-		if (pawn_attack_masks[e][sq])&own_pawns > 0 { // defended pawns
-			value += defense_bonus[c][sq_row]
+		if (pawnAttackMasks[e][sq])&ownPawns > 0 { // defended pawns
+			value += defenseBonus[c][sqRow]
 		}
-		if (pawn_side_masks[sq] & own_pawns) > 0 { // pawn duos
-			value += duo_bonus[c][sq_row]
+		if (pawnSideMasks[sq] & ownPawns) > 0 { // pawn duos
+			value += duoBonus[c][sqRow]
 		}
 
-		if pawn_doubled_masks[sq]&own_pawns > 0 { // doubled or tripled pawns
+		if pawnDoubledMasks[sq]&ownPawns > 0 { // doubled or tripled pawns
 			value -= DOUBLED_PENALTY
 		}
 
-		if pawn_passed_masks[c][sq]&enemy_pawns == 0 { // passed pawns
-			value += passed_pawn_bonus[c][sq_row]
-			pentry.passed_pawns[c].Add(sq) // note the passed pawn location in the pawn hash entry.
+		if pawnPassedMasks[c][sq]&enemyPawns == 0 { // passed pawns
+			value += passedPawnBonus[c][sqRow]
+			pentry.passedPawns[c].Add(sq) // note the passed pawn location in the pawn hash entry.
 		} else { // don't penalize passed pawns for being isolated.
-			if pawn_isolated_masks[sq]&own_pawns == 0 {
+			if pawnIsolatedMasks[sq]&ownPawns == 0 {
 				value -= ISOLATED_PENALTY // isolated pawns
 			}
 		}
@@ -95,41 +95,41 @@ func pawn_structure(brd *Board, pentry *PawnEntry, c, e uint8) int {
 		// 1. cannot be defended by friendly pawns,
 		// 2. their stop square is defended by an enemy sentry pawn,
 		// 3. their stop square is not defended by a friendly pawn
-		if (pawn_backward_spans[c][sq]&own_pawns == 0) &&
-			(pentry.all_attacks[e]&pawn_stop_masks[c][sq] > 0) {
+		if (pawnBackwardSpans[c][sq]&ownPawns == 0) &&
+			(pentry.allAttacks[e]&pawnStopMasks[c][sq] > 0) {
 			value -= BACKWARD_PENALTY
 		}
 	}
 	return value
 }
 
-func net_pawn_placement(brd *Board, pentry *PawnEntry, c, e uint8) int {
-	return pentry.value[c] + net_passed_pawns(brd, pentry, c, e)
+func netPawnPlacement(brd *Board, pentry *PawnEntry, c, e uint8) int {
+	return pentry.value[c] + netPassedPawns(brd, pentry, c, e)
 }
 
-func net_passed_pawns(brd *Board, pentry *PawnEntry, c, e uint8) int {
-	return eval_passed_pawns(brd, c, e, pentry.passed_pawns[c]) -
-		eval_passed_pawns(brd, e, c, pentry.passed_pawns[e])
+func netPassedPawns(brd *Board, pentry *PawnEntry, c, e uint8) int {
+	return evalPassedPawns(brd, c, e, pentry.passedPawns[c]) -
+		evalPassedPawns(brd, e, c, pentry.passedPawns[e])
 }
 
-func eval_passed_pawns(brd *Board, c, e uint8, passed_pawns BB) int {
+func evalPassedPawns(brd *Board, c, e uint8, passedPawns BB) int {
 	var value, sq int
-	enemy_king_sq := brd.KingSq(e)
-	for ; passed_pawns > 0; passed_pawns.Clear(sq) {
-		sq = furthest_forward(c, passed_pawns)
+	enemyKingSq := brd.KingSq(e)
+	for ; passedPawns > 0; passedPawns.Clear(sq) {
+		sq = furthestForward(c, passedPawns)
 		// Tarrasch rule: assign small bonus for friendly rook behind the passed pawn
-		if pawn_front_spans[e][sq]&brd.pieces[c][ROOK] > 0 {
-			value += tarrasch_bonus[c][row(sq)]
+		if pawnFrontSpans[e][sq]&brd.pieces[c][ROOK] > 0 {
+			value += tarraschBonus[c][row(sq)]
 		}
 		// pawn race: Assign a bonus if the pawn is closer to its promote square than the enemy king.
-		promote_square := pawn_promote_sq[c][sq]
+		promoteSquare := pawnPromoteSq[c][sq]
 		if brd.c == c {
-			if chebyshev_distance(sq, promote_square) < (chebyshev_distance(enemy_king_sq, promote_square)) {
-				value += passed_pawn_bonus[c][row(sq)]
+			if chebyshevDistance(sq, promoteSquare) < (chebyshevDistance(enemyKingSq, promoteSquare)) {
+				value += passedPawnBonus[c][row(sq)]
 			}
 		} else {
-			if chebyshev_distance(sq, promote_square) < (chebyshev_distance(enemy_king_sq, promote_square) - 1) {
-				value += passed_pawn_bonus[c][row(sq)]
+			if chebyshevDistance(sq, promoteSquare) < (chebyshevDistance(enemyKingSq, promoteSquare) - 1) {
+				value += passedPawnBonus[c][row(sq)]
 			}
 		}
 	}

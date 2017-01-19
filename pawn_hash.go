@@ -13,10 +13,10 @@ const (
 type PawnTT [PAWN_ENTRY_COUNT]PawnEntry
 
 type PawnEntry struct {
-	left_attacks  [2]BB
-	right_attacks [2]BB
-	all_attacks   [2]BB
-	passed_pawns  [2]BB
+	leftAttacks  [2]BB
+	rightAttacks [2]BB
+	allAttacks   [2]BB
+	passedPawns  [2]BB
 	value         [2]int
 	key           uint32
 	count         [2]uint8

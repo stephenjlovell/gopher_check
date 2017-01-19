@@ -58,7 +58,7 @@ func (m Move) IsMove() bool {
 	return m != 0 && m != NO_MOVE
 }
 
-var piece_chars = [6]string{"p", "n", "b", "r", "q", "k"}
+var pieceChars = [6]string{"p", "n", "b", "r", "q", "k"}
 
 func (m Move) Print() {
 	fmt.Println(m.ToString())
@@ -69,14 +69,14 @@ func (m Move) ToString() string { // string representation used for debugging on
 	if !m.IsMove() {
 		return "NO_MOVE"
 	}
-	str += piece_chars[m.Piece()] + " "
+	str += pieceChars[m.Piece()] + " "
 	str += ParseCoordinates(row(m.From()), column(m.From()))
 	str += ParseCoordinates(row(m.To()), column(m.To()))
 	if m.IsCapture() {
-		str += " x " + piece_chars[m.CapturedPiece()]
+		str += " x " + pieceChars[m.CapturedPiece()]
 	}
 	if m.IsPromotion() {
-		str += " promoted to " + piece_chars[m.PromotedTo()]
+		str += " promoted to " + pieceChars[m.PromotedTo()]
 	}
 	return str
 }
@@ -88,14 +88,14 @@ func (m Move) ToUCI() string {
 	str := ParseCoordinates(row(m.From()), column(m.From())) +
 		ParseCoordinates(row(m.To()), column(m.To()))
 	if m.PromotedTo() != EMPTY {
-		str += piece_chars[m.PromotedTo()]
+		str += pieceChars[m.PromotedTo()]
 	}
 	return str
 }
 
-func NewMove(from, to int, piece, captured_piece, promoted_to Piece) Move {
+func NewMove(from, to int, piece, capturedPiece, promotedTo Piece) Move {
 	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) |
-		(Move(captured_piece) << 15) | (Move(promoted_to) << 18)
+		(Move(capturedPiece) << 15) | (Move(promotedTo) << 18)
 }
 
 func NewRegularMove(from, to int, piece Piece) Move {
@@ -103,13 +103,13 @@ func NewRegularMove(from, to int, piece Piece) Move {
 		(Move(EMPTY) << 15) | (Move(EMPTY) << 18)
 }
 
-func NewCapture(from, to int, piece, captured_piece Piece) Move {
+func NewCapture(from, to int, piece, capturedPiece Piece) Move {
 	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) |
-		(Move(captured_piece) << 15) | (Move(EMPTY) << 18)
+		(Move(capturedPiece) << 15) | (Move(EMPTY) << 18)
 }
 
 // since moving piece is always PAWN (0) for promotions, no need to merge in the moving piece.
-func NewPromotion(from, to int, piece, promoted_to Piece) Move {
+func NewPromotion(from, to int, piece, promotedTo Piece) Move {
 	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) |
-		(Move(EMPTY) << 15) | (Move(promoted_to) << 18)
+		(Move(EMPTY) << 15) | (Move(promotedTo) << 18)
 }

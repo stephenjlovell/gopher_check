@@ -26,170 +26,170 @@ const (
 	OFF_RIGHT
 )
 
-var pawn_from_offsets = [2][4]int{{8, 16, 9, 7}, {-8, -16, -7, -9}}
-var knight_offsets = [8]int{-17, -15, -10, -6, 6, 10, 15, 17}
-var bishop_offsets = [4]int{7, 9, -7, -9}
-var rook_offsets = [4]int{8, 1, -8, -1}
-var king_offsets = [8]int{-9, -7, 7, 9, -8, -1, 1, 8}
-var pawn_attack_offsets = [4]int{9, 7, -9, -7}
-var pawn_advance_offsets = [4]int{8, 16, -8, -16}
+var pawnFromOffsets = [2][4]int{{8, 16, 9, 7}, {-8, -16, -7, -9}}
+var knightOffsets = [8]int{-17, -15, -10, -6, 6, 10, 15, 17}
+var bishopOffsets = [4]int{7, 9, -7, -9}
+var rookOffsets = [4]int{8, 1, -8, -1}
+var kingOffsets = [8]int{-9, -7, 7, 9, -8, -1, 1, 8}
+var pawnAttackOffsets = [4]int{9, 7, -9, -7}
+var pawnAdvanceOffsets = [4]int{8, 16, -8, -16}
 
 var directions [64][64]int
 
-var opposite_dir = [16]int{SE, SW, NW, NE, SOUTH, WEST, NORTH, EAST, DIR_INVALID}
+var oppositeDir = [16]int{SE, SW, NW, NE, SOUTH, WEST, NORTH, EAST, DIR_INVALID}
 
-// var middle_rows BB
+// var middleRows BB
 
-var mask_of_length [65]uint64
+var maskOfLength [65]uint64
 
-var row_masks, column_masks [8]BB
+var rowMasks, columnMasks [8]BB
 
-var pawn_isolated_masks, pawn_side_masks, pawn_doubled_masks, knight_masks, bishop_masks, rook_masks,
-	queen_masks, king_masks, sq_mask_on, sq_mask_off [64]BB
+var pawnIsolatedMasks, pawnSideMasks, pawnDoubledMasks, knightMasks, bishopMasks, rookMasks,
+	queenMasks, kingMasks, sqMaskOn, sqMaskOff [64]BB
 
-var intervening, line_masks [64][64]BB
+var intervening, lineMasks [64][64]BB
 
-var castle_queenside_intervening, castle_kingside_intervening [2]BB
+var castleQueensideIntervening, castleKingsideIntervening [2]BB
 
-var pawn_attack_masks, pawn_passed_masks, pawn_attack_spans, pawn_backward_spans, pawn_front_spans,
-	pawn_stop_masks, king_zone_masks, king_shield_masks [2][64]BB
+var pawnAttackMasks, pawnPassedMasks, pawnAttackSpans, pawnBackwardSpans, pawnFrontSpans,
+	pawnStopMasks, kingZoneMasks, kingShieldMasks [2][64]BB
 
-var ray_masks [8][64]BB
+var rayMasks [8][64]BB
 
-var pawn_stop_sq, pawn_promote_sq [2][64]int
+var pawnStopSq, pawnPromoteSq [2][64]int
 
-func manhattan_distance(from, to int) int {
+func manhattanDistance(from, to int) int {
 	return abs(row(from)-row(to)) + abs(column(from)-column(to))
 }
 
-func setup_square_masks() {
+func setupSquareMasks() {
 	for i := 0; i < 64; i++ {
-		sq_mask_on[i] = BB(1 << uint(i))
-		sq_mask_off[i] = (^sq_mask_on[i])
-		mask_of_length[i] = uint64(sq_mask_on[i] - 1)
+		sqMaskOn[i] = BB(1 << uint(i))
+		sqMaskOff[i] = (^sqMaskOn[i])
+		maskOfLength[i] = uint64(sqMaskOn[i] - 1)
 	}
 }
 
-func setup_pawn_masks() {
+func setupPawnMasks() {
 	var sq int
 	for i := 0; i < 64; i++ {
-		pawn_side_masks[i] = (king_masks[i] & row_masks[row(i)])
+		pawnSideMasks[i] = (kingMasks[i] & rowMasks[row(i)])
 		if i < 56 {
-			pawn_stop_masks[WHITE][i] = sq_mask_on[i] << 8
-			pawn_stop_sq[WHITE][i] = i + 8
+			pawnStopMasks[WHITE][i] = sqMaskOn[i] << 8
+			pawnStopSq[WHITE][i] = i + 8
 			for j := 0; j < 2; j++ {
-				sq = i + pawn_attack_offsets[j]
-				if manhattan_distance(sq, i) == 2 {
-					pawn_attack_masks[WHITE][i].Add(sq)
+				sq = i + pawnAttackOffsets[j]
+				if manhattanDistance(sq, i) == 2 {
+					pawnAttackMasks[WHITE][i].Add(sq)
 				}
 			}
 		}
 		if i > 7 {
-			pawn_stop_masks[BLACK][i] = sq_mask_on[i] >> 8
-			pawn_stop_sq[BLACK][i] = i - 8
+			pawnStopMasks[BLACK][i] = sqMaskOn[i] >> 8
+			pawnStopSq[BLACK][i] = i - 8
 			for j := 2; j < 4; j++ {
-				sq = i + pawn_attack_offsets[j]
-				if manhattan_distance(sq, i) == 2 {
-					pawn_attack_masks[BLACK][i].Add(sq)
+				sq = i + pawnAttackOffsets[j]
+				if manhattanDistance(sq, i) == 2 {
+					pawnAttackMasks[BLACK][i].Add(sq)
 				}
 			}
 		}
 	}
 }
 
-func setup_knight_masks() {
+func setupKnightMasks() {
 	var sq int
 	for i := 0; i < 64; i++ {
 		for j := 0; j < 8; j++ {
-			sq = i + knight_offsets[j]
-			if on_board(sq) && manhattan_distance(sq, i) == 3 {
-				knight_masks[i] |= sq_mask_on[sq]
+			sq = i + knightOffsets[j]
+			if onBoard(sq) && manhattanDistance(sq, i) == 3 {
+				knightMasks[i] |= sqMaskOn[sq]
 			}
 		}
 	}
 }
 
-func setup_bishop_masks() {
+func setupBishopMasks() {
 	var previous, current, offset int
 	for i := 0; i < 64; i++ {
 		for j := 0; j < 4; j++ {
 			previous = i
-			offset = bishop_offsets[j]
+			offset = bishopOffsets[j]
 			current = i + offset
-			for on_board(current) && manhattan_distance(current, previous) == 2 {
-				ray_masks[j][i].Add(current)
+			for onBoard(current) && manhattanDistance(current, previous) == 2 {
+				rayMasks[j][i].Add(current)
 				previous = current
 				current += offset
 			}
 		}
-		bishop_masks[i] = ray_masks[NW][i] | ray_masks[NE][i] | ray_masks[SE][i] | ray_masks[SW][i]
+		bishopMasks[i] = rayMasks[NW][i] | rayMasks[NE][i] | rayMasks[SE][i] | rayMasks[SW][i]
 	}
 }
 
-func setup_rook_masks() {
+func setupRookMasks() {
 	var previous, current, offset int
 	for i := 0; i < 64; i++ {
 		for j := 0; j < 4; j++ {
 			previous = i
-			offset = rook_offsets[j]
+			offset = rookOffsets[j]
 			current = i + offset
-			for on_board(current) && manhattan_distance(current, previous) == 1 {
-				ray_masks[j+4][i].Add(current)
+			for onBoard(current) && manhattanDistance(current, previous) == 1 {
+				rayMasks[j+4][i].Add(current)
 				previous = current
 				current += offset
 			}
 		}
-		rook_masks[i] = ray_masks[NORTH][i] | ray_masks[SOUTH][i] | ray_masks[EAST][i] | ray_masks[WEST][i]
+		rookMasks[i] = rayMasks[NORTH][i] | rayMasks[SOUTH][i] | rayMasks[EAST][i] | rayMasks[WEST][i]
 	}
 }
 
-func setup_queen_masks() {
+func setupQueenMasks() {
 	for i := 0; i < 64; i++ {
-		queen_masks[i] = bishop_masks[i] | rook_masks[i]
+		queenMasks[i] = bishopMasks[i] | rookMasks[i]
 	}
 }
 
-func setup_king_masks() {
+func setupKingMasks() {
 	var sq int
 	var center BB
 	for i := 0; i < 64; i++ {
 		for j := 0; j < 8; j++ {
-			sq = i + king_offsets[j]
-			if on_board(sq) && manhattan_distance(sq, i) <= 2 {
-				king_masks[i].Add(sq)
+			sq = i + kingOffsets[j]
+			if onBoard(sq) && manhattanDistance(sq, i) <= 2 {
+				kingMasks[i].Add(sq)
 			}
 		}
-		center = king_masks[i] | sq_mask_on[i]
+		center = kingMasks[i] | sqMaskOn[i]
 		// The king zone is the 3 x 4 square area consisting of the squares around the king and
 		// the squares facing the enemy side.
-		king_zone_masks[WHITE][i] = center | (center << 8)
-		king_zone_masks[BLACK][i] = center | (center >> 8)
+		kingZoneMasks[WHITE][i] = center | (center << 8)
+		kingZoneMasks[BLACK][i] = center | (center >> 8)
 		// The king shield is the three squares adjacent to the king and closest to the enemy side.
-		king_shield_masks[WHITE][i] = (king_zone_masks[WHITE][i] ^ center) >> 8
-		king_shield_masks[BLACK][i] = (king_zone_masks[BLACK][i] ^ center) << 8
+		kingShieldMasks[WHITE][i] = (kingZoneMasks[WHITE][i] ^ center) >> 8
+		kingShieldMasks[BLACK][i] = (kingZoneMasks[BLACK][i] ^ center) << 8
 	}
 
 }
 
-func setup_row_masks() {
-	row_masks[0] = 0xff // set the first row to binary 11111111, or 255.
+func setupRowMasks() {
+	rowMasks[0] = 0xff // set the first row to binary 11111111, or 255.
 	for i := 1; i < 8; i++ {
-		row_masks[i] = (row_masks[i-1] << 8) // create the remaining rows by shifting the previous
+		rowMasks[i] = (rowMasks[i-1] << 8) // create the remaining rows by shifting the previous
 	} // row up by 8 squares.
-	// middle_rows = row_masks[2] | row_masks[3] | row_masks[4] | row_masks[5]
+	// middleRows = rowMasks[2] | rowMasks[3] | rowMasks[4] | rowMasks[5]
 }
 
-func setup_column_masks() {
-	column_masks[0] = 1
+func setupColumnMasks() {
+	columnMasks[0] = 1
 	for i := 0; i < 8; i++ { // create the first column
-		column_masks[0] |= column_masks[0] << 8
+		columnMasks[0] |= columnMasks[0] << 8
 	}
 	for i := 1; i < 8; i++ { // create the remaining columns by transposing the first column rightward.
-		column_masks[i] = (column_masks[i-1] << 1)
+		columnMasks[i] = (columnMasks[i-1] << 1)
 	}
 }
 
-func setup_directions() {
+func setupDirections() {
 	var ray BB
 	for i := 0; i < 64; i++ {
 		for j := 0; j < 64; j++ {
@@ -199,68 +199,68 @@ func setup_directions() {
 	for i := 0; i < 64; i++ {
 		for j := 0; j < 64; j++ {
 			for dir := 0; dir < 8; dir++ {
-				ray = ray_masks[dir][i]
-				if sq_mask_on[j]&ray > 0 {
+				ray = rayMasks[dir][i]
+				if sqMaskOn[j]&ray > 0 {
 					directions[i][j] = dir
-					intervening[i][j] = ray ^ (ray_masks[dir][j] | sq_mask_on[j])
-					line_masks[i][j] = ray | ray_masks[opposite_dir[dir]][j]
+					intervening[i][j] = ray ^ (rayMasks[dir][j] | sqMaskOn[j])
+					lineMasks[i][j] = ray | rayMasks[oppositeDir[dir]][j]
 				}
 			}
 		}
 	}
 }
 
-func setup_pawn_structure_masks() {
+func setupPawnStructureMasks() {
 	var col int
 	for i := 0; i < 64; i++ {
 		col = column(i)
-		pawn_isolated_masks[i] = (king_masks[i] & (^column_masks[col]))
+		pawnIsolatedMasks[i] = (kingMasks[i] & (^columnMasks[col]))
 
-		pawn_passed_masks[WHITE][i] = ray_masks[NORTH][i]
-		pawn_passed_masks[BLACK][i] = ray_masks[SOUTH][i]
+		pawnPassedMasks[WHITE][i] = rayMasks[NORTH][i]
+		pawnPassedMasks[BLACK][i] = rayMasks[SOUTH][i]
 		if col < 7 {
-			pawn_passed_masks[WHITE][i] |= pawn_passed_masks[WHITE][i] << BB(1)
-			pawn_passed_masks[BLACK][i] |= pawn_passed_masks[BLACK][i] << BB(1)
+			pawnPassedMasks[WHITE][i] |= pawnPassedMasks[WHITE][i] << BB(1)
+			pawnPassedMasks[BLACK][i] |= pawnPassedMasks[BLACK][i] << BB(1)
 		}
 		if col > 0 {
-			pawn_passed_masks[WHITE][i] |= pawn_passed_masks[WHITE][i] >> BB(1)
-			pawn_passed_masks[BLACK][i] |= pawn_passed_masks[BLACK][i] >> BB(1)
+			pawnPassedMasks[WHITE][i] |= pawnPassedMasks[WHITE][i] >> BB(1)
+			pawnPassedMasks[BLACK][i] |= pawnPassedMasks[BLACK][i] >> BB(1)
 		}
 
-		pawn_attack_spans[WHITE][i] = pawn_passed_masks[WHITE][i] & (^column_masks[col])
-		pawn_attack_spans[BLACK][i] = pawn_passed_masks[BLACK][i] & (^column_masks[col])
+		pawnAttackSpans[WHITE][i] = pawnPassedMasks[WHITE][i] & (^columnMasks[col])
+		pawnAttackSpans[BLACK][i] = pawnPassedMasks[BLACK][i] & (^columnMasks[col])
 
-		pawn_backward_spans[WHITE][i] = pawn_attack_spans[BLACK][i] | pawn_side_masks[i]
-		pawn_backward_spans[BLACK][i] = pawn_attack_spans[WHITE][i] | pawn_side_masks[i]
+		pawnBackwardSpans[WHITE][i] = pawnAttackSpans[BLACK][i] | pawnSideMasks[i]
+		pawnBackwardSpans[BLACK][i] = pawnAttackSpans[WHITE][i] | pawnSideMasks[i]
 
-		pawn_front_spans[WHITE][i] = pawn_passed_masks[WHITE][i] & (column_masks[col])
-		pawn_front_spans[BLACK][i] = pawn_passed_masks[BLACK][i] & (column_masks[col])
+		pawnFrontSpans[WHITE][i] = pawnPassedMasks[WHITE][i] & (columnMasks[col])
+		pawnFrontSpans[BLACK][i] = pawnPassedMasks[BLACK][i] & (columnMasks[col])
 
-		pawn_doubled_masks[i] = pawn_front_spans[WHITE][i] | pawn_front_spans[BLACK][i]
+		pawnDoubledMasks[i] = pawnFrontSpans[WHITE][i] | pawnFrontSpans[BLACK][i]
 
-		pawn_promote_sq[WHITE][i] = msb(pawn_front_spans[WHITE][i])
-		pawn_promote_sq[BLACK][i] = lsb(pawn_front_spans[BLACK][i])
+		pawnPromoteSq[WHITE][i] = msb(pawnFrontSpans[WHITE][i])
+		pawnPromoteSq[BLACK][i] = lsb(pawnFrontSpans[BLACK][i])
 	}
 }
 
-func setup_castle_masks() {
-	castle_queenside_intervening[WHITE] |= (sq_mask_on[B1] | sq_mask_on[C1] | sq_mask_on[D1])
-	castle_kingside_intervening[WHITE] |= (sq_mask_on[F1] | sq_mask_on[G1])
-	castle_queenside_intervening[BLACK] = (castle_queenside_intervening[WHITE] << 56)
-	castle_kingside_intervening[BLACK] = (castle_kingside_intervening[WHITE] << 56)
+func setupCastleMasks() {
+	castleQueensideIntervening[WHITE] |= (sqMaskOn[B1] | sqMaskOn[C1] | sqMaskOn[D1])
+	castleKingsideIntervening[WHITE] |= (sqMaskOn[F1] | sqMaskOn[G1])
+	castleQueensideIntervening[BLACK] = (castleQueensideIntervening[WHITE] << 56)
+	castleKingsideIntervening[BLACK] = (castleKingsideIntervening[WHITE] << 56)
 }
 
-func setup_masks() {
-	setup_row_masks() // Create bitboard masks for each row and column.
-	setup_column_masks()
-	setup_square_masks() // First set up masks used to add/remove bits by their index.
-	setup_knight_masks() // For each square, calculate bitboard attack maps showing
-	setup_bishop_masks() // the squares to which the given piece type may move. These are
-	setup_rook_masks()   // used as bitmasks during move generation to find pseudolegal moves.
-	setup_queen_masks()
-	setup_king_masks()
-	setup_directions()
-	setup_pawn_masks()
-	setup_pawn_structure_masks()
-	setup_castle_masks()
+func setupMasks() {
+	setupRowMasks() // Create bitboard masks for each row and column.
+	setupColumnMasks()
+	setupSquareMasks() // First set up masks used to add/remove bits by their index.
+	setupKnightMasks() // For each square, calculate bitboard attack maps showing
+	setupBishopMasks() // the squares to which the given piece type may move. These are
+	setupRookMasks()   // used as bitmasks during move generation to find pseudolegal moves.
+	setupQueenMasks()
+	setupKingMasks()
+	setupDirections()
+	setupPawnMasks()
+	setupPawnStructureMasks()
+	setupCastleMasks()
 }

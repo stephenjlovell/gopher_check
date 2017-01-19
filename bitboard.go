@@ -16,11 +16,11 @@ const (
 type BB uint64
 
 func (b *BB) Clear(sq int) {
-	*b &= sq_mask_off[sq]
+	*b &= sqMaskOff[sq]
 }
 
 func (b *BB) Add(sq int) {
-	*b |= sq_mask_on[sq]
+	*b |= sqMaskOn[sq]
 }
 
 func (b BB) Print() {
@@ -28,7 +28,7 @@ func (b BB) Print() {
 	// fmt.Printf("%d\n", b)
 	fmt.Println("  A B C D E F G H")
 	for i := 63; i >= 0; i-- {
-		if sq_mask_on[i]&b > 0 {
+		if sqMaskOn[i]&b > 0 {
 			sq = " 1"
 		} else {
 			sq = " 0"
@@ -42,51 +42,51 @@ func (b BB) Print() {
 	fmt.Printf("  A B C D E F G H\n\n")
 }
 
-func sliding_attacks(piece Piece, occ BB, sq int) BB {
+func slidingAttacks(piece Piece, occ BB, sq int) BB {
 	switch piece {
 	case BISHOP:
-		return bishop_attacks(occ, sq)
+		return bishopAttacks(occ, sq)
 	case ROOK:
-		return rook_attacks(occ, sq)
+		return rookAttacks(occ, sq)
 	case QUEEN:
-		return queen_attacks(occ, sq)
+		return queenAttacks(occ, sq)
 	default:
 		return BB(0)
 	}
 }
 
-// TODO: incorporate pawn_attacks() into movegen
+// TODO: incorporate pawnAttacks() into movegen
 
-func pawn_attacks(brd *Board, c uint8) (BB, BB) { // returns (left_attacks, right_attacks) separately
+func pawnAttacks(brd *Board, c uint8) (BB, BB) { // returns (leftAttacks, rightAttacks) separately
 	if c == WHITE {
-		return ((brd.pieces[WHITE][PAWN] & (^column_masks[0])) << 7), ((brd.pieces[WHITE][PAWN] & (^column_masks[7])) << 9)
+		return ((brd.pieces[WHITE][PAWN] & (^columnMasks[0])) << 7), ((brd.pieces[WHITE][PAWN] & (^columnMasks[7])) << 9)
 	} else {
-		return ((brd.pieces[BLACK][PAWN] & (^column_masks[7])) >> 7), ((brd.pieces[BLACK][PAWN] & (^column_masks[0])) >> 9)
+		return ((brd.pieces[BLACK][PAWN] & (^columnMasks[7])) >> 7), ((brd.pieces[BLACK][PAWN] & (^columnMasks[0])) >> 9)
 	}
 }
 
-func generate_bishop_attacks(occ BB, sq int) BB {
-	return scan_up(occ, NW, sq) | scan_up(occ, NE, sq) | scan_down(occ, SE, sq) | scan_down(occ, SW, sq)
+func generateBishopAttacks(occ BB, sq int) BB {
+	return scanUp(occ, NW, sq) | scanUp(occ, NE, sq) | scanDown(occ, SE, sq) | scanDown(occ, SW, sq)
 }
 
-func generate_rook_attacks(occ BB, sq int) BB {
-	return scan_up(occ, NORTH, sq) | scan_up(occ, EAST, sq) | scan_down(occ, SOUTH, sq) | scan_down(occ, WEST, sq)
+func generateRookAttacks(occ BB, sq int) BB {
+	return scanUp(occ, NORTH, sq) | scanUp(occ, EAST, sq) | scanDown(occ, SOUTH, sq) | scanDown(occ, WEST, sq)
 }
 
-func scan_down(occ BB, dir, sq int) BB {
-	ray := ray_masks[dir][sq]
+func scanDown(occ BB, dir, sq int) BB {
+	ray := rayMasks[dir][sq]
 	blockers := (ray & occ)
 	if blockers > 0 {
-		ray ^= (ray_masks[dir][msb(blockers)]) // chop off end of ray after first blocking piece.
+		ray ^= (rayMasks[dir][msb(blockers)]) // chop off end of ray after first blocking piece.
 	}
 	return ray
 }
 
-func scan_up(occ BB, dir, sq int) BB {
-	ray := ray_masks[dir][sq]
+func scanUp(occ BB, dir, sq int) BB {
+	ray := rayMasks[dir][sq]
 	blockers := (ray & occ)
 	if blockers > 0 {
-		ray ^= (ray_masks[dir][lsb(blockers)]) // chop off end of ray after first blocking piece.
+		ray ^= (rayMasks[dir][lsb(blockers)]) // chop off end of ray after first blocking piece.
 	}
 	return ray
 }
