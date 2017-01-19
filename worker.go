@@ -57,6 +57,7 @@ type Worker struct {
 	assign_sp chan *SplitPoint
 
 	ptt        *PawnTT
+	recycler   *Recycler
 	current_sp *SplitPoint
 
 	mask  uint8

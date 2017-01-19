@@ -23,24 +23,15 @@
 
 package main
 
-// import "github.com/stephenjlovell/go-datastructures/queue"
 import "sync"
 
-func init() {
-	recycler = NewRecycler(512)
-}
-
-var recycler *Recycler
-
 type Recycler struct {
-	// ring *queue.RingBuffer
 	stack []MoveList
 	sync.Mutex
 }
 
 func NewRecycler(capacity uint64) *Recycler {
 	r := &Recycler{
-		// ring: queue.NewRingBuffer(512),
 		stack: make([]MoveList, capacity/2, capacity),
 	}
 	r.init()
@@ -49,37 +40,25 @@ func NewRecycler(capacity uint64) *Recycler {
 
 func (r *Recycler) init() {
 	for i := 0; i < len(r.stack); i++ {
-		// r.ring.Offer(NewMoveList())
 		r.stack[0] = NewMoveList()
 	}
 }
 
 func (r *Recycler) Recycle(moves MoveList) {
-	// r.ring.Offer(moves)
-	r.Lock()
+	// r.Lock()
 	if len(r.stack) < cap(r.stack) {
 		r.stack = append(r.stack, moves)
 	}
-	r.Unlock()
+	// r.Unlock()
 }
 
 func (r *Recycler) AttemptReuse() MoveList {
-	// moves, err := r.ring.TryGet()
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// if moves != nil {
-	// 	// fmt.Printf("-")
-	// 	return moves.(MoveList)
-	// }
-	// // fmt.Printf("+")
-	// return NewMoveList()
 	var moves MoveList
-	r.Lock()
+	// r.Lock()
 	if len(r.stack) > 0 {
 		moves, r.stack = r.stack[len(r.stack)-1], r.stack[:len(r.stack)-1]
 	}
-	r.Unlock()
+	// r.Unlock()
 	if moves == nil {
 		moves = NewMoveList()
 	}

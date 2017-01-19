@@ -64,18 +64,18 @@ type AbstractSelector struct {
 	htable          *HistoryTable
 }
 
-func (s *AbstractSelector) allocate() MoveList {
-	return recycler.AttemptReuse()
-}
-
-func (s *AbstractSelector) recycleList(moves MoveList) {
-	if moves != nil {
-		recycler.Recycle(moves[0:0])
-	}
-}
+// func (s *AbstractSelector) allocate() MoveList {
+// 	return recycler.AttemptReuse()
+// }
 
 func (s *AbstractSelector) CurrentStage() int {
 	return s.stage - 1
+}
+
+func (s *AbstractSelector) recycleList(recycler *Recycler, moves MoveList) {
+	if moves != nil {
+		recycler.Recycle(moves[0:0])
+	}
 }
 
 type MoveSelector struct {
@@ -86,6 +86,7 @@ type MoveSelector struct {
 type QMoveSelector struct {
 	AbstractSelector
 	checks    MoveList
+	recycler  *Recycler
 	can_check bool
 }
 
@@ -101,7 +102,7 @@ func NewMoveSelector(brd *Board, this_stk *StackItem, htable *HistoryTable, in_c
 	}
 }
 
-func NewQMoveSelector(brd *Board, this_stk *StackItem, htable *HistoryTable, in_check, can_check bool) *QMoveSelector {
+func NewQMoveSelector(brd *Board, this_stk *StackItem, htable *HistoryTable, recycler *Recycler, in_check, can_check bool) *QMoveSelector {
 	return &QMoveSelector{
 		AbstractSelector: AbstractSelector{
 			brd:      brd,
@@ -110,28 +111,29 @@ func NewQMoveSelector(brd *Board, this_stk *StackItem, htable *HistoryTable, in_
 			in_check: in_check,
 		},
 		can_check: can_check,
+		recycler:  recycler,
 	}
 }
 
-func (s *MoveSelector) Next(sp_type int) (Move, int) {
+func (s *MoveSelector) Next(recycler *Recycler, sp_type int) (Move, int) {
 	if sp_type == SP_NONE {
-		return s.NextMove()
+		return s.NextMove(recycler)
 	} else {
-		return s.NextSPMove()
+		return s.NextSPMove(recycler)
 	}
 }
 
-func (s *MoveSelector) NextSPMove() (Move, int) {
+func (s *MoveSelector) NextSPMove(recycler *Recycler) (Move, int) {
 	s.Lock()
-	m, stage := s.NextMove()
+	m, stage := s.NextMove(recycler)
 	s.Unlock()
 	return m, stage
 }
 
-func (s *MoveSelector) NextMove() (Move, int) {
+func (s *MoveSelector) NextMove(recycler *Recycler) (Move, int) {
 	for {
 		for s.index == s.finished {
-			if s.NextBatch() {
+			if s.NextBatch(recycler) {
 				return NO_MOVE, s.CurrentStage()
 			}
 		}
@@ -170,7 +172,7 @@ func (s *MoveSelector) NextMove() (Move, int) {
 	}
 }
 
-func (s *MoveSelector) NextBatch() bool {
+func (s *MoveSelector) NextBatch(recycler *Recycler) bool {
 	done := false
 	s.index = 0
 	switch s.stage {
@@ -178,14 +180,14 @@ func (s *MoveSelector) NextBatch() bool {
 		s.finished = 1
 	case STAGE_WINNING:
 		if s.in_check {
-			s.winning = s.allocate()
-			s.losing = s.allocate()
-			s.remaining_moves = s.allocate()
+			s.winning = recycler.AttemptReuse()
+			s.losing = recycler.AttemptReuse()
+			s.remaining_moves = recycler.AttemptReuse()
 			get_evasions(s.brd, s.htable, &s.winning, &s.losing, &s.remaining_moves)
 			// fmt.Printf("%t,%t,%t,", len(s.winning) > 8, len(s.losing) > 8, len(s.remaining_moves) > 8)
 		} else {
-			s.winning = s.allocate()
-			s.losing = s.allocate()
+			s.winning = recycler.AttemptReuse()
+			s.losing = recycler.AttemptReuse()
 			get_captures(s.brd, s.htable, &s.winning, &s.losing)
 			// fmt.Printf("%t,%t,", len(s.winning) > 8, len(s.losing) > 8)
 		}
@@ -198,7 +200,7 @@ func (s *MoveSelector) NextBatch() bool {
 		s.finished = len(s.losing)
 	case STAGE_REMAINING:
 		if !s.in_check {
-			s.remaining_moves = s.allocate()
+			s.remaining_moves = recycler.AttemptReuse()
 			get_non_captures(s.brd, s.htable, &s.remaining_moves)
 			// fmt.Printf("%t,", len(s.remaining_moves) > 8)
 		}
@@ -212,11 +214,11 @@ func (s *MoveSelector) NextBatch() bool {
 	return done
 }
 
-func (s *MoveSelector) Recycle() {
-	s.recycleList(s.winning)
-	s.recycleList(s.losing)
-	s.recycleList(s.remaining_moves)
-	// s.winning, s.losing, s.remaining_moves = nil, nil, nil
+func (s *MoveSelector) Recycle(recycler *Recycler) {
+	s.recycleList(recycler, s.winning)
+	s.recycleList(recycler, s.losing)
+	s.recycleList(recycler, s.remaining_moves)
+	s.winning, s.losing, s.remaining_moves = nil, nil, nil
 }
 
 func (s *QMoveSelector) Next() Move {
@@ -262,12 +264,12 @@ func (s *QMoveSelector) NextBatch() bool {
 	switch s.stage {
 	case Q_STAGE_WINNING:
 		if s.in_check {
-			s.winning = s.allocate()
-			s.losing = s.allocate()
-			s.remaining_moves = s.allocate()
+			s.winning = s.recycler.AttemptReuse()
+			s.losing = s.recycler.AttemptReuse()
+			s.remaining_moves = s.recycler.AttemptReuse()
 			get_evasions(s.brd, s.htable, &s.winning, &s.losing, &s.remaining_moves)
 		} else {
-			s.winning = s.allocate()
+			s.winning = s.recycler.AttemptReuse()
 			get_winning_captures(s.brd, s.htable, &s.winning)
 		}
 		s.winning.Sort()
@@ -280,7 +282,7 @@ func (s *QMoveSelector) NextBatch() bool {
 		s.finished = len(s.remaining_moves)
 	case Q_STAGE_CHECKS:
 		if !s.in_check && s.can_check {
-			s.checks = s.allocate()
+			s.checks = s.recycler.AttemptReuse()
 			get_checks(s.brd, s.htable, &s.checks)
 			s.checks.Sort()
 		}
@@ -293,9 +295,9 @@ func (s *QMoveSelector) NextBatch() bool {
 }
 
 func (s *QMoveSelector) Recycle() {
-	s.recycleList(s.winning)
-	s.recycleList(s.losing)
-	s.recycleList(s.remaining_moves)
-	s.recycleList(s.checks)
-	// s.winning, s.losing, s.remaining_moves, s.checks = nil, nil, nil, nil
+	s.recycleList(s.recycler, s.winning)
+	s.recycleList(s.recycler, s.losing)
+	s.recycleList(s.recycler, s.remaining_moves)
+	s.recycleList(s.recycler, s.checks)
+	s.winning, s.losing, s.remaining_moves, s.checks = nil, nil, nil, nil
 }

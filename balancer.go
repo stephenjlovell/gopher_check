@@ -74,6 +74,7 @@ func NewLoadBalancer(num_workers uint8) *Balancer {
 			stk:       NewStack(),
 			ptt:       NewPawnTT(),
 			assign_sp: make(chan *SplitPoint, 1),
+			recycler:  NewRecycler(512),
 		}
 	}
 	return b

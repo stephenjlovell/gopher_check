@@ -342,8 +342,9 @@ search_moves:
 		first_move != NO_MOVE && depth > 6 && this_stk.can_null
 
 	memento := brd.NewMemento()
+	recycler := brd.worker.recycler
 
-	for m, stage := selector.Next(sp_type); m != NO_MOVE; m, stage = selector.Next(sp_type) {
+	for m, stage := selector.Next(recycler, sp_type); m != NO_MOVE; m, stage = selector.Next(recycler, sp_type) {
 
 		if ply == 0 && s.restrict_search {
 			if !s.moveAllowed(m) { // restrict search to only those moves requested by the GUI.
@@ -446,7 +447,7 @@ search_moves:
 			case SP_SERVANT:
 				return NO_SCORE, sum // servant aborts its search and reports the nodes searched as overhead.
 			case SP_NONE:
-				selector.Recycle()
+				selector.Recycle(recycler)
 				return NO_SCORE, sum
 			default:
 				s.sendInfo("unknown SP type\n")
@@ -481,7 +482,7 @@ search_moves:
 						if sp_type == SP_MASTER {
 							load_balancer.RemoveSP(brd.worker)
 							main_tt.store(brd, m, depth, LOWER_BOUND, score)
-							// selector.Recycle()
+							// selector.Recycle(recycler)
 							return score, sum
 						} else { // sp_type == SP_SERVANT
 							return NO_SCORE, 0
@@ -501,7 +502,7 @@ search_moves:
 					if score >= beta {
 						store_cutoff(this_stk, &s.htable, m, brd.c, total) // what happens on refutation of main pv?
 						main_tt.store(brd, m, depth, LOWER_BOUND, score)
-						selector.Recycle()
+						selector.Recycle(recycler)
 						return score, sum
 					}
 					alpha = score
@@ -544,11 +545,11 @@ search_moves:
 		sp.cancel = true
 		sp.Unlock()
 
-		// selector.Recycle() // since all servants have finished processing, we can safely recycle the move buffers.
+		// selector.Recycle(recycler) // since all servants have finished processing, we can safely recycle the move buffers.
 	case SP_SERVANT:
 		return NO_SCORE, 0
 	default:
-		selector.Recycle()
+		selector.Recycle(recycler)
 	}
 
 	if legal_searched > 0 {
@@ -608,7 +609,7 @@ func (s *Search) quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) 
 
 	legal_moves := false
 	memento := brd.NewMemento()
-	selector := NewQMoveSelector(brd, this_stk, &s.htable, in_check, depth >= MIN_CHECK_DEPTH)
+	selector := NewQMoveSelector(brd, this_stk, &s.htable, brd.worker.recycler, in_check, depth >= MIN_CHECK_DEPTH)
 
 	var may_promote, gives_check bool
 	for m := selector.Next(); m != NO_MOVE; m = selector.Next() {
