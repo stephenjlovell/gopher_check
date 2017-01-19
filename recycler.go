@@ -45,20 +45,16 @@ func (r *Recycler) init() {
 }
 
 func (r *Recycler) Recycle(moves MoveList) {
-	// r.Lock()
 	if len(r.stack) < cap(r.stack) {
 		r.stack = append(r.stack, moves)
 	}
-	// r.Unlock()
 }
 
 func (r *Recycler) AttemptReuse() MoveList {
 	var moves MoveList
-	// r.Lock()
 	if len(r.stack) > 0 {
 		moves, r.stack = r.stack[len(r.stack)-1], r.stack[:len(r.stack)-1]
 	}
-	// r.Unlock()
 	if moves == nil {
 		moves = NewMoveList()
 	}
