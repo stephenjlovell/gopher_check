@@ -20,7 +20,7 @@ func (h *HistoryTable) Store(m Move, c uint8, count int) {
 func (h *HistoryTable) Probe(pc Piece, c uint8, to int) uint64 {
 	v := atomic.LoadUint64(&h[c][pc][to])
 	if v > 0 {
-		return ((((v >> 3) & maskOfLength[21]) | 1) << 1)
+		return ((((v >> 3) & mask_of_length[21]) | 1) << 1)
 	}
 	return 0
 }

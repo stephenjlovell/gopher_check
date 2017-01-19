@@ -12,36 +12,36 @@ import (
 	"time"
 )
 
-// var legalMaxTree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860, 84998978956, 2439530234167}
-var legalMaxTree = [10]int{1, 24, 496, 9483, 182838, 3605103, 71179139}
+// var legal_max_tree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860, 84998978956, 2439530234167}
+var legal_max_tree = [10]int{1, 24, 496, 9483, 182838, 3605103, 71179139}
 
 // func TestLegalMoveGen(t *testing.T) {
 // 	setup()
 // 	depth := 5
-// 	legalMovegen(Perft, StartPos(), depth, legalMaxTree[depth], true)
+// 	legal_movegen(Perft, StartPos(), depth, legal_max_tree[depth], true)
 // }
 
 // func TestMoveValidation(t *testing.T) {
 // 	setup()
 // 	depth := 5
-// 	legalMovegen(PerftValidation, StartPos(), depth, legalMaxTree[depth], true)
+// 	legal_movegen(PerftValidation, StartPos(), depth, legal_max_tree[depth], true)
 // }
 //
 
 // func TestPerftSuite(t *testing.T) {
 // 	setup()
 // 	depth := 4
-// 	testPositions := loadEpdFile("test_suites/perftsuite.epd")  // http://www.rocechess.ch/perft.html
-// 	for i, epd := range testPositions {
-// 		if expected, ok := epd.nodeCount[depth]; ok {
+// 	test_positions := load_epd_file("test_suites/perftsuite.epd")  // http://www.rocechess.ch/perft.html
+// 	for i, epd := range test_positions {
+// 		if expected, ok := epd.node_count[depth]; ok {
 // 			fmt.Printf("%d.", i+1)
 // 			epd.brd.Print()
-// 			legalMovegen(Perft, epd.brd, depth, expected, false)
+// 			legal_movegen(Perft, epd.brd, depth, expected, false)
 // 		}
 // 	}
 // }
 
-func legalMovegen(fn func(*Board, *HistoryTable, Stack, int, int) int, brd *Board, depth, expected int, verbose bool) {
+func legal_movegen(fn func(*Board, *HistoryTable, Stack, int, int) int, brd *Board, depth, expected int, verbose bool) {
 	htable := new(HistoryTable)
 	copy := brd.Copy()
 	start := time.Now()
@@ -60,16 +60,16 @@ func legalMovegen(fn func(*Board, *HistoryTable, Stack, int, int) int, brd *Boar
 
 func Perft(brd *Board, htable *HistoryTable, stk Stack, depth, ply int) int {
 	sum := 0
-	inCheck := brd.InCheck()
-	thisStk := stk[ply]
+	in_check := brd.InCheck()
+	this_stk := stk[ply]
 	memento := brd.NewMemento()
-	recycler := loadBalancer.RootWorker().recycler
-	generator := NewMoveSelector(brd, &thisStk, htable, inCheck, NO_MOVE)
+	recycler := load_balancer.RootWorker().recycler
+	generator := NewMoveSelector(brd, &this_stk, htable, in_check, NO_MOVE)
 	for m, _ := generator.Next(recycler, SP_NONE); m != NO_MOVE; m, _ = generator.Next(recycler, SP_NONE) {
 		if depth > 1 {
-			makeMove(brd, m)
+			make_move(brd, m)
 			sum += Perft(brd, htable, stk, depth-1, ply+1)
-			unmakeMove(brd, m, memento)
+			unmake_move(brd, m, memento)
 		} else {
 			sum += 1
 		}
@@ -83,19 +83,19 @@ func PerftValidation(brd *Board, htable *HistoryTable, stk Stack, depth, ply int
 		return 1
 	}
 	sum := 0
-	thisStk := stk[ply]
+	this_stk := stk[ply]
 	memento := brd.NewMemento()
 	// intentionally disregard whether king is in check while generating moves.
-	recycler := loadBalancer.RootWorker().recycler
-	generator := NewMoveSelector(brd, &thisStk, htable, false, NO_MOVE)
+	recycler := load_balancer.RootWorker().recycler
+	generator := NewMoveSelector(brd, &this_stk, htable, false, NO_MOVE)
 	for m, _ := generator.Next(recycler, SP_NONE); m != NO_MOVE; m, _ = generator.Next(recycler, SP_NONE) {
-		inCheck := brd.InCheck()
-		if !brd.ValidMove(m, inCheck) || !brd.LegalMove(m, inCheck) {
+		in_check := brd.InCheck()
+		if !brd.ValidMove(m, in_check) || !brd.LegalMove(m, in_check) {
 			continue // rely on validation to prevent illegal moves...
 		}
-		makeMove(brd, m)
+		make_move(brd, m)
 		sum += PerftValidation(brd, htable, stk, depth-1, ply+1)
-		unmakeMove(brd, m, memento)
+		unmake_move(brd, m, memento)
 	}
 	return sum
 }
@@ -129,12 +129,12 @@ func CompareBoards(brd, other *Board) bool {
 		fmt.Println("Board.material unequal")
 		equal = false
 	}
-	if brd.hashKey != other.hashKey {
-		fmt.Println("Board.hashKey unequal")
+	if brd.hash_key != other.hash_key {
+		fmt.Println("Board.hash_key unequal")
 		equal = false
 	}
-	if brd.pawnHashKey != other.pawnHashKey {
-		fmt.Println("Board.pawnHashKey unequal")
+	if brd.pawn_hash_key != other.pawn_hash_key {
+		fmt.Println("Board.pawn_hash_key unequal")
 		equal = false
 	}
 	if brd.c != other.c {
@@ -145,16 +145,16 @@ func CompareBoards(brd, other *Board) bool {
 		fmt.Println("Board.castle unequal")
 		equal = false
 	}
-	if brd.enpTarget != other.enpTarget {
-		fmt.Println("Board.enpTarget unequal")
+	if brd.enp_target != other.enp_target {
+		fmt.Println("Board.enp_target unequal")
 		equal = false
 	}
-	if brd.halfmoveClock != other.halfmoveClock {
-		fmt.Println("Board.halfmoveClock unequal")
+	if brd.halfmove_clock != other.halfmove_clock {
+		fmt.Println("Board.halfmove_clock unequal")
 		equal = false
 	}
-	if brd.endgameCounter != other.endgameCounter {
-		fmt.Println("Board.endgameCounter unequal")
+	if brd.endgame_counter != other.endgame_counter {
+		fmt.Println("Board.endgame_counter unequal")
 		equal = false
 	}
 	return equal

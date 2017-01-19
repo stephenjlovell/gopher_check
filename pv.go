@@ -19,48 +19,48 @@ func (pv *PV) ToUCI() string {
 		return ""
 	}
 	str := pv.m.ToUCI()
-	for currPv := pv.next; currPv != nil; currPv = currPv.next {
-		if !currPv.m.IsMove() {
+	for curr_pv := pv.next; curr_pv != nil; curr_pv = curr_pv.next {
+		if !curr_pv.m.IsMove() {
 			break
 		}
-		str += " " + currPv.m.ToUCI()
+		str += " " + curr_pv.m.ToUCI()
 	}
 	return str
 }
 
-var pvAccuracy [2]int
+var pv_accuracy [2]int
 
 func (pv *PV) SavePV(brd *Board, value, depth int) {
-	var lastValue int
+	var last_value int
 	var m Move
-	var inCheck bool
+	var in_check bool
 
 	copy := brd.Copy() // create a local copy of the board to avoid having to unmake moves.
 	for pv != nil {
 		m = pv.m
-		inCheck = copy.InCheck()
+		in_check = copy.InCheck()
 
-		if !copy.ValidMove(m, inCheck) || !copy.LegalMove(m, inCheck) {
+		if !copy.ValidMove(m, in_check) || !copy.LegalMove(m, in_check) {
 			break
 		}
 
-		lastValue = pv.value
-		mainTt.store(copy, m, pv.depth, EXACT, pv.value)
+		last_value = pv.value
+		main_tt.store(copy, m, pv.depth, EXACT, pv.value)
 
-		makeMove(copy, m)
+		make_move(copy, m)
 		pv = pv.next
 	}
 
-	if abs(value) == abs(lastValue) {
-		pvAccuracy[1] += 1
+	if abs(value) == abs(last_value) {
+		pv_accuracy[1] += 1
 	} else {
-		pvAccuracy[0] += 1
+		pv_accuracy[0] += 1
 	}
 
 }
 
 // Node criteria as defined by Onno Garms:
-// http://www.talkchess.com/forum/viewtopic.php?t=38408&postdays=0&postorder=asc&topicView=flat&start=10
+// http://www.talkchess.com/forum/viewtopic.php?t=38408&postdays=0&postorder=asc&topic_view=flat&start=10
 
 // The root node is a PV node.
 // The first child of a PV node is a PV node.

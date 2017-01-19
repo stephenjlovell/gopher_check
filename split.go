@@ -22,35 +22,35 @@ type SplitPoint struct {
 
 	depth           int
 	ply             int
-	extensionsLeft int
-	nodeType       int
+	extensions_left int
+	node_type       int
 	alpha           int // shared
 	beta            int // shared
 	best            int // shared
-	nodeCount      int // shared
-	legalSearched  int
+	node_count      int // shared
+	legal_searched  int
 
-	bestMove Move // shared
+	best_move Move // shared
 
 	s        *Search
 	selector *MoveSelector
 	parent   *SplitPoint
 	master   *Worker
 	brd      *Board
-	thisStk *StackItem
+	this_stk *StackItem
 	cond     *sync.Cond
 
-	servantMask uint8
+	servant_mask uint8
 
 	cancel          bool
-	workerFinished bool
-	canNull        bool
+	worker_finished bool
+	can_null        bool
 	checked         bool
 }
 
 func (sp *SplitPoint) Wait() {
 	sp.cond.L.Lock()
-	for sp.servantMask > 0 {
+	for sp.servant_mask > 0 {
 		sp.cond.Wait() // unlocks, sleeps thread, then locks sp.cond.L
 	}
 	sp.cond.L.Unlock()
@@ -58,15 +58,15 @@ func (sp *SplitPoint) Wait() {
 
 func (sp *SplitPoint) Order() int {
 	sp.RLock()
-	searched := sp.legalSearched
-	nodeType := sp.nodeType
+	searched := sp.legal_searched
+	node_type := sp.node_type
 	sp.RUnlock()
-	return (max(searched, 16) << 3) | nodeType
+	return (max(searched, 16) << 3) | node_type
 }
 
 func (sp *SplitPoint) WorkerFinished() bool {
 	sp.RLock()
-	finished := sp.workerFinished
+	finished := sp.worker_finished
 	sp.RUnlock()
 	return finished
 }
@@ -84,56 +84,56 @@ func (sp *SplitPoint) HelpWanted() bool {
 
 func (sp *SplitPoint) ServantMask() uint8 {
 	sp.cond.L.Lock()
-	servantMask := sp.servantMask
+	servant_mask := sp.servant_mask
 	sp.cond.L.Unlock()
-	return servantMask
+	return servant_mask
 }
 
-func (sp *SplitPoint) AddServant(wMask uint8) {
+func (sp *SplitPoint) AddServant(w_mask uint8) {
 	sp.cond.L.Lock()
-	sp.servantMask |= wMask
+	sp.servant_mask |= w_mask
 	sp.cond.L.Unlock()
 }
 
-func (sp *SplitPoint) RemoveServant(wMask uint8) {
+func (sp *SplitPoint) RemoveServant(w_mask uint8) {
 	sp.cond.L.Lock()
-	sp.servantMask &= (^wMask)
+	sp.servant_mask &= (^w_mask)
 	sp.cond.L.Unlock()
 
 	sp.Lock()
-	sp.workerFinished = true
+	sp.worker_finished = true
 	sp.Unlock()
 
 	sp.cond.Signal()
 }
 
-func CreateSP(s *Search, brd *Board, stk Stack, ms *MoveSelector, bestMove Move, alpha, beta, best,
-	depth, ply, legalSearched, nodeType, sum int, checked bool) *SplitPoint {
+func CreateSP(s *Search, brd *Board, stk Stack, ms *MoveSelector, best_move Move, alpha, beta, best,
+	depth, ply, legal_searched, node_type, sum int, checked bool) *SplitPoint {
 
 	sp := &SplitPoint{
 		cond:     sync.NewCond(new(sync.Mutex)),
 		selector: ms,
 		master:   brd.worker,
-		parent:   brd.worker.currentSp,
+		parent:   brd.worker.current_sp,
 
 		brd:      brd.Copy(),
-		thisStk: stk[ply].Copy(),
+		this_stk: stk[ply].Copy(),
 		s:        s,
 
 		depth: depth,
 		ply:   ply,
 
-		nodeType: nodeType,
+		node_type: node_type,
 
 		alpha:     alpha,
 		beta:      beta,
 		best:      best,
-		bestMove: bestMove,
+		best_move: best_move,
 
 		checked: checked,
 
-		nodeCount:     sum,
-		legalSearched: legalSearched,
+		node_count:     sum,
+		legal_searched: legal_searched,
 		cancel:         false,
 	}
 
@@ -141,7 +141,7 @@ func CreateSP(s *Search, brd *Board, stk Stack, ms *MoveSelector, bestMove Move,
 	stk.CopyUpTo(sp.stk, ply)
 
 	ms.brd = sp.brd // make sure the move selector points to the static SP board.
-	ms.thisStk = sp.thisStk
+	ms.this_stk = sp.this_stk
 	stk[ply].sp = sp
 
 	return sp

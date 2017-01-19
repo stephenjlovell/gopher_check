@@ -35,27 +35,27 @@ const (
 	MAX_WORKERS = 8
 )
 
-var loadBalancer *Balancer
+var load_balancer *Balancer
 
-func setupLoadBalancer(numCpu int) {
-	numWorkers := uint8(min(numCpu, MAX_WORKERS))
-	loadBalancer = NewLoadBalancer(numWorkers)
-	loadBalancer.Start()
+func setup_load_balancer(num_cpu int) {
+	num_workers := uint8(min(num_cpu, MAX_WORKERS))
+	load_balancer = NewLoadBalancer(num_workers)
+	load_balancer.Start()
 }
 
-func NewLoadBalancer(numWorkers uint8) *Balancer {
+func NewLoadBalancer(num_workers uint8) *Balancer {
 	b := &Balancer{
-		workers: make([]*Worker, numWorkers),
-		done:    make(chan *Worker, numWorkers),
+		workers: make([]*Worker, num_workers),
+		done:    make(chan *Worker, num_workers),
 	}
-	for i := uint8(0); i < uint8(numWorkers); i++ {
+	for i := uint8(0); i < uint8(num_workers); i++ {
 		b.workers[i] = &Worker{
 			mask:      1 << i,
 			index:     i,
-			spList:   make(SPList, 0, MAX_DEPTH),
+			sp_list:   make(SPList, 0, MAX_DEPTH),
 			stk:       NewStack(),
 			ptt:       NewPawnTT(),
-			assignSp: make(chan *SplitPoint, 1),
+			assign_sp: make(chan *SplitPoint, 1),
 			recycler:  NewRecycler(512),
 		}
 	}
@@ -77,7 +77,7 @@ func (b *Balancer) Start() {
 func (b *Balancer) Overhead() int {
 	overhead := 0
 	for _, w := range b.workers {
-		overhead += w.searchOverhead
+		overhead += w.search_overhead
 	}
 	return overhead
 }
@@ -88,38 +88,38 @@ func (b *Balancer) RootWorker() *Worker {
 
 func (b *Balancer) AddSP(w *Worker, sp *SplitPoint) {
 	w.Lock()
-	w.spList.Push(sp)
+	w.sp_list.Push(sp)
 	w.Unlock()
-	w.currentSp = sp
+	w.current_sp = sp
 
 FlushIdle: // If there are any idle workers, assign them now.
 	for {
 		select {
 		case idle := <-b.done:
 			sp.AddServant(idle.mask)
-			idle.assignSp <- sp
+			idle.assign_sp <- sp
 		default:
 			break FlushIdle
 		}
 	}
 }
 
-// RemoveSP prevents new workers from being assigned to w.currentSp without cancelling
+// RemoveSP prevents new workers from being assigned to w.current_sp without cancelling
 // any ongoing work at this SP.
 func (b *Balancer) RemoveSP(w *Worker) {
 	w.Lock()
-	w.spList.Pop()
+	w.sp_list.Pop()
 	w.Unlock()
-	w.currentSp = w.currentSp.parent
+	w.current_sp = w.current_sp.parent
 }
 
 func (b *Balancer) Print() {
 	for i, w := range b.workers {
-		if len(w.spList) > 0 {
+		if len(w.sp_list) > 0 {
 			w.Lock()
 			fmt.Printf("w%d: ", i)
-			for _, sp := range w.spList {
-				fmt.Printf("%d, ", (sp.brd.hashKey >> 48))
+			for _, sp := range w.sp_list {
+				fmt.Printf("%d, ", (sp.brd.hash_key >> 48))
 			}
 			fmt.Printf("\n")
 			w.Unlock()

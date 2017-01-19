@@ -5,13 +5,14 @@
 
 package main
 
-import "testing"
+"fmt"
+"testing"
 
 func TestEPDParsing(t *testing.T) {
-	test := loadEpdFile("test_suites/wac300.epd")
+  test := load_epd_file("test_suites/wac_300.epd")
 
-	for _, epd := range test {
-		epd.Print()
-	}
+  for _, epd := range test {
+    epd.Print()
+  }
 
 }

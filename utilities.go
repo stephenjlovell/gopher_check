@@ -10,9 +10,9 @@ import (
 	"time"
 )
 
-func RunTestSuite(testSuite string, depth, timeout int) {
-	test := loadEpdFile(testSuite)
-	var moveStr string
+func RunTestSuite(test_suite string, depth, timeout int) {
+	test := load_epd_file(test_suite)
+	var move_str string
 	sum, score := 0, 0
 	var gt *GameTimer
 	var search *Search
@@ -24,8 +24,8 @@ func RunTestSuite(testSuite string, depth, timeout int) {
 		search = NewSearch(SearchParams{depth, false, false, false}, gt, nil, nil)
 		search.Start(epd.brd)
 
-		moveStr = ToSAN(epd.brd, search.bestMove)
-		if correctMove(epd, moveStr) {
+		move_str = ToSAN(epd.brd, search.best_move)
+		if correct_move(epd, move_str) {
 			score += 1
 			fmt.Printf("-")
 		} else {
@@ -33,33 +33,33 @@ func RunTestSuite(testSuite string, depth, timeout int) {
 		}
 		sum += search.nodes
 	}
-	secondsElapsed := time.Since(start).Seconds()
-	mNodes := float64(sum) / 1000000.0
-	fmt.Printf("\n%.4fm nodes searched in %.4fs (%.4fm NPS)\n", mNodes, secondsElapsed, mNodes/secondsElapsed)
+	seconds_elapsed := time.Since(start).Seconds()
+	m_nodes := float64(sum) / 1000000.0
+	fmt.Printf("\n%.4fm nodes searched in %.4fs (%.4fm NPS)\n", m_nodes, seconds_elapsed, m_nodes/seconds_elapsed)
 
 	fmt.Printf("Total score: %d/%d\n", score, len(test))
 
 	// fmt.Printf("Average Branching factor by iteration:\n")
 	// var branching float64
 	// for d := 2; d <= depth; d++ {
-	// 	branching = math.Pow(float64(nodesPerIteration[d])/float64(nodesPerIteration[1]), float64(1)/float64(d-1))
+	// 	branching = math.Pow(float64(nodes_per_iteration[d])/float64(nodes_per_iteration[1]), float64(1)/float64(d-1))
 	// 	fmt.Printf("%d ABF: %.4f\n", d, branching)
 	// }
 
-	fmt.Printf("Overhead: %.4fm\n", float64(loadBalancer.Overhead())/1000000.0)
+	fmt.Printf("Overhead: %.4fm\n", float64(load_balancer.Overhead())/1000000.0)
 	fmt.Printf("Timeout: %.1fs\n", float64(timeout)/1000.0)
-	// fmt.Printf("PV Accuracy: %d/%d (%.2f)\n\n", pvAccuracy[1], pvAccuracy[0]+pvAccuracy[1],
-	// 	float64(pvAccuracy[1])/float64(pvAccuracy[0]+pvAccuracy[1]))
+	// fmt.Printf("PV Accuracy: %d/%d (%.2f)\n\n", pv_accuracy[1], pv_accuracy[0]+pv_accuracy[1],
+	// 	float64(pv_accuracy[1])/float64(pv_accuracy[0]+pv_accuracy[1]))
 }
 
-func correctMove(epd *EPD, moveStr string) bool {
-	for _, a := range epd.avoidMoves {
-		if moveStr == a {
+func correct_move(epd *EPD, move_str string) bool {
+	for _, a := range epd.avoid_moves {
+		if move_str == a {
 			return false
 		}
 	}
-	for _, b := range epd.bestMoves {
-		if moveStr == b {
+	for _, b := range epd.best_moves {
+		if move_str == b {
 			return true
 		}
 	}

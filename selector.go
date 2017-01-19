@@ -8,11 +8,11 @@ package main
 // Current search stages:
 // 1. Hash move if available
 // 2. IID move if no hash move available.
-// 3. Evasions or Winning captures/promotions via getBestMoves(). No pruning - extensions only.
-// 4. All other moves via getRemainingMoves().  Futility pruning and Late-move reductions applied.
+// 3. Evasions or Winning captures/promotions via get_best_moves(). No pruning - extensions only.
+// 4. All other moves via get_remaining_moves().  Futility pruning and Late-move reductions applied.
 // Q-search stages
-// 1. Evasions or winning captures/promotions getBestMoves(). Specialized futility pruning.
-// 2. Non-captures that give check via getChecks().
+// 1. Evasions or winning captures/promotions get_best_moves(). Specialized futility pruning.
+// 2. Non-captures that give check via get_checks().
 
 import "sync"
 
@@ -35,12 +35,12 @@ type AbstractSelector struct {
 	stage           int
 	index           int
 	finished        int
-	inCheck        bool
+	in_check        bool
 	winning         MoveList
 	losing          MoveList
-	remainingMoves MoveList
+	remaining_moves MoveList
 	brd             *Board
-	thisStk        *StackItem
+	this_stk        *StackItem
 	htable          *HistoryTable
 }
 
@@ -56,43 +56,43 @@ func (s *AbstractSelector) recycleList(recycler *Recycler, moves MoveList) {
 
 type MoveSelector struct {
 	AbstractSelector
-	firstMove Move
+	first_move Move
 }
 
 type QMoveSelector struct {
 	AbstractSelector
 	checks    MoveList
 	recycler  *Recycler
-	canCheck bool
+	can_check bool
 }
 
-func NewMoveSelector(brd *Board, thisStk *StackItem, htable *HistoryTable, inCheck bool, firstMove Move) *MoveSelector {
+func NewMoveSelector(brd *Board, this_stk *StackItem, htable *HistoryTable, in_check bool, first_move Move) *MoveSelector {
 	return &MoveSelector{
 		AbstractSelector: AbstractSelector{
 			brd:      brd,
-			thisStk: thisStk,
+			this_stk: this_stk,
 			htable:   htable,
-			inCheck: inCheck,
+			in_check: in_check,
 		},
-		firstMove: firstMove,
+		first_move: first_move,
 	}
 }
 
-func NewQMoveSelector(brd *Board, thisStk *StackItem, htable *HistoryTable, recycler *Recycler, inCheck, canCheck bool) *QMoveSelector {
+func NewQMoveSelector(brd *Board, this_stk *StackItem, htable *HistoryTable, recycler *Recycler, in_check, can_check bool) *QMoveSelector {
 	return &QMoveSelector{
 		AbstractSelector: AbstractSelector{
 			brd:      brd,
-			thisStk: thisStk,
+			this_stk: this_stk,
 			htable:   htable,
-			inCheck: inCheck,
+			in_check: in_check,
 		},
-		canCheck: canCheck,
+		can_check: can_check,
 		recycler:  recycler,
 	}
 }
 
-func (s *MoveSelector) Next(recycler *Recycler, spType int) (Move, int) {
-	if spType == SP_NONE {
+func (s *MoveSelector) Next(recycler *Recycler, sp_type int) (Move, int) {
+	if sp_type == SP_NONE {
 		return s.NextMove(recycler)
 	} else {
 		return s.NextSPMove(recycler)
@@ -116,31 +116,31 @@ func (s *MoveSelector) NextMove(recycler *Recycler) (Move, int) {
 		switch s.CurrentStage() {
 		case STAGE_FIRST:
 			s.index++
-			if s.brd.ValidMove(s.firstMove, s.inCheck) && s.brd.LegalMove(s.firstMove, s.inCheck) {
-				return s.firstMove, STAGE_FIRST
+			if s.brd.ValidMove(s.first_move, s.in_check) && s.brd.LegalMove(s.first_move, s.in_check) {
+				return s.first_move, STAGE_FIRST
 			}
 		case STAGE_WINNING:
 			m := s.winning[s.index].move
 			s.index++
-			if m != s.firstMove && s.brd.AvoidsCheck(m, s.inCheck) {
+			if m != s.first_move && s.brd.AvoidsCheck(m, s.in_check) {
 				return m, STAGE_WINNING
 			}
 		case STAGE_KILLER:
-			m := s.thisStk.killers[s.index]
+			m := s.this_stk.killers[s.index]
 			s.index++
-			if m != s.firstMove && s.brd.ValidMove(m, s.inCheck) && s.brd.LegalMove(m, s.inCheck) {
+			if m != s.first_move && s.brd.ValidMove(m, s.in_check) && s.brd.LegalMove(m, s.in_check) {
 				return m, STAGE_KILLER
 			}
 		case STAGE_LOSING:
 			m := s.losing[s.index].move
 			s.index++
-			if m != s.firstMove && s.brd.AvoidsCheck(m, s.inCheck) {
+			if m != s.first_move && s.brd.AvoidsCheck(m, s.in_check) {
 				return m, STAGE_LOSING
 			}
 		case STAGE_REMAINING:
-			m := s.remainingMoves[s.index].move
+			m := s.remaining_moves[s.index].move
 			s.index++
-			if m != s.firstMove && !s.thisStk.IsKiller(m) && s.brd.AvoidsCheck(m, s.inCheck) {
+			if m != s.first_move && !s.this_stk.IsKiller(m) && s.brd.AvoidsCheck(m, s.in_check) {
 				return m, STAGE_REMAINING
 			}
 		default:
@@ -155,16 +155,16 @@ func (s *MoveSelector) NextBatch(recycler *Recycler) bool {
 	case STAGE_FIRST:
 		s.finished = 1
 	case STAGE_WINNING:
-		if s.inCheck {
+		if s.in_check {
 			s.winning = recycler.AttemptReuse()
 			s.losing = recycler.AttemptReuse()
-			s.remainingMoves = recycler.AttemptReuse()
-			getEvasions(s.brd, s.htable, &s.winning, &s.losing, &s.remainingMoves)
-			// fmt.Printf("%t,%t,%t,", len(s.winning) > 8, len(s.losing) > 8, len(s.remainingMoves) > 8)
+			s.remaining_moves = recycler.AttemptReuse()
+			get_evasions(s.brd, s.htable, &s.winning, &s.losing, &s.remaining_moves)
+			// fmt.Printf("%t,%t,%t,", len(s.winning) > 8, len(s.losing) > 8, len(s.remaining_moves) > 8)
 		} else {
 			s.winning = recycler.AttemptReuse()
 			s.losing = recycler.AttemptReuse()
-			getCaptures(s.brd, s.htable, &s.winning, &s.losing)
+			get_captures(s.brd, s.htable, &s.winning, &s.losing)
 			// fmt.Printf("%t,%t,", len(s.winning) > 8, len(s.losing) > 8)
 		}
 		s.winning.Sort()
@@ -175,13 +175,13 @@ func (s *MoveSelector) NextBatch(recycler *Recycler) bool {
 		s.losing.Sort()
 		s.finished = len(s.losing)
 	case STAGE_REMAINING:
-		if !s.inCheck {
-			s.remainingMoves = recycler.AttemptReuse()
-			getNonCaptures(s.brd, s.htable, &s.remainingMoves)
-			// fmt.Printf("%t,", len(s.remainingMoves) > 8)
+		if !s.in_check {
+			s.remaining_moves = recycler.AttemptReuse()
+			get_non_captures(s.brd, s.htable, &s.remaining_moves)
+			// fmt.Printf("%t,", len(s.remaining_moves) > 8)
 		}
-		s.remainingMoves.Sort()
-		s.finished = len(s.remainingMoves)
+		s.remaining_moves.Sort()
+		s.finished = len(s.remaining_moves)
 	default:
 		s.finished = 0
 		done = true
@@ -193,8 +193,8 @@ func (s *MoveSelector) NextBatch(recycler *Recycler) bool {
 func (s *MoveSelector) Recycle(recycler *Recycler) {
 	s.recycleList(recycler, s.winning)
 	s.recycleList(recycler, s.losing)
-	s.recycleList(recycler, s.remainingMoves)
-	s.winning, s.losing, s.remainingMoves = nil, nil, nil
+	s.recycleList(recycler, s.remaining_moves)
+	s.winning, s.losing, s.remaining_moves = nil, nil, nil
 }
 
 func (s *QMoveSelector) Next() Move {
@@ -208,25 +208,25 @@ func (s *QMoveSelector) Next() Move {
 		case Q_STAGE_WINNING:
 			m := s.winning[s.index].move
 			s.index++
-			if s.brd.AvoidsCheck(m, s.inCheck) {
+			if s.brd.AvoidsCheck(m, s.in_check) {
 				return m
 			}
 		case Q_STAGE_LOSING:
 			m := s.losing[s.index].move
 			s.index++
-			if s.brd.AvoidsCheck(m, s.inCheck) {
+			if s.brd.AvoidsCheck(m, s.in_check) {
 				return m
 			}
 		case Q_STAGE_REMAINING:
-			m := s.remainingMoves[s.index].move
+			m := s.remaining_moves[s.index].move
 			s.index++
-			if s.brd.AvoidsCheck(m, s.inCheck) {
+			if s.brd.AvoidsCheck(m, s.in_check) {
 				return m
 			}
 		case Q_STAGE_CHECKS:
 			m := s.checks[s.index].move
 			s.index++
-			if s.brd.AvoidsCheck(m, s.inCheck) {
+			if s.brd.AvoidsCheck(m, s.in_check) {
 				return m
 			}
 		default:
@@ -239,14 +239,14 @@ func (s *QMoveSelector) NextBatch() bool {
 	s.index = 0
 	switch s.stage {
 	case Q_STAGE_WINNING:
-		if s.inCheck {
+		if s.in_check {
 			s.winning = s.recycler.AttemptReuse()
 			s.losing = s.recycler.AttemptReuse()
-			s.remainingMoves = s.recycler.AttemptReuse()
-			getEvasions(s.brd, s.htable, &s.winning, &s.losing, &s.remainingMoves)
+			s.remaining_moves = s.recycler.AttemptReuse()
+			get_evasions(s.brd, s.htable, &s.winning, &s.losing, &s.remaining_moves)
 		} else {
 			s.winning = s.recycler.AttemptReuse()
-			getWinningCaptures(s.brd, s.htable, &s.winning)
+			get_winning_captures(s.brd, s.htable, &s.winning)
 		}
 		s.winning.Sort()
 		s.finished = len(s.winning)
@@ -254,12 +254,12 @@ func (s *QMoveSelector) NextBatch() bool {
 		s.losing.Sort()
 		s.finished = len(s.losing)
 	case Q_STAGE_REMAINING:
-		s.remainingMoves.Sort()
-		s.finished = len(s.remainingMoves)
+		s.remaining_moves.Sort()
+		s.finished = len(s.remaining_moves)
 	case Q_STAGE_CHECKS:
-		if !s.inCheck && s.canCheck {
+		if !s.in_check && s.can_check {
 			s.checks = s.recycler.AttemptReuse()
-			getChecks(s.brd, s.htable, &s.checks)
+			get_checks(s.brd, s.htable, &s.checks)
 			s.checks.Sort()
 		}
 		s.finished = len(s.checks)
@@ -273,7 +273,7 @@ func (s *QMoveSelector) NextBatch() bool {
 func (s *QMoveSelector) Recycle() {
 	s.recycleList(s.recycler, s.winning)
 	s.recycleList(s.recycler, s.losing)
-	s.recycleList(s.recycler, s.remainingMoves)
+	s.recycleList(s.recycler, s.remaining_moves)
 	s.recycleList(s.recycler, s.checks)
-	s.winning, s.losing, s.remainingMoves, s.checks = nil, nil, nil, nil
+	s.winning, s.losing, s.remaining_moves, s.checks = nil, nil, nil, nil
 }
