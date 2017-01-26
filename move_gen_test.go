@@ -8,28 +8,27 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"testing"
 	// "testing"
 	"time"
 )
 
-// var legal_max_tree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860, 84998978956, 2439530234167}
-var legal_max_tree = [10]int{1, 24, 496, 9483, 182838, 3605103, 71179139}
+var legal_max_tree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860, 84998978956, 2439530234167}
 
-// func TestLegalMoveGen(t *testing.T) {
-// 	setup()
-// 	depth := 5
-// 	legal_movegen(Perft, StartPos(), depth, legal_max_tree[depth], true)
-// }
+// var legal_max_tree = [10]int{1, 24, 496, 9483, 182838, 3605103, 71179139}
+
+func TestLegalMoveGen(t *testing.T) {
+	depth := 5
+	legal_movegen(Perft, StartPos(), depth, legal_max_tree[depth], true)
+}
 
 // func TestMoveValidation(t *testing.T) {
-// 	setup()
 // 	depth := 5
 // 	legal_movegen(PerftValidation, StartPos(), depth, legal_max_tree[depth], true)
 // }
 //
 
 // func TestPerftSuite(t *testing.T) {
-// 	setup()
 // 	depth := 4
 // 	test_positions := load_epd_file("test_suites/perftsuite.epd")  // http://www.rocechess.ch/perft.html
 // 	for i, epd := range test_positions {
