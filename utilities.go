@@ -10,9 +10,9 @@ import (
 	"time"
 )
 
-func RunTestSuite(test_suite string, depth, timeout int) {
-	test := load_epd_file(test_suite)
-	var move_str string
+func RunTestSuite(testSuite string, depth, timeout int) {
+	test := loadEpdFile(testSuite)
+	var moveStr string
 	sum, score := 0, 0
 	var gt *GameTimer
 	var search *Search
@@ -24,8 +24,8 @@ func RunTestSuite(test_suite string, depth, timeout int) {
 		search = NewSearch(SearchParams{depth, false, false, false}, gt, nil, nil)
 		search.Start(epd.brd)
 
-		move_str = ToSAN(epd.brd, search.best_move)
-		if correct_move(epd, move_str) {
+		moveStr = ToSAN(epd.brd, search.bestMove)
+		if correctMove(epd, moveStr) {
 			score += 1
 			fmt.Printf("-")
 		} else {
@@ -33,9 +33,9 @@ func RunTestSuite(test_suite string, depth, timeout int) {
 		}
 		sum += search.nodes
 	}
-	seconds_elapsed := time.Since(start).Seconds()
-	m_nodes := float64(sum) / 1000000.0
-	fmt.Printf("\n%.4fm nodes searched in %.4fs (%.4fm NPS)\n", m_nodes, seconds_elapsed, m_nodes/seconds_elapsed)
+	secondsElapsed := time.Since(start).Seconds()
+	mNodes := float64(sum) / 1000000.0
+	fmt.Printf("\n%.4fm nodes searched in %.4fs (%.4fm NPS)\n", mNodes, secondsElapsed, mNodes/secondsElapsed)
 
 	fmt.Printf("Total score: %d/%d\n", score, len(test))
 
@@ -46,20 +46,20 @@ func RunTestSuite(test_suite string, depth, timeout int) {
 	// 	fmt.Printf("%d ABF: %.4f\n", d, branching)
 	// }
 
-	fmt.Printf("Overhead: %.4fm\n", float64(load_balancer.Overhead())/1000000.0)
+	fmt.Printf("Overhead: %.4fm\n", float64(loadBalancer.Overhead())/1000000.0)
 	fmt.Printf("Timeout: %.1fs\n", float64(timeout)/1000.0)
 	// fmt.Printf("PV Accuracy: %d/%d (%.2f)\n\n", pv_accuracy[1], pv_accuracy[0]+pv_accuracy[1],
 	// 	float64(pv_accuracy[1])/float64(pv_accuracy[0]+pv_accuracy[1]))
 }
 
-func correct_move(epd *EPD, move_str string) bool {
-	for _, a := range epd.avoid_moves {
-		if move_str == a {
+func correctMove(epd *EPD, moveStr string) bool {
+	for _, a := range epd.avoidMoves {
+		if moveStr == a {
 			return false
 		}
 	}
-	for _, b := range epd.best_moves {
-		if move_str == b {
+	for _, b := range epd.bestMoves {
+		if moveStr == b {
 			return true
 		}
 	}

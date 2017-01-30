@@ -18,9 +18,9 @@ import (
 
 type EPD struct {
 	brd         *Board
-	best_moves  []string
-	avoid_moves []string
-	node_count  map[int]int
+	bestMoves  []string
+	avoidMoves []string
+	nodeCount  map[int]int
 	id          string
 }
 
@@ -33,75 +33,75 @@ func (epd *EPD) Print() {
 	// fmt.Println(epd.avoid_moves)
 }
 
-func load_epd_file(dir string) []*EPD {
-	epd_file, err := os.Open(dir)
+func loadEpdFile(dir string) []*EPD {
+	epdFile, err := os.Open(dir)
 	if err != nil {
 		panic(err)
 	}
-	var test_positions []*EPD
-	scanner := bufio.NewScanner(epd_file)
+	var testPositions []*EPD
+	scanner := bufio.NewScanner(epdFile)
 	for scanner.Scan() {
 		epd := ParseEPDString(scanner.Text())
-		test_positions = append(test_positions, epd)
+		testPositions = append(testPositions, epd)
 	}
-	return test_positions
+	return testPositions
 }
 
 // 2k4B/bpp1qp2/p1b5/7p/1PN1n1p1/2Pr4/P5PP/R3QR1K b - - bm Ng3+ g3; id "WAC.273";
 func ParseEPDString(str string) *EPD {
 	epd := &EPD{
-		node_count: make(map[int]int),
+		nodeCount: make(map[int]int),
 	}
-	epd_fields := strings.Split(str, ";")
-	fen_fields := strings.Split(epd_fields[0], " ")
+	epdFields := strings.Split(str, ";")
+	fenFields := strings.Split(epdFields[0], " ")
 
-	epd.brd = ParseFENSlice(fen_fields[:4])
+	epd.brd = ParseFENSlice(fenFields[:4])
 
 	bm := regexp.MustCompile("bm")
 	am := regexp.MustCompile("am")
 	id := regexp.MustCompile("id")
 	depth := regexp.MustCompile("D[1-9][0-9]?")
 	var loc []int
-	var sub_fields []string
-	var d, node_count int64
-	for _, field := range epd_fields {
+	var subFields []string
+	var d, nodeCount int64
+	for _, field := range epdFields {
 		loc = bm.FindStringIndex(field)
 		if loc != nil {
 			field = field[loc[1]:]
-			sub_fields = strings.Split(field, " ")
-			for _, move_field := range sub_fields {
-				epd.best_moves = append(epd.best_moves, move_field)
+			subFields = strings.Split(field, " ")
+			for _, moveField := range subFields {
+				epd.bestMoves = append(epd.bestMoves, moveField)
 			}
 			continue
 		}
 		loc = am.FindStringIndex(field)
 		if loc != nil {
 			field = field[:loc[1]+1]
-			sub_fields = strings.Split(field, " ")
-			for _, move_field := range sub_fields {
-				epd.avoid_moves = append(epd.avoid_moves, move_field)
+			subFields = strings.Split(field, " ")
+			for _, moveField := range subFields {
+				epd.avoidMoves = append(epd.avoidMoves, moveField)
 			}
 			continue
 		}
 		loc = id.FindStringIndex(field)
 		if loc != nil {
-			sub_fields = strings.Split(field, " ")
-			epd.id = strings.Join(sub_fields[2:], "")
+			subFields = strings.Split(field, " ")
+			epd.id = strings.Join(subFields[2:], "")
 		}
 
 		loc = depth.FindStringIndex(field)
 		if loc != nil { // map each depth to expected node count
 			// fmt.Println(field)
-			sub_fields = strings.Split(field, " ")
-			d, _ = strconv.ParseInt(sub_fields[0][1:], 10, 64)
-			node_count, _ = strconv.ParseInt(sub_fields[1], 10, 64)
-			epd.node_count[int(d)] = int(node_count)
+			subFields = strings.Split(field, " ")
+			d, _ = strconv.ParseInt(subFields[0][1:], 10, 64)
+			nodeCount, _ = strconv.ParseInt(subFields[1], 10, 64)
+			epd.nodeCount[int(d)] = int(nodeCount)
 		}
 	}
 	return epd
 }
 
-var san_chars = [6]string{"P", "N", "B", "R", "Q", "K"}
+var sanChars = [6]string{"P", "N", "B", "R", "Q", "K"}
 
 func ToSAN(brd *Board, m Move) string { // convert move to Standard Algebraic Notation (SAN)
 	piece, from, to := m.Piece(), m.From(), m.To()
@@ -124,24 +124,24 @@ func ToSAN(brd *Board, m Move) string { // convert move to Standard Algebraic No
 	}
 
 	// disambiguate moving piece
-	if pop_count(brd.pieces[brd.c][piece]) > 1 {
+	if popCount(brd.pieces[brd.c][piece]) > 1 {
 		occ := brd.AllOccupied()
 		c := brd.c
 		var t BB
 		switch piece {
 		case KNIGHT:
-			t = knight_masks[to] & brd.pieces[c][piece]
+			t = knightMasks[to] & brd.pieces[c][piece]
 		case BISHOP:
-			t = bishop_attacks(occ, to) & brd.pieces[c][piece]
+			t = bishopAttacks(occ, to) & brd.pieces[c][piece]
 		case ROOK:
-			t = rook_attacks(occ, to) & brd.pieces[c][piece]
+			t = rookAttacks(occ, to) & brd.pieces[c][piece]
 		case QUEEN:
-			t = queen_attacks(occ, to) & brd.pieces[c][piece]
+			t = queenAttacks(occ, to) & brd.pieces[c][piece]
 		}
-		if pop_count(t) > 1 {
-			if pop_count(column_masks[column(from)]&t) == 1 {
-				san = column_names[column(from)] + san
-			} else if pop_count(row_masks[row(from)]&t) == 1 {
+		if popCount(t) > 1 {
+			if popCount(columnMasks[column(from)]&t) == 1 {
+				san = columnNames[column(from)] + san
+			} else if popCount(rowMasks[row(from)]&t) == 1 {
 				san = strconv.Itoa(row(from)+1) + san
 			} else {
 				san = SquareString(from) + san
@@ -152,24 +152,24 @@ func ToSAN(brd *Board, m Move) string { // convert move to Standard Algebraic No
 	if GivesCheck(brd, m) {
 		san += "+"
 	}
-	san = san_chars[piece] + san
+	san = sanChars[piece] + san
 	return san
 }
 
 func PawnSAN(brd *Board, m Move, san string) string {
 	if m.IsPromotion() {
-		san += san_chars[m.PromotedTo()]
+		san += sanChars[m.PromotedTo()]
 	}
 	if m.IsCapture() {
 		from, to := m.From(), m.To()
 		san = "x" + san
 		// disambiguate capturing pawn
 		if brd.TypeAt(to) == EMPTY { // en passant
-			san = column_names[column(from)] + san
+			san = columnNames[column(from)] + san
 		} else {
-			t := pawn_attack_masks[brd.Enemy()][to] & brd.pieces[brd.c][PAWN]
-			if pop_count(t) > 1 {
-				san = column_names[column(from)] + san
+			t := pawnAttackMasks[brd.Enemy()][to] & brd.pieces[brd.c][PAWN]
+			if popCount(t) > 1 {
+				san = columnNames[column(from)] + san
 			}
 		}
 	}
@@ -181,48 +181,48 @@ func PawnSAN(brd *Board, m Move, san string) string {
 
 func GivesCheck(brd *Board, m Move) bool {
 	memento := brd.NewMemento()
-	make_move(brd, m)
-	in_check := brd.InCheck()
-	unmake_move(brd, m, memento)
-	return in_check
+	makeMove(brd, m)
+	inCheck := brd.InCheck()
+	unmakeMove(brd, m, memento)
+	return inCheck
 }
 
-func ParseFENSlice(fen_fields []string) *Board {
+func ParseFENSlice(fenFields []string) *Board {
 	brd := EmptyBoard()
 
-	ParsePlacement(brd, fen_fields[0])
-	brd.c = ParseSide(fen_fields[1])
-	brd.castle = ParseCastleRights(brd, fen_fields[2])
-	brd.hash_key ^= castle_zobrist(brd.castle)
-	if len(fen_fields) > 3 {
-		brd.enp_target = ParseEnpTarget(fen_fields[3])
-		if len(fen_fields) > 4 {
-			brd.halfmove_clock = ParseHalfmoveClock(fen_fields[4])
+	ParsePlacement(brd, fenFields[0])
+	brd.c = ParseSide(fenFields[1])
+	brd.castle = ParseCastleRights(brd, fenFields[2])
+	brd.hashKey ^= castleZobrist(brd.castle)
+	if len(fenFields) > 3 {
+		brd.enpTarget = ParseEnpTarget(fenFields[3])
+		if len(fenFields) > 4 {
+			brd.halfmoveClock = ParseHalfmoveClock(fenFields[4])
 		}
 	}
-	brd.hash_key ^= enp_zobrist(brd.enp_target)
+	brd.hashKey ^= enpZobrist(brd.enpTarget)
 	return brd
 }
 
 func ParseFENString(str string) *Board {
 	brd := EmptyBoard()
-	fen_fields := strings.Split(str, " ")
+	fenFields := strings.Split(str, " ")
 
-	ParsePlacement(brd, fen_fields[0])
-	brd.c = ParseSide(fen_fields[1])
-	brd.castle = ParseCastleRights(brd, fen_fields[2])
-	brd.hash_key ^= castle_zobrist(brd.castle)
+	ParsePlacement(brd, fenFields[0])
+	brd.c = ParseSide(fenFields[1])
+	brd.castle = ParseCastleRights(brd, fenFields[2])
+	brd.hashKey ^= castleZobrist(brd.castle)
 
-	brd.enp_target = ParseEnpTarget(fen_fields[3])
-	brd.hash_key ^= enp_zobrist(brd.enp_target)
+	brd.enpTarget = ParseEnpTarget(fenFields[3])
+	brd.hashKey ^= enpZobrist(brd.enpTarget)
 
-	if len(fen_fields) > 4 {
-		brd.halfmove_clock = ParseHalfmoveClock(fen_fields[4])
+	if len(fenFields) > 4 {
+		brd.halfmoveClock = ParseHalfmoveClock(fenFields[4])
 	}
 	return brd
 }
 
-var fen_piece_chars = map[string]int{
+var fenPieceChars = map[string]int{
 	"p": 0,
 	"n": 1,
 	"b": 2,
@@ -238,23 +238,23 @@ var fen_piece_chars = map[string]int{
 }
 
 func ParsePlacement(brd *Board, str string) {
-	var row_str string
-	row_fields := strings.Split(str, "/")
+	var rowStr string
+	rowFields := strings.Split(str, "/")
 	sq := 0
-	match_digit, _ := regexp.Compile("\\d")
-	for row := len(row_fields) - 1; row >= 0; row-- {
-		row_str = row_fields[row]
-		for _, r := range row_str {
+	matchDigit, _ := regexp.Compile("\\d")
+	for row := len(rowFields) - 1; row >= 0; row-- {
+		rowStr = rowFields[row]
+		for _, r := range rowStr {
 			chr := string(r)
-			if match_digit.MatchString(chr) {
+			if matchDigit.MatchString(chr) {
 				digit, _ := strconv.ParseInt(chr, 10, 5)
 				sq += int(digit)
 			} else {
-				c := uint8(fen_piece_chars[chr] >> 3)
-				piece_type := Piece(fen_piece_chars[chr] & 7)
-				add_piece(brd, piece_type, sq, c) // place the piece on the board.
-				if piece_type == PAWN {
-					brd.pawn_hash_key ^= pawn_zobrist(sq, c)
+				c := uint8(fenPieceChars[chr] >> 3)
+				pieceType := Piece(fenPieceChars[chr] & 7)
+				addPiece(brd, pieceType, sq, c) // place the piece on the board.
+				if pieceType == PAWN {
+					brd.pawnHashKey ^= pawnZobrist(sq, c)
 				}
 				sq += 1
 			}
@@ -305,12 +305,12 @@ func ParseEnpTarget(str string) uint8 {
 }
 
 func ParseHalfmoveClock(str string) uint8 {
-	non_numeric, _ := regexp.MatchString("\\D", str)
-	if non_numeric {
+	nonNumeric, _ := regexp.MatchString("\\D", str)
+	if nonNumeric {
 		return 0
 	} else {
-		halmove_clock, _ := strconv.ParseInt(str, 10, 8)
-		return uint8(halmove_clock)
+		halmoveClock, _ := strconv.ParseInt(str, 10, 8)
+		return uint8(halmoveClock)
 	}
 }
 
@@ -323,24 +323,24 @@ func ParseMove(brd *Board, str string) Move {
 	from := ParseSquare(string(str[:2]))
 	to := ParseSquare(string(str[2:4]))
 	piece := brd.TypeAt(from)
-	captured_piece := brd.TypeAt(to)
-	if piece == PAWN && captured_piece == EMPTY { // check for en-passant capture
+	capturedPiece := brd.TypeAt(to)
+	if piece == PAWN && capturedPiece == EMPTY { // check for en-passant capture
 		if abs(to-from) == 9 || abs(to-from) == 7 {
-			captured_piece = PAWN // en-passant capture detected.
+			capturedPiece = PAWN // en-passant capture detected.
 		}
 	}
-	var promoted_to Piece
+	var promotedTo Piece
 	if len(str) == 5 { // check for promotion.
-		promoted_to = Piece(fen_piece_chars[string(str[4])]) // will always be lowercase.
+		promotedTo = Piece(fenPieceChars[string(str[4])]) // will always be lowercase.
 	} else {
-		promoted_to = Piece(EMPTY)
+		promotedTo = Piece(EMPTY)
 	}
-	return NewMove(from, to, piece, captured_piece, promoted_to)
+	return NewMove(from, to, piece, capturedPiece, promotedTo)
 }
 
 // A1 through H8.  test with Regexp.
 
-var column_chars = map[string]int{
+var columnChars = map[string]int{
 	"a": 0,
 	"b": 1,
 	"c": 2,
@@ -351,7 +351,7 @@ var column_chars = map[string]int{
 	"h": 7,
 }
 
-var column_names = [8]string{"a", "b", "c", "d", "e", "f", "g", "h"}
+var columnNames = [8]string{"a", "b", "c", "d", "e", "f", "g", "h"}
 
 // create regular expression to match valid move string.
 func IsMove(str string) bool {
@@ -362,7 +362,7 @@ func IsMove(str string) bool {
 func Square(row, column int) int { return (row << 3) + column }
 
 func ParseSquare(str string) int {
-	column := column_chars[string(str[0])]
+	column := columnChars[string(str[0])]
 	row, _ := strconv.ParseInt(string(str[1]), 10, 5)
 	return Square(int(row-1), column)
 }
@@ -372,5 +372,5 @@ func SquareString(sq int) string {
 }
 
 func ParseCoordinates(row, col int) string {
-	return column_names[col] + strconv.FormatInt(int64(row+1), 10)
+	return columnNames[col] + strconv.FormatInt(int64(row+1), 10)
 }

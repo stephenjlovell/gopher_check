@@ -21,7 +21,7 @@ Performance:
   Timeout: 1.5s
 
 8/21/16, 2.9 GHz Core i5 (2x physical cores, 4 hyper-threads)
-Upgraded to Go 7.1
+Upgraded to Go 1.7
   779.9704m nodes searched in 410.1461s (1.9017m NPS)
   Total score: 290/300
   Overhead: 45.4335m

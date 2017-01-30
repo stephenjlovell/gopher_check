@@ -19,42 +19,42 @@ func (pv *PV) ToUCI() string {
 		return ""
 	}
 	str := pv.m.ToUCI()
-	for curr_pv := pv.next; curr_pv != nil; curr_pv = curr_pv.next {
-		if !curr_pv.m.IsMove() {
+	for currPv := pv.next; currPv != nil; currPv = currPv.next {
+		if !currPv.m.IsMove() {
 			break
 		}
-		str += " " + curr_pv.m.ToUCI()
+		str += " " + currPv.m.ToUCI()
 	}
 	return str
 }
 
-var pv_accuracy [2]int
+var pvAccuracy [2]int
 
 func (pv *PV) SavePV(brd *Board, value, depth int) {
-	var last_value int
+	var lastValue int
 	var m Move
-	var in_check bool
+	var inCheck bool
 
 	copy := brd.Copy() // create a local copy of the board to avoid having to unmake moves.
 	for pv != nil {
 		m = pv.m
-		in_check = copy.InCheck()
+		inCheck = copy.InCheck()
 
-		if !copy.ValidMove(m, in_check) || !copy.LegalMove(m, in_check) {
+		if !copy.ValidMove(m, inCheck) || !copy.LegalMove(m, inCheck) {
 			break
 		}
 
-		last_value = pv.value
-		main_tt.store(copy, m, pv.depth, EXACT, pv.value)
+		lastValue = pv.value
+		mainTt.store(copy, m, pv.depth, EXACT, pv.value)
 
-		make_move(copy, m)
+		makeMove(copy, m)
 		pv = pv.next
 	}
 
-	if abs(value) == abs(last_value) {
-		pv_accuracy[1] += 1
+	if abs(value) == abs(lastValue) {
+		pvAccuracy[1] += 1
 	} else {
-		pv_accuracy[0] += 1
+		pvAccuracy[0] += 1
 	}
 
 }

@@ -10,7 +10,7 @@ import (
 )
 
 func TestEPDParsing(t *testing.T) {
-	test := load_epd_file("test_suites/wac_300.epd")
+	test := loadEpdFile("test_suites/wac_300.epd")
 
 	for _, epd := range test {
 		epd.Print()

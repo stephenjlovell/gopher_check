@@ -45,29 +45,29 @@ const (
 // 	}
 // }
 
-func sort_promotion_advances(brd *Board, from, to int, promoted_to Piece) uint64 {
-	if is_attacked_by(brd, brd.AllOccupied()&sq_mask_off[from],
+func sortPromotionAdvances(brd *Board, from, to int, promotedTo Piece) uint64 {
+	if isAttackedBy(brd, brd.AllOccupied()&sqMaskOff[from],
 		to, brd.Enemy(), brd.c) { // defended
-		see := get_see(brd, from, to, EMPTY)
+		see := getSee(brd, from, to, EMPTY)
 		if see >= 0 {
 			return SORT_WINNING_PROMOTION | uint64(see)
 		} else {
 			return uint64(SORT_LOSING_PROMOTION + see)
 		}
 	} else { // undefended
-		return SORT_WINNING_PROMOTION | uint64(promoted_to.PromoteValue())
+		return SORT_WINNING_PROMOTION | uint64(promotedTo.PromoteValue())
 	}
 }
 
-func sort_promotion_captures(brd *Board, from, to int, captured_piece, promoted_to Piece) uint64 {
-	if is_attacked_by(brd, brd.AllOccupied()&sq_mask_off[from], to, brd.Enemy(), brd.c) { // defended
-		return uint64(SORT_WINNING_PROMOTION + get_see(brd, from, to, captured_piece))
+func sortPromotionCaptures(brd *Board, from, to int, capturedPiece, promotedTo Piece) uint64 {
+	if isAttackedBy(brd, brd.AllOccupied()&sqMaskOff[from], to, brd.Enemy(), brd.c) { // defended
+		return uint64(SORT_WINNING_PROMOTION + getSee(brd, from, to, capturedPiece))
 	} else { // undefended
-		return SORT_WINNING_PROMOTION | uint64(promoted_to.PromoteValue()+captured_piece.Value())
+		return SORT_WINNING_PROMOTION | uint64(promotedTo.PromoteValue()+capturedPiece.Value())
 	}
 }
 
-func mvv_lva(victim, attacker Piece) uint64 { // returns value between 0 and 64
+func mvvLva(victim, attacker Piece) uint64 { // returns value between 0 and 64
 	return uint64(((victim+1)<<3)-attacker) << 22
 }
 

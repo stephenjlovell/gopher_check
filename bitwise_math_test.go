@@ -10,7 +10,7 @@ import (
 )
 
 var result int // hacks to make sure compiler doesn't eliminate func under test.
-var bb_result BB
+var bbResult BB
 
 //
 // func BenchmarkScanDown(b *testing.B) {
@@ -50,13 +50,13 @@ var bb_result BB
 
 func BenchmarkPopCount(b *testing.B) {
 	var bb BB
-	test := load_epd_file("test_suites/wac_300.epd")
+	test := loadEpdFile("test_suites/wac_300.epd")
 	b.ResetTimer()
 
 	for _, epd := range test {
 		bb = epd.brd.occupied[WHITE]
 		for i := 0; i < b.N; i++ {
-			result = pop_count(bb)
+			result = popCount(bb)
 		}
 	}
 
@@ -64,7 +64,7 @@ func BenchmarkPopCount(b *testing.B) {
 
 func BenchmarkLSB(b *testing.B) {
 	var bb BB
-	test := load_epd_file("test_suites/wac_300.epd")
+	test := loadEpdFile("test_suites/wac_300.epd")
 	b.ResetTimer()
 
 	for _, epd := range test {

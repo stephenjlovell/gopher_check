@@ -30,14 +30,14 @@ const (
 	UPPER_BOUND
 )
 
-var main_tt TT
+var mainTt TT
 
-func reset_main_tt() {
+func resetMainTt() {
 	for i := 0; i < SLOT_COUNT; i++ {
 		for j := 0; j < 4; j++ {
 			// main_tt[i][j].key = uint64(0)
 			// main_tt[i][j].data = uint64(NewData(NO_MOVE, 0, EXACT, NO_SCORE, 511))
-			main_tt[i][j].Store(NewData(NO_MOVE, 0, EXACT, NO_SCORE, 511), uint64(0))
+			mainTt[i][j].Store(NewData(NO_MOVE, 0, EXACT, NO_SCORE, 511), uint64(0))
 		}
 	}
 }
@@ -56,14 +56,14 @@ type Bucket struct {
 	data uint64
 }
 
-func NewData(move Move, depth, entry_type, value, id int) BucketData {
-	return BucketData(depth) | (BucketData(move) << 5) | (BucketData(entry_type) << 26) |
+func NewData(move Move, depth, entryType, value, id int) BucketData {
+	return BucketData(depth) | (BucketData(move) << 5) | (BucketData(entryType) << 26) |
 		(BucketData(value+INF) << 28) | (BucketData(id) << 45)
 }
 
-func (b *Bucket) Store(new_data BucketData, hash_key uint64) {
-	atomic.StoreUint64(&b.data, uint64(new_data))
-	atomic.StoreUint64(&b.key, uint64(new_data)^hash_key)
+func (b *Bucket) Store(newData BucketData, hashKey uint64) {
+	atomic.StoreUint64(&b.data, uint64(newData))
+	atomic.StoreUint64(&b.key, uint64(newData)^hashKey)
 	// b.data = uint64(new_data)
 	// b.key = (uint64(new_data) ^ hash_key)
 }
@@ -95,52 +95,52 @@ func (data BucketData) NewID(id int) BucketData {
 	return (data & BucketData(35184372088831)) | (BucketData(id) << 45)
 }
 
-func (tt *TT) get_slot(hash_key uint64) *Slot {
-	return &tt[hash_key&TT_MASK]
+func (tt *TT) getSlot(hashKey uint64) *Slot {
+	return &tt[hashKey&TT_MASK]
 }
 
 // Use Hyatt's lockless hashing approach to avoid having to lock/unlock shared TT memory
 // during parallel search:  https://cis.uab.edu/hyatt/hashing.html
-func (tt *TT) probe(brd *Board, depth, null_depth, alpha, beta int, score *int) (Move, int) {
+func (tt *TT) probe(brd *Board, depth, nullDepth, alpha, beta int, score *int) (Move, int) {
 
 	// return NO_MOVE, NO_MATCH  // uncomment to disable transposition table
 
 	var data, key BucketData
-	hash_key := brd.hash_key
-	slot := tt.get_slot(hash_key)
+	hashKey := brd.hashKey
+	slot := tt.getSlot(hashKey)
 
 	for i := 0; i < 4; i++ {
 		data, key = slot[i].Load()
 
 		// XOR out data to return the original hash key.  If data has been modified by another goroutine
 		// due to a data race, the key returned will no longer match and probe() will reject the entry.
-		if hash_key == uint64(data^key) { // look for an entry uncorrupted by lockless access.
+		if hashKey == uint64(data^key) { // look for an entry uncorrupted by lockless access.
 
-			slot[i].Store(data.NewID(search_id), hash_key) // update age (search id) of entry.
+			slot[i].Store(data.NewID(searchId), hashKey) // update age (search id) of entry.
 
-			entry_value := data.Value()
-			*score = entry_value // set the current search score
+			entryValue := data.Value()
+			*score = entryValue // set the current search score
 
-			entry_depth := data.Depth()
-			if entry_depth >= depth {
+			entryDepth := data.Depth()
+			if entryDepth >= depth {
 				switch data.Type() {
 				case LOWER_BOUND: // failed high last time (at CUT node)
-					if entry_value >= beta {
+					if entryValue >= beta {
 						return data.Move(), (CUTOFF_FOUND | BETA_FOUND)
 					}
 					return data.Move(), BETA_FOUND
 				case UPPER_BOUND: // failed low last time. (at ALL node)
-					if entry_value <= alpha {
+					if entryValue <= alpha {
 						return data.Move(), (CUTOFF_FOUND | ALPHA_FOUND)
 					}
 					return data.Move(), ALPHA_FOUND
 				case EXACT: // score was inside bounds.  (at PV node)
-					if entry_value > alpha && entry_value < beta {
+					if entryValue > alpha && entryValue < beta {
 						return data.Move(), (CUTOFF_FOUND | EXACT_FOUND)
 					}
 					return data.Move(), EXACT_FOUND
 				}
-			} else if entry_depth >= null_depth {
+			} else if entryDepth >= nullDepth {
 				// if the entry is too shallow for an immediate cutoff but at least as deep as a potential
 				// null-move search, check if a null move search would have any chance of causing a beta cutoff.
 				if data.Type() == UPPER_BOUND && data.Value() < beta {
@@ -154,40 +154,40 @@ func (tt *TT) probe(brd *Board, depth, null_depth, alpha, beta int, score *int) 
 }
 
 // use lockless storing to avoid concurrent write issues without incurring locking overhead.
-func (tt *TT) store(brd *Board, move Move, depth, entry_type, value int) {
-	hash_key := brd.hash_key
-	slot := tt.get_slot(hash_key)
+func (tt *TT) store(brd *Board, move Move, depth, entryType, value int) {
+	hashKey := brd.hashKey
+	slot := tt.getSlot(hashKey)
 	var key BucketData
 	var data [4]BucketData
 
-	new_data := NewData(move, depth, entry_type, value, search_id)
+	newData := NewData(move, depth, entryType, value, searchId)
 
 	for i := 0; i < 4; i++ {
 		data[i], key = slot[i].Load()
-		if hash_key == uint64(data[i]^key) {
-			slot[i].Store(new_data, hash_key) // exact match found.  Always replace.
+		if hashKey == uint64(data[i]^key) {
+			slot[i].Store(newData, hashKey) // exact match found.  Always replace.
 			return
 		}
 	}
 	// If entries from a previous search exist, find/replace shallowest old entry.
-	replace_index, replace_depth := 4, 32
+	replaceIndex, replaceDepth := 4, 32
 	for i := 0; i < 4; i++ {
-		if search_id != data[i].Id() { // entry is not from the current search.
-			if data[i].Depth() < replace_depth {
-				replace_index, replace_depth = i, data[i].Depth()
+		if searchId != data[i].Id() { // entry is not from the current search.
+			if data[i].Depth() < replaceDepth {
+				replaceIndex, replaceDepth = i, data[i].Depth()
 			}
 		}
 	}
-	if replace_index != 4 {
-		slot[replace_index].Store(new_data, hash_key)
+	if replaceIndex != 4 {
+		slot[replaceIndex].Store(newData, hashKey)
 		return
 	}
 	// No exact match or entry from previous search found. Replace the shallowest entry.
-	replace_index, replace_depth = 4, 32
+	replaceIndex, replaceDepth = 4, 32
 	for i := 0; i < 4; i++ {
-		if data[i].Depth() < replace_depth {
-			replace_index, replace_depth = i, data[i].Depth()
+		if data[i].Depth() < replaceDepth {
+			replaceIndex, replaceDepth = i, data[i].Depth()
 		}
 	}
-	slot[replace_index].Store(new_data, hash_key)
+	slot[replaceIndex].Store(newData, hashKey)
 }

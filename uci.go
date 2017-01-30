@@ -36,10 +36,10 @@ type UCIAdapter struct {
 	wg     *sync.WaitGroup
 	result chan SearchResult
 
-	move_counter int
+	moveCounter int
 
-	option_ponder bool
-	option_debug  bool
+	optionPonder bool
+	optionDebug  bool
 }
 
 func NewUCIAdapter() *UCIAdapter {
@@ -55,8 +55,8 @@ func (uci *UCIAdapter) Send(s string) { // log the UCI command s and print to st
 }
 
 func (uci *UCIAdapter) BestMove(result SearchResult) {
-	uci.Send(fmt.Sprintf("bestmove %s ponder %s\n", result.best_move.ToUCI(),
-		result.ponder_move.ToUCI()))
+	uci.Send(fmt.Sprintf("bestmove %s ponder %s\n", result.bestMove.ToUCI(),
+		result.ponderMove.ToUCI()))
 }
 
 // Printed to standard output at end of each non-trivial iterative deepening pass.
@@ -74,7 +74,7 @@ func (uci *UCIAdapter) InfoString(s string) {
 
 func (uci *UCIAdapter) Read(reader *bufio.Reader) {
 	var input string
-	var uci_fields []string
+	var uciFields []string
 
 	f, err := os.OpenFile("log.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -88,10 +88,10 @@ func (uci *UCIAdapter) Read(reader *bufio.Reader) {
 	for {
 		input, _ = reader.ReadString('\n')
 		log.Println("gui: " + input)
-		uci_fields = strings.Fields(input)
+		uciFields = strings.Fields(input)
 
-		if len(uci_fields) > 0 {
-			switch uci_fields[0] {
+		if len(uciFields) > 0 {
+			switch uciFields[0] {
 			case "":
 				continue
 				// uci
@@ -111,8 +111,8 @@ func (uci *UCIAdapter) Read(reader *bufio.Reader) {
 				// 	This mode should be switched off by default and this command can be sent
 				// 	any time, also when the engine is thinking.
 			case "debug":
-				if len(uci_fields) > 1 {
-					uci.option_debug = uci.debug(uci_fields[1:])
+				if len(uciFields) > 1 {
+					uci.optionDebug = uci.debug(uciFields[1:])
 				}
 				uci.Send("readyok\n")
 				// * isready
@@ -142,8 +142,8 @@ func (uci *UCIAdapter) Read(reader *bufio.Reader) {
 				// 	   "setoption name Clear Hash\n"
 				// 	   "setoption name NalimovPath value c:\chess\tb\4;c:\chess\tb\5\n"
 			case "setoption": // setoption name option_name
-				if len(uci_fields) > 2 && uci_fields[1] == "name" {
-					uci.setOption(uci_fields[2:])
+				if len(uciFields) > 2 && uciFields[1] == "name" {
+					uci.setOption(uciFields[2:])
 				}
 				uci.Send("readyok\n")
 				// * register
@@ -162,8 +162,8 @@ func (uci *UCIAdapter) Read(reader *bufio.Reader) {
 				// 	   "register name Stefan MK code 4359874324"
 				//
 			case "register":
-				if len(uci_fields) > 1 {
-					uci.register(uci_fields[1:])
+				if len(uciFields) > 1 {
+					uci.register(uciFields[1:])
 				}
 				uci.Send("readyok\n")
 				// * ucinewgame
@@ -176,7 +176,7 @@ func (uci *UCIAdapter) Read(reader *bufio.Reader) {
 				//    As the engine's reaction to "ucinewgame" can take some time the GUI should always send "isready"
 				//    after "ucinewgame" to wait for the engine to finish its operation.
 			case "ucinewgame":
-				reset_main_tt()
+				resetMainTt()
 				uci.brd = StartPos()
 				uci.Send("readyok\n")
 				// * position [fen  | startpos ]  moves  ....
@@ -187,16 +187,16 @@ func (uci *UCIAdapter) Read(reader *bufio.Reader) {
 				// 	the last position sent to the engine, the GUI should have sent a "ucinewgame" inbetween.
 			case "position":
 				uci.wg.Wait()
-				uci.position(uci_fields[1:])
+				uci.position(uciFields[1:])
 				uci.Send("readyok\n")
 				// * go
 				// 	start calculating on the current position set up with the "position" command.
 				// 	There are a number of commands that can follow this command, all will be sent in the same string.
 				// 	If one command is not send its value should be interpreted as it would not influence the search.
 			case "go":
-				ponder = uci.start(uci_fields[1:]) // parse any parameters given by GUI and begin searching.
-				if !uci.option_ponder || !ponder {
-					uci.move_counter++
+				ponder = uci.start(uciFields[1:]) // parse any parameters given by GUI and begin searching.
+				if !uci.optionPonder || !ponder {
+					uci.moveCounter++
 				}
 				// * stop
 				// 	stop calculating as soon as possible,
@@ -216,31 +216,31 @@ func (uci *UCIAdapter) Read(reader *bufio.Reader) {
 					uci.search.gt.Start()
 					uci.BestMove(<-uci.result)
 				}
-				uci.move_counter++
+				uci.moveCounter++
 			case "quit": // quit the program as soon as possible
 				return
 
 			case "print": // Not a UCI command. Used to print the board for debugging from console
 				uci.brd.Print() // while in UCI mode.
 			default:
-				uci.invalid(uci_fields)
+				uci.invalid(uciFields)
 			}
 		}
 	}
 }
 
-func (uci *UCIAdapter) debug(uci_fields []string) bool {
-	switch uci_fields[0] {
+func (uci *UCIAdapter) debug(uciFields []string) bool {
+	switch uciFields[0] {
 	case "on":
 		return true
 	case "off":
 	default:
-		uci.invalid(uci_fields)
+		uci.invalid(uciFields)
 	}
 	return false
 }
 
-func (uci *UCIAdapter) invalid(uci_fields []string) {
+func (uci *UCIAdapter) invalid(uciFields []string) {
 	uci.InfoString("invalid command.\n")
 }
 
@@ -289,24 +289,24 @@ func (uci *UCIAdapter) option() { // option name option_name [ parameters ]
 // Engine: option name Toga King Safety Margin type spin default 1700 min 500 max 3000
 // Engine: option name Toga Extended History Pruning type check default false
 
-func (uci *UCIAdapter) setOption(uci_fields []string) {
-	switch uci_fields[0] {
+func (uci *UCIAdapter) setOption(uciFields []string) {
+	switch uciFields[0] {
 	case "Ponder": // example: setoption name Ponder value true
-		if len(uci_fields) == 3 {
-			switch uci_fields[2] {
+		if len(uciFields) == 3 {
+			switch uciFields[2] {
 			case "true":
-				uci.option_ponder = true
+				uci.optionPonder = true
 			case "false":
-				uci.option_ponder = false
+				uci.optionPonder = false
 			default:
-				uci.invalid(uci_fields)
+				uci.invalid(uciFields)
 			}
 		}
 	default:
 	}
 }
 
-func (uci *UCIAdapter) register(uci_fields []string) {
+func (uci *UCIAdapter) register(uciFields []string) {
 	// The following tokens are allowed:
 	// * later - the user doesn't want to register the engine now.
 	// * name - the engine should be registered with the name
@@ -318,84 +318,84 @@ func (uci *UCIAdapter) register(uci_fields []string) {
 // 	start calculating on the current position set up with the "position" command.
 // 	There are a number of commands that can follow this command, all will be sent in the same string.
 // 	If one command is not send its value should be interpreted as it would not influence the search.
-func (uci *UCIAdapter) start(uci_fields []string) bool {
-	var time_limit int
-	max_depth := MAX_DEPTH
-	gt := NewGameTimer(uci.move_counter, uci.brd.c) // TODO: this will be inaccurate in pondering mode.
+func (uci *UCIAdapter) start(uciFields []string) bool {
+	var timeLimit int
+	maxDepth := MAX_DEPTH
+	gt := NewGameTimer(uci.moveCounter, uci.brd.c) // TODO: this will be inaccurate in pondering mode.
 	ponder := false
-	var allowed_moves []Move
-	for len(uci_fields) > 0 {
+	var allowedMoves []Move
+	for len(uciFields) > 0 {
 		// fmt.Println(uci_fields[0])
-		switch uci_fields[0] {
+		switch uciFields[0] {
 
 		// 	* searchmoves  ....
 		// 		restrict search to this moves only
 		// 		Example: After "position startpos" and "go infinite searchmoves e2e4 d2d4"
 		// 		the engine should only search the two moves e2e4 and d2d4 in the initial position.
 		case "searchmoves":
-			uci_fields = uci_fields[1:]
-			for len(uci_fields) > 0 && IsMove(uci_fields[0]) {
-				allowed_moves = append(allowed_moves, ParseMove(uci.brd, uci_fields[0]))
-				uci_fields = uci_fields[1:]
+			uciFields = uciFields[1:]
+			for len(uciFields) > 0 && IsMove(uciFields[0]) {
+				allowedMoves = append(allowedMoves, ParseMove(uci.brd, uciFields[0]))
+				uciFields = uciFields[1:]
 			}
 
 		// 	* ponder - start searching in pondering mode.
 		case "ponder":
-			if uci.option_ponder {
+			if uci.optionPonder {
 				ponder = true
 			}
-			uci_fields = uci_fields[1:]
+			uciFields = uciFields[1:]
 
 		case "wtime": // white has x msec left on the clock
-			time_limit, _ = strconv.Atoi(uci_fields[1])
-			gt.remaining[WHITE] = time.Duration(time_limit) * time.Millisecond
-			uci_fields = uci_fields[2:]
+			timeLimit, _ = strconv.Atoi(uciFields[1])
+			gt.remaining[WHITE] = time.Duration(timeLimit) * time.Millisecond
+			uciFields = uciFields[2:]
 
 		case "btime": // black has x msec left on the clock
-			time_limit, _ = strconv.Atoi(uci_fields[1])
-			gt.remaining[BLACK] = time.Duration(time_limit) * time.Millisecond
-			uci_fields = uci_fields[2:]
+			timeLimit, _ = strconv.Atoi(uciFields[1])
+			gt.remaining[BLACK] = time.Duration(timeLimit) * time.Millisecond
+			uciFields = uciFields[2:]
 
 		case "winc": //	white increment per move in mseconds if x > 0
-			time_limit, _ = strconv.Atoi(uci_fields[1])
-			gt.inc[WHITE] = time.Duration(time_limit) * time.Millisecond
-			uci_fields = uci_fields[2:]
+			timeLimit, _ = strconv.Atoi(uciFields[1])
+			gt.inc[WHITE] = time.Duration(timeLimit) * time.Millisecond
+			uciFields = uciFields[2:]
 
 		case "binc": //	black increment per move in mseconds if x > 0
-			time_limit, _ = strconv.Atoi(uci_fields[1])
-			gt.inc[BLACK] = time.Duration(time_limit) * time.Millisecond
-			uci_fields = uci_fields[2:]
+			timeLimit, _ = strconv.Atoi(uciFields[1])
+			gt.inc[BLACK] = time.Duration(timeLimit) * time.Millisecond
+			uciFields = uciFields[2:]
 
 		// 	* movestogo: there are x moves to the next time control, this will only be sent if x > 0,
 		// 		if you don't get this and get the wtime and btime it's sudden death
 		case "movestogo":
-			remaining, _ := strconv.Atoi(uci_fields[1])
-			gt.moves_remaining = remaining
-			uci_fields = uci_fields[2:]
+			remaining, _ := strconv.Atoi(uciFields[1])
+			gt.movesRemaining = remaining
+			uciFields = uciFields[2:]
 
 		case "depth": // search x plies only
-			max_depth, _ = strconv.Atoi(uci_fields[1])
-			uci_fields = uci_fields[2:]
+			maxDepth, _ = strconv.Atoi(uciFields[1])
+			uciFields = uciFields[2:]
 
 		case "nodes": // search x nodes only
-			uci.invalid(uci_fields)
-			uci_fields = uci_fields[2:]
+			uci.invalid(uciFields)
+			uciFields = uciFields[2:]
 
 		case "mate": // search for a mate in x moves
-			uci.invalid(uci_fields)
-			uci_fields = uci_fields[2:]
+			uci.invalid(uciFields)
+			uciFields = uciFields[2:]
 
 		case "movetime": // search exactly x mseconds
-			time_limit, _ = strconv.Atoi(uci_fields[1])
-			gt.SetMoveTime(time.Duration(time_limit) * time.Millisecond)
-			uci_fields = uci_fields[2:]
+			timeLimit, _ = strconv.Atoi(uciFields[1])
+			gt.SetMoveTime(time.Duration(timeLimit) * time.Millisecond)
+			uciFields = uciFields[2:]
 		// * infinite: search until the "stop" command. Do not exit the search without being
 		// told so in this mode!
 		case "infinite":
 			gt.SetMoveTime(MAX_TIME)
-			uci_fields = uci_fields[1:]
+			uciFields = uciFields[1:]
 		default:
-			uci_fields = uci_fields[1:]
+			uciFields = uciFields[1:]
 		}
 	}
 	uci.wg.Add(1)
@@ -404,40 +404,40 @@ func (uci *UCIAdapter) start(uci_fields []string) bool {
 	// 	max_depth         int
 	// 	verbose, ponder, restrict_search bool
 	// }
-	uci.search = NewSearch(SearchParams{max_depth, uci.option_debug, ponder, len(allowed_moves) > 0},
-		gt, uci, allowed_moves)
+	uci.search = NewSearch(SearchParams{maxDepth, uci.optionDebug, ponder, len(allowedMoves) > 0},
+		gt, uci, allowedMoves)
 	go uci.search.Start(uci.brd.Copy()) // starting the search also starts the clock
 	return ponder
 }
 
 // position [fen  | startpos ]  moves  ....
-func (uci *UCIAdapter) position(uci_fields []string) {
-	if len(uci_fields) == 0 {
+func (uci *UCIAdapter) position(uciFields []string) {
+	if len(uciFields) == 0 {
 		uci.brd = StartPos()
-	} else if uci_fields[0] == "startpos" {
+	} else if uciFields[0] == "startpos" {
 		uci.brd = StartPos()
-		uci_fields = uci_fields[1:]
-		if len(uci_fields) > 1 && uci_fields[0] == "moves" {
-			uci.playMoveSequence(uci_fields[1:])
+		uciFields = uciFields[1:]
+		if len(uciFields) > 1 && uciFields[0] == "moves" {
+			uci.playMoveSequence(uciFields[1:])
 		}
-	} else if uci_fields[0] == "fen" {
-		uci.brd = ParseFENSlice(uci_fields[1:])
-		if len(uci_fields) > 7 {
-			uci.playMoveSequence(uci_fields[7:])
+	} else if uciFields[0] == "fen" {
+		uci.brd = ParseFENSlice(uciFields[1:])
+		if len(uciFields) > 7 {
+			uci.playMoveSequence(uciFields[7:])
 		}
 	} else {
-		uci.invalid(uci_fields)
+		uci.invalid(uciFields)
 	}
 }
 
-func (uci *UCIAdapter) playMoveSequence(uci_fields []string) {
+func (uci *UCIAdapter) playMoveSequence(uciFields []string) {
 	var move Move
-	if uci_fields[0] == "moves" {
-		uci_fields = uci_fields[1:]
+	if uciFields[0] == "moves" {
+		uciFields = uciFields[1:]
 	}
-	for _, move_str := range uci_fields {
-		move = ParseMove(uci.brd, move_str)
-		make_move(uci.brd, move)
+	for _, moveStr := range uciFields {
+		move = ParseMove(uci.brd, moveStr)
+		makeMove(uci.brd, move)
 	}
 }
 
