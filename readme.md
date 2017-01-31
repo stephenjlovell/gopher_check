@@ -1,23 +1,77 @@
 # GopherCheck
 
-An open-source, UCI chess engine written in Go! Available under the MIT License.
+An open-source, UCI chess engine written in Go!
 
 GopherCheck supports a subset of the Universal Chess Interface (UCI) protocol. To use GopherCheck, you'll need a UCI-compatible chess GUI such as [Arena Chess](http://www.playwitharena.com/ "Arena Chess") or [Scid vs. PC](http://scidvspc.sourceforge.net/ "Scid vs. PC").
 
 ## Installation
 
+Binaries are available for Windows and Mac. You can get the latest stable release from the [releases page](https://github.com/stephenjlovell/gopher_check/releases).
+
 To compile from source, you'll need the [latest version of Go](https://golang.org/doc/install). Once you've set up your Go workspace, run [go get](https://golang.org/cmd/go/#hdr-Download_and_install_packages_and_dependencies) to download and install GopherCheck:
 
     $ go get -u github.com/stephenjlovell/gopher_check
 
-You can display the currently installed version number by passing the --version flag:
+## Usage
 
-    $ gopher_check --version
-    ---------------------------------------
-     ♛ GopherCheck v.0.2.0 ♛
-     Copyright © 2014 Stephen J. Lovell
-    ---------------------------------------
+```
+$ gopher_check --help
 
+Usage of gopher_check:
+  -cpuprofile
+    	Runs cpu profiler on test suite.
+  -memprofile
+    	Runs memory profiler on test suite.
+  -version
+    	Prints version number and exits.
+```
+Starting GopherCheck without any arguments will start the engine in UCI (command-line) mode:
+```
+$ gopher_check
+  Magics read from disk.
+
+$ uci
+  id name GopherCheck 0.2.0
+  id author Steve Lovell
+  option name Ponder type check default false
+  option name CPU type spin default 0 min 1 max 4
+  uciok
+
+$ position startpos
+  readyok
+
+$ print
+  Side to move: WHITE
+      A   B   C   D   E   F   G   H
+    ---------------------------------
+  8 | ♜ | ♞ | ♝ | ♛ | ♚ | ♝ | ♞ | ♜ |
+    ---------------------------------
+  7 | ♟ | ♟ | ♟ | ♟ | ♟ | ♟ | ♟ | ♟ |
+    ---------------------------------
+  6 |   |   |   |   |   |   |   |   |
+    ---------------------------------
+  5 |   |   |   |   |   |   |   |   |
+    ---------------------------------
+  4 |   |   |   |   |   |   |   |   |
+    ---------------------------------
+  3 |   |   |   |   |   |   |   |   |
+    ---------------------------------
+  2 | ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | ♙ |
+    ---------------------------------
+  1 | ♖ | ♘ | ♗ | ♕ | ♔ | ♗ | ♘ | ♖ |
+    ---------------------------------
+      A   B   C   D   E   F   G   H
+
+$ go movetime 2000
+  info score cp 16 depth 7 nodes 9531 nps 1188663 time 8 pv e2e4 d7d5 e4e5 c8f5 d2d4 e7e6 b1c3
+  info score cp 13 depth 8 nodes 55569 nps 1173934 time 47 pv d2d4 d7d5 c1f4 e7e6 e2e3 b8c6 b1c3 b7b6
+  info score cp 19 depth 9 nodes 129949 nps 1282122 time 101 pv e2e4 e7e6 d2d4 d7d5 e4e5 d5e4 b1c3 d8g5 c1g5
+  info score cp 12 depth 10 nodes 213058 nps 1194635 time 178 pv e2e4 e7e6 d2d4 d7d5 e4e5 c7c5 c2c3 d8a5 g2g3 c5d4
+  info score cp 18 depth 11 nodes 917781 nps 1528904 time 600 pv e2e4 e7e6 f2f4 d7d5 e4e5 c7c5 d2d4 d8b6 b1c3 f8b4 f1a6
+  info score cp 11 depth 12 nodes 2394738 nps 1661600 time 1441 pv e2e4 e7e6 f2f4 d7d5 e4e5 c7c5 g2g3 b8c6 c2c3 d8b6 b2b3 g7g6
+  bestmove e2e4 ponder e7e6
+$ quit
+```
 ## Search Features
 
 GopherCheck supports [parallel search](https://chessprogramming.wikispaces.com/Parallel+Search "Parallel Search") with up to 8 search threads. It uses a version of iterative deepening, nega-max search known as [Principal Variation Search (PVS)](https://chessprogramming.wikispaces.com/Principal+Variation+Search "Principal Variation Search"). Notable search features include:
@@ -64,3 +118,21 @@ Evaluation in GopherCheck is symmetric: values for each heuristic are calculated
       - their stop square is not defended by a friendly pawn
 
 - Pawn hash table - Evaluation features that depend only on the location of each side's pawns are cached in a special pawn hash table.
+
+## Contributing
+
+Pull requests are welcome! To contribute to GopherCheck, you'll need to do the following:
+
+- Make sure you have Go (>= 1.7.0) installed.
+- Install a UCI-compatible chess GUI such as [Arena Chess](http://www.playwitharena.com/ "Arena Chess") or [Scid vs. PC](http://scidvspc.sourceforge.net/ "Scid vs. PC").
+- Fork this repo.
+- Run ```go install``` and ```gopher_check --version``` to ensure GopherCheck installed correctly.
+- Hack on your changes from your forked repository.
+- Run tests frequently to make sure everything is still working:
+  - Run ```go test -run=TestPlayingStrength``` to benchmark GopherCheck's performance on your hardware. This takes about 10 minutes.
+  - Use your chess GUI to pit GopherCheck against other engines, or against older versions of GopherCheck.
+- Document the reasoning behind your changes along with any test results in your pull request.
+
+## License
+
+GopherCheck is available under the MIT License.
