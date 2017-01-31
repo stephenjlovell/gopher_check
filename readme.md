@@ -74,7 +74,7 @@ $ quit
 ```
 ## Search Features
 
-GopherCheck supports [parallel search](https://chessprogramming.wikispaces.com/Parallel+Search "Parallel Search") with one search process (goroutine) per logical core by default. You can set the number of search goroutines in CLI mode by using ```setoption name CPU value <number of goroutines>```, or via the options panel in your GUI.
+GopherCheck supports [parallel search](https://chessprogramming.wikispaces.com/Parallel+Search "Parallel Search"), defaulting to one search process (goroutine) per logical core. You can set the number of search goroutines via the options panel in your GUI, or by using ```setoption name CPU value <number of goroutines>``` when in command-line mode.
 
 GopherCheck uses a version of iterative deepening, nega-max search known as [Principal Variation Search (PVS)](https://chessprogramming.wikispaces.com/Principal+Variation+Search "Principal Variation Search"). Notable search features include:
 
@@ -122,7 +122,7 @@ Pull requests are welcome! To contribute to GopherCheck, you'll need to do the f
 - Install a UCI-compatible chess GUI such as [Arena Chess](http://www.playwitharena.com/ "Arena Chess") or [Scid vs. PC](http://scidvspc.sourceforge.net/ "Scid vs. PC").
 - Fork this repo.
 - Run ```go install``` and ```gopher_check --version``` to ensure GopherCheck installed correctly.
-- Hack on your changes from your forked repository.
+- Hack on your changes.
 - Run tests frequently to make sure everything is still working:
   - Run ```go test -run=TestPlayingStrength``` to benchmark GopherCheck's performance on your hardware. This takes about 10 minutes.
   - Use your chess GUI to pit GopherCheck against other engines, or against older versions of GopherCheck.
