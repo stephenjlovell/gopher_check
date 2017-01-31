@@ -24,8 +24,7 @@ func (b *BB) Add(sq int) {
 }
 
 func (b BB) Print() {
-	row, sq := "", ""
-	// fmt.Printf("%d\n", b)
+	var row, sq string
 	fmt.Println("  A B C D E F G H")
 	for i := 63; i >= 0; i-- {
 		if sqMaskOn[i]&b > 0 {

@@ -44,17 +44,19 @@ var searchId int
 type Search struct {
 	htable HistoryTable // must be listed first to ensure cache alignment for atomic w/r
 	SearchParams
-	bestScore            [2]int
-	cancel               chan bool
-	allowedMoves         []Move
-	bestMove, ponderMove Move
-	alpha, beta, nodes   int
-	sideToMove           uint8
-	gt                   *GameTimer
-	// wg                     *sync.WaitGroup
-	uci  *UCIAdapter
-	once sync.Once
+	sideToMove   uint8 // SearchParams would otherwise create padding
+	once         sync.Once
+	allowedMoves []Move
+	bestScore    [2]int
 	sync.Mutex
+	cancel               chan bool
+	bestMove, ponderMove Move
+	gt                   *GameTimer
+	uci                  *UCIAdapter
+	alpha, beta, nodes   int
+
+	// wg                     *sync.WaitGroup
+
 }
 
 type SearchParams struct {
@@ -126,7 +128,7 @@ func (s *Search) sendInfo(str string) {
 	if s.uci != nil {
 		s.uci.InfoString(str)
 	} else if s.verbose {
-		fmt.Printf(str)
+		fmt.Print(str)
 	}
 }
 
@@ -573,7 +575,8 @@ func (s *Search) quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) 
 		}
 	}
 
-	score, best, sum, total := -INF, -INF, 1, 0
+	best, sum := -INF, 1
+	var score, total int
 
 	if !inCheck {
 		score = evaluate(brd, alpha, beta) // stand pat

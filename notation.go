@@ -237,7 +237,7 @@ func ParsePlacement(brd *Board, str string) {
 	var rowStr string
 	rowFields := strings.Split(str, "/")
 	sq := 0
-	matchDigit, _ := regexp.Compile("\\d")
+	matchDigit, _ := regexp.Compile(`\d`)
 	for row := len(rowFields) - 1; row >= 0; row-- {
 		rowStr = rowFields[row]
 		for _, r := range rowStr {
@@ -317,7 +317,7 @@ func ParseMove(brd *Board, str string) Move {
 	}
 
 	from := ParseSquare(str[:2])
-	to := ParseSquare(string(str[2:4]))
+	to := ParseSquare(str[2:4])
 	piece := brd.TypeAt(from)
 	capturedPiece := brd.TypeAt(to)
 	if piece == PAWN && capturedPiece == EMPTY { // check for en-passant capture
@@ -368,5 +368,5 @@ func SquareString(sq int) string {
 }
 
 func ParseCoordinates(row, col int) string {
-	return columnNames[col] + strconv.FormatInt(int64(row+1), 10)
+	return columnNames[col] + strconv.Itoa(row+1)
 }

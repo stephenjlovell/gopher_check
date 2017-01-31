@@ -16,36 +16,23 @@ const (
 )
 
 type SplitPoint struct {
-	sync.RWMutex
-	// wg 								sync.WaitGroup
-	stk Stack
-
-	depth int
-	ply   int
+	sync.RWMutex                           // 24 (bytes)
+	stk                              Stack // 12
+	depth, ply, nodeType, nodeCount  int   // 8 x 8
+	alpha, beta, best, legalSearched int
+	s                                *Search // 8 x 7
+	selector                         *MoveSelector
+	parent                           *SplitPoint
+	master                           *Worker
+	brd                              *Board
+	thisStk                          *StackItem
+	cond                             *sync.Cond
+	bestMove                         Move // 4
+	servantMask                      uint8
+	cancel, workerFinished, checked  bool
 	// extensionsLeft int  // TODO: verify if extension counter needs lock protection.
-	nodeType      int
-	alpha         int // shared
-	beta          int // shared
-	best          int // shared
-	nodeCount     int // shared
-	legalSearched int
-
-	bestMove Move // shared
-
-	s        *Search
-	selector *MoveSelector
-	parent   *SplitPoint
-	master   *Worker
-	brd      *Board
-	thisStk  *StackItem
-	cond     *sync.Cond
-
-	servantMask uint8
-
-	cancel         bool
-	workerFinished bool
-	canNull        bool
-	checked        bool
+	// canNull        bool
+	// wg 								sync.WaitGroup
 }
 
 func (sp *SplitPoint) Wait() {
