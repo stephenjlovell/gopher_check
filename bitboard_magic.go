@@ -19,6 +19,11 @@ const (
 	MAGICS_JSON      = "magics.json"
 )
 
+type MagicData struct {
+	BishopMagics [64]BB `json:"bishopMagics"`
+	RookMagics   [64]BB `json:"rookMagics"`
+}
+
 // In testing, homogenous array move DB actually outperformed a 'Fancy'
 // magic bitboard approach implemented using slices.
 var bishopMagicMoves, rookMagicMoves [64][MAGIC_DB_SIZE]BB
@@ -49,15 +54,17 @@ func setupMagicMoveGen() {
 
 	magicsNeeded := false
 	if _, err := os.Stat(MAGICS_JSON); err == nil {
-		if !loadMagics() {
-			// if magics failed to load for any reason, we'll have to generate them.
+		if !loadMagics() { // if magics failed to load for any reason, we'll have to generate them.
 			magicsNeeded = true
 		}
 	} else {
 		magicsNeeded = true
+	}
+	if magicsNeeded {
 		fmt.Printf("Calculating magics")
 		wg.Add(64 * 2)
 	}
+
 	setupMagicsForPiece(magicsNeeded, &wg, &bishopMagicMasks, &bishopMasks, &bishopMagics,
 		&bishopMagicMoves, generateBishopAttacks)
 	setupMagicsForPiece(magicsNeeded, &wg, &rookMagicMasks, &rookMasks, &rookMagics,
@@ -68,11 +75,6 @@ func setupMagicMoveGen() {
 		writeMagicsToDisk()
 		fmt.Printf("done!\n\n")
 	}
-}
-
-type MagicData struct {
-	BishopMagics [64]BB
-	RookMagics   [64]BB
 }
 
 func checkError(e error) {
@@ -101,6 +103,7 @@ func writeMagicsToDisk() {
 func loadMagics() (success bool) {
 	defer func() {
 		if r := recover(); r != nil {
+			fmt.Printf("Failure reading magics from disk.")
 			success = false // recover any panic
 		}
 	}()
@@ -110,7 +113,8 @@ func loadMagics() (success bool) {
 
 	magics := &MagicData{}
 
-	json.Unmarshal(data, magics) // will panic if malformed json present.
+	err = json.Unmarshal(data, magics)
+	checkError(err)
 
 	bishopMagics = magics.BishopMagics
 	rookMagics = magics.RookMagics
