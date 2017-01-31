@@ -16,14 +16,13 @@ To compile from source, you'll need the [latest version of Go](https://golang.or
 
 ```
 $ gopher_check --help
-
-Usage of gopher_check:
-  -cpuprofile
-    	Runs cpu profiler on test suite.
-  -memprofile
-    	Runs memory profiler on test suite.
-  -version
-    	Prints version number and exits.
+  Usage of gopher_check:
+    -cpuprofile
+      	Runs cpu profiler on test suite.
+    -memprofile
+      	Runs memory profiler on test suite.
+    -version
+      	Prints version number and exits.
 ```
 Starting GopherCheck without any arguments will start the engine in UCI (command-line) mode:
 ```
@@ -70,11 +69,14 @@ $ go movetime 2000
   info score cp 18 depth 11 nodes 917781 nps 1528904 time 600 pv e2e4 e7e6 f2f4 d7d5 e4e5 c7c5 d2d4 d8b6 b1c3 f8b4 f1a6
   info score cp 11 depth 12 nodes 2394738 nps 1661600 time 1441 pv e2e4 e7e6 f2f4 d7d5 e4e5 c7c5 g2g3 b8c6 c2c3 d8b6 b2b3 g7g6
   bestmove e2e4 ponder e7e6
+
 $ quit
 ```
 ## Search Features
 
-GopherCheck supports [parallel search](https://chessprogramming.wikispaces.com/Parallel+Search "Parallel Search") with up to 8 search threads. It uses a version of iterative deepening, nega-max search known as [Principal Variation Search (PVS)](https://chessprogramming.wikispaces.com/Principal+Variation+Search "Principal Variation Search"). Notable search features include:
+GopherCheck supports [parallel search](https://chessprogramming.wikispaces.com/Parallel+Search "Parallel Search") with one search process (goroutine) per logical core by default. You can set the number of search goroutines in CLI mode by using ```setoption name CPU value <number of goroutines>```, or via the options panel in your GUI.
+
+GopherCheck uses a version of iterative deepening, nega-max search known as [Principal Variation Search (PVS)](https://chessprogramming.wikispaces.com/Principal+Variation+Search "Principal Variation Search"). Notable search features include:
 
 - Shared hash table
 - Young-brothers wait concept (YBWC)
@@ -123,7 +125,7 @@ Evaluation in GopherCheck is symmetric: values for each heuristic are calculated
 
 Pull requests are welcome! To contribute to GopherCheck, you'll need to do the following:
 
-- Make sure you have Go (>= 1.7.0) installed.
+- Make sure you have [Go (>= 1.7.0)](https://golang.org/doc/install) installed.
 - Install a UCI-compatible chess GUI such as [Arena Chess](http://www.playwitharena.com/ "Arena Chess") or [Scid vs. PC](http://scidvspc.sourceforge.net/ "Scid vs. PC").
 - Fork this repo.
 - Run ```go install``` and ```gopher_check --version``` to ensure GopherCheck installed correctly.
