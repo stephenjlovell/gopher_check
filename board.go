@@ -20,24 +20,24 @@ var printMutex sync.Mutex
 // When spawning new goroutines for subtree search, a deep copy of the Board struct will have to be made
 // and passed to the new goroutine.  Keep this struct as small as possible.
 type Board struct {
-	pieces          [2][6]BB  // 768 bits
-	squares         [64]Piece // 512 bits
-	occupied        [2]BB     // 128 bits
-	material        [2]int32  // 64  bits
+	pieces         [2][6]BB  // 768 bits
+	squares        [64]Piece // 512 bits
+	occupied       [2]BB     // 128 bits
+	material       [2]int32  // 64  bits
 	hashKey        uint64    // 64  bits
-	pawnHashKey   uint32    // 32  bits
-	c               uint8     // 8   bits
-	castle          uint8     // 8   bits
+	pawnHashKey    uint32    // 32  bits
+	c              uint8     // 8   bits
+	castle         uint8     // 8   bits
 	enpTarget      uint8     // 8 	bits
 	halfmoveClock  uint8     // 8 	bits
 	endgameCounter uint8     // 8 	bits
-	worker          *Worker
+	worker         *Worker
 }
 
 type BoardMemento struct { // memento object used to store board state to unmake later.
 	hashKey       uint64
-	pawnHashKey  uint32
-	castle         uint8
+	pawnHashKey   uint32
+	castle        uint8
 	enpTarget     uint8
 	halfmoveClock uint8
 }
@@ -45,8 +45,8 @@ type BoardMemento struct { // memento object used to store board state to unmake
 func (brd *Board) NewMemento() *BoardMemento {
 	return &BoardMemento{
 		hashKey:       brd.hashKey,
-		pawnHashKey:  brd.pawnHashKey,
-		castle:         brd.castle,
+		pawnHashKey:   brd.pawnHashKey,
+		castle:        brd.castle,
 		enpTarget:     brd.enpTarget,
 		halfmoveClock: brd.halfmoveClock,
 	}
@@ -226,12 +226,7 @@ func (brd *Board) ValidMove(m Move, inCheck bool) bool {
 		}
 	}
 
-	if brd.TypeAt(to) != capturedPiece {
-		// fmt.Printf("Captured piece not found on to square!{%s}", m.ToString())
-		return false
-	}
-
-	return true
+	return brd.TypeAt(to) == capturedPiece
 }
 
 func (brd *Board) MayPromote(m Move) bool {
@@ -278,14 +273,14 @@ func (brd *Board) ColorPawnsOnly(c uint8) bool {
 
 func (brd *Board) Copy() *Board {
 	return &Board{
-		pieces:          brd.pieces,
-		squares:         brd.squares,
-		occupied:        brd.occupied,
-		material:        brd.material,
+		pieces:         brd.pieces,
+		squares:        brd.squares,
+		occupied:       brd.occupied,
+		material:       brd.material,
 		hashKey:        brd.hashKey,
-		pawnHashKey:   brd.pawnHashKey,
-		c:               brd.c,
-		castle:          brd.castle,
+		pawnHashKey:    brd.pawnHashKey,
+		c:              brd.c,
+		castle:         brd.castle,
 		enpTarget:      brd.enpTarget,
 		halfmoveClock:  brd.halfmoveClock,
 		endgameCounter: brd.endgameCounter,
@@ -360,8 +355,8 @@ func EmptyBoard() *Board {
 }
 
 func onBoard(sq int) bool { return 0 <= sq && sq <= 63 }
-func row(sq int) int       { return sq >> 3 }
-func column(sq int) int    { return sq & 7 }
+func row(sq int) int      { return sq >> 3 }
+func column(sq int) int   { return sq & 7 }
 
 var pieceGraphics = [2][6]string{
 	{"\u265F", "\u265E", "\u265D", "\u265C", "\u265B", "\u265A"},

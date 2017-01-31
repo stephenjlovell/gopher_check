@@ -37,8 +37,8 @@ const (
 
 var loadBalancer *Balancer
 
-func setupLoadBalancer(numCpu int) {
-	numWorkers := uint8(min(numCpu, MAX_WORKERS))
+func setupLoadBalancer(numCPU int) {
+	numWorkers := uint8(min(numCPU, MAX_WORKERS))
 	loadBalancer = NewLoadBalancer(numWorkers)
 	loadBalancer.Start()
 }
@@ -48,15 +48,15 @@ func NewLoadBalancer(numWorkers uint8) *Balancer {
 		workers: make([]*Worker, numWorkers),
 		done:    make(chan *Worker, numWorkers),
 	}
-	for i := uint8(0); i < uint8(numWorkers); i++ {
+	for i := uint8(0); i < numWorkers; i++ {
 		b.workers[i] = &Worker{
-			mask:      1 << i,
-			index:     i,
+			mask:     1 << i,
+			index:    i,
 			spList:   make(SPList, 0, MAX_DEPTH),
-			stk:       NewStack(),
-			ptt:       NewPawnTT(),
+			stk:      NewStack(),
+			ptt:      NewPawnTT(),
 			assignSp: make(chan *SplitPoint, 1),
-			recycler:  NewRecycler(512),
+			recycler: NewRecycler(512),
 		}
 	}
 	return b

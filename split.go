@@ -20,15 +20,15 @@ type SplitPoint struct {
 	// wg 								sync.WaitGroup
 	stk Stack
 
-	depth           int
-	ply             int
-	extensionsLeft int
-	nodeType       int
-	alpha           int // shared
-	beta            int // shared
-	best            int // shared
-	nodeCount      int // shared
-	legalSearched  int
+	depth int
+	ply   int
+	// extensionsLeft int  // TODO: verify if extension counter needs lock protection.
+	nodeType      int
+	alpha         int // shared
+	beta          int // shared
+	best          int // shared
+	nodeCount     int // shared
+	legalSearched int
 
 	bestMove Move // shared
 
@@ -37,15 +37,15 @@ type SplitPoint struct {
 	parent   *SplitPoint
 	master   *Worker
 	brd      *Board
-	thisStk *StackItem
+	thisStk  *StackItem
 	cond     *sync.Cond
 
 	servantMask uint8
 
-	cancel          bool
+	cancel         bool
 	workerFinished bool
 	canNull        bool
-	checked         bool
+	checked        bool
 }
 
 func (sp *SplitPoint) Wait() {
@@ -116,25 +116,25 @@ func CreateSP(s *Search, brd *Board, stk Stack, ms *MoveSelector, bestMove Move,
 		master:   brd.worker,
 		parent:   brd.worker.currentSp,
 
-		brd:      brd.Copy(),
+		brd:     brd.Copy(),
 		thisStk: stk[ply].Copy(),
-		s:        s,
+		s:       s,
 
 		depth: depth,
 		ply:   ply,
 
 		nodeType: nodeType,
 
-		alpha:     alpha,
-		beta:      beta,
-		best:      best,
+		alpha:    alpha,
+		beta:     beta,
+		best:     best,
 		bestMove: bestMove,
 
 		checked: checked,
 
 		nodeCount:     sum,
 		legalSearched: legalSearched,
-		cancel:         false,
+		cancel:        false,
 	}
 
 	sp.stk = make(Stack, ply, ply)

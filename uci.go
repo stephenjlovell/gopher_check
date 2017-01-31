@@ -51,7 +51,7 @@ func NewUCIAdapter() *UCIAdapter {
 
 func (uci *UCIAdapter) Send(s string) { // log the UCI command s and print to standard I/O.
 	log.Printf("engine: " + s)
-	fmt.Printf(s)
+	fmt.Print(s)
 }
 
 func (uci *UCIAdapter) BestMove(result SearchResult) {
@@ -76,7 +76,7 @@ func (uci *UCIAdapter) Read(reader *bufio.Reader) {
 	var input string
 	var uciFields []string
 
-	f, err := os.OpenFile("log.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	f, err := os.OpenFile("log.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
 		fmt.Printf("error opening file: %v\n", err)
 	}

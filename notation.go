@@ -17,11 +17,11 @@ import (
 )
 
 type EPD struct {
-	brd         *Board
+	brd        *Board
 	bestMoves  []string
 	avoidMoves []string
 	nodeCount  map[int]int
-	id          string
+	id         string
 }
 
 func (epd *EPD) Print() {
@@ -69,18 +69,14 @@ func ParseEPDString(str string) *EPD {
 		if loc != nil {
 			field = field[loc[1]:]
 			subFields = strings.Split(field, " ")
-			for _, moveField := range subFields {
-				epd.bestMoves = append(epd.bestMoves, moveField)
-			}
+			epd.bestMoves = append(epd.bestMoves, subFields...)
 			continue
 		}
 		loc = am.FindStringIndex(field)
 		if loc != nil {
 			field = field[:loc[1]+1]
 			subFields = strings.Split(field, " ")
-			for _, moveField := range subFields {
-				epd.avoidMoves = append(epd.avoidMoves, moveField)
-			}
+			epd.avoidMoves = append(epd.avoidMoves, subFields...)
 			continue
 		}
 		loc = id.FindStringIndex(field)
@@ -320,7 +316,7 @@ func ParseMove(brd *Board, str string) Move {
 		return NO_MOVE
 	}
 
-	from := ParseSquare(string(str[:2]))
+	from := ParseSquare(str[:2])
 	to := ParseSquare(string(str[2:4]))
 	piece := brd.TypeAt(from)
 	capturedPiece := brd.TypeAt(to)

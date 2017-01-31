@@ -32,16 +32,16 @@ const (
 
 type AbstractSelector struct {
 	sync.Mutex
-	stage           int
-	index           int
-	finished        int
+	stage          int
+	index          int
+	finished       int
 	inCheck        bool
-	winning         MoveList
-	losing          MoveList
+	winning        MoveList
+	losing         MoveList
 	remainingMoves MoveList
-	brd             *Board
+	brd            *Board
 	thisStk        *StackItem
-	htable          *HistoryTable
+	htable         *HistoryTable
 }
 
 func (s *AbstractSelector) CurrentStage() int {
@@ -61,17 +61,17 @@ type MoveSelector struct {
 
 type QMoveSelector struct {
 	AbstractSelector
-	checks    MoveList
-	recycler  *Recycler
+	checks   MoveList
+	recycler *Recycler
 	canCheck bool
 }
 
 func NewMoveSelector(brd *Board, thisStk *StackItem, htable *HistoryTable, inCheck bool, firstMove Move) *MoveSelector {
 	return &MoveSelector{
 		AbstractSelector: AbstractSelector{
-			brd:      brd,
+			brd:     brd,
 			thisStk: thisStk,
-			htable:   htable,
+			htable:  htable,
 			inCheck: inCheck,
 		},
 		firstMove: firstMove,
@@ -81,13 +81,13 @@ func NewMoveSelector(brd *Board, thisStk *StackItem, htable *HistoryTable, inChe
 func NewQMoveSelector(brd *Board, thisStk *StackItem, htable *HistoryTable, recycler *Recycler, inCheck, canCheck bool) *QMoveSelector {
 	return &QMoveSelector{
 		AbstractSelector: AbstractSelector{
-			brd:      brd,
+			brd:     brd,
 			thisStk: thisStk,
-			htable:   htable,
+			htable:  htable,
 			inCheck: inCheck,
 		},
 		canCheck: canCheck,
-		recycler:  recycler,
+		recycler: recycler,
 	}
 }
 

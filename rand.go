@@ -13,13 +13,13 @@ const (
 	MAX_RAND = (1 << 32) - 1
 )
 
-func randomKey64() uint64 { // create a pseudorandom 64-bit unsigned int key
-	return (uint64(rand.Int63n(MAX_RAND)) << 32) | uint64(rand.Int63n(MAX_RAND))
-}
+// func randomKey64() uint64 { // create a pseudorandom 64-bit unsigned int key
+// 	return (uint64(rand.Int63n(MAX_RAND)) << 32) | uint64(rand.Int63n(MAX_RAND))
+// }
 
-func randomKey32() uint32 {
-	return uint32(rand.Int63n(MAX_RAND))
-}
+// func randomKey32() uint32 {
+// 	return uint32(rand.Int63n(MAX_RAND))
+// }
 
 func setupRand() {
 	rand.Seed(4129246945) // keep the same seed each time for debugging purposes.

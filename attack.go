@@ -8,15 +8,6 @@ package main
 import "fmt"
 
 func attackMap(brd *Board, occ BB, sq int) BB {
-	// return ((pawn_attack_masks[BLACK][sq] & brd.pieces[WHITE][PAWN]) | // Pawns
-	// 	(pawn_attack_masks[WHITE][sq] & brd.pieces[BLACK][PAWN])) |
-	// 	(knight_masks[sq] & (brd.pieces[WHITE][KNIGHT] | brd.pieces[BLACK][KNIGHT])) | // Knights
-	// 	(bishop_attacks(occ, sq) & (brd.pieces[WHITE][BISHOP] | brd.pieces[BLACK][BISHOP] | // Bishops and Queens
-	// 		brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN])) |
-	// 	(rook_attacks(occ, sq) & (brd.pieces[WHITE][ROOK] | brd.pieces[BLACK][ROOK] | // Rooks and Queens
-	// 		brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN])) |
-	// 	(king_masks[sq] & (brd.pieces[WHITE][KING] | brd.pieces[BLACK][KING])) // Kings
-
 	bb := ((pawnAttackMasks[BLACK][sq] & brd.pieces[WHITE][PAWN]) |
 		(pawnAttackMasks[WHITE][sq] & brd.pieces[BLACK][PAWN])) | // Pawns
 		(knightMasks[sq] & (brd.pieces[WHITE][KNIGHT] | brd.pieces[BLACK][KNIGHT])) | // Knights
@@ -31,12 +22,6 @@ func attackMap(brd *Board, occ BB, sq int) BB {
 }
 
 func colorAttackMap(brd *Board, occ BB, sq int, c, e uint8) BB {
-	// return (pawn_attack_masks[e][sq] & brd.pieces[c][PAWN]) | // Pawns
-	// 	(knight_masks[sq] & brd.pieces[c][KNIGHT]) | // Knights
-	// 	(bishop_attacks(occ, sq) & (brd.pieces[c][BISHOP] | brd.pieces[c][QUEEN])) | // Bishops and Queens
-	// 	(rook_attacks(occ, sq) & (brd.pieces[c][ROOK] | brd.pieces[c][QUEEN])) | // Rooks and Queens
-	// 	(king_masks[sq] & brd.pieces[c][KING]) // Kings
-
 	bb := (pawnAttackMasks[e][sq] & brd.pieces[c][PAWN]) | // Pawns
 		(knightMasks[sq] & brd.pieces[c][KNIGHT]) | // Knights
 		(kingMasks[sq] & brd.pieces[c][KING]) // Kings
@@ -48,21 +33,6 @@ func colorAttackMap(brd *Board, occ BB, sq int, c, e uint8) BB {
 	}
 	return bb
 }
-
-// // attacks_after_move(brd, occ, occ&brd.occupied[e], king_sq, e, c)
-//
-// func attacks_after_move(brd *Board, all_occ, attacker_occ BB, sq int, attacker, defender uint8) BB {
-//
-// 	return (pawn_attack_masks[defender][sq] & brd.pieces[attacker][PAWN] & attacker_occ) | // Pawns
-//
-// 		(knight_masks[sq] & brd.pieces[attacker][KNIGHT]) | // Knights
-//
-// 		(bishop_attacks(all_occ, sq) & (brd.pieces[attacker][BISHOP]|brd.pieces[attacker][QUEEN])) | // Bishops and Queens
-//
-// 		(rook_attacks(all_occ, sq) & (brd.pieces[attacker][ROOK]|brd.pieces[attacker][QUEEN])) | // Rooks and Queens
-//
-// 		(king_masks[sq] & brd.pieces[attacker][KING]) // Kings
-// }
 
 func isAttackedBy(brd *Board, occ BB, sq int, attacker, defender uint8) bool {
 	if pawnAttackMasks[defender][sq]&brd.pieces[attacker][PAWN] > 0 { // Pawns
@@ -123,7 +93,7 @@ func isPinned(brd *Board, sq int, c, e uint8) BB {
 //    way of reducing the size of the q-search without impacting playing strength.
 const (
 	SEE_MIN = -780 // worst possible outcome (trading a queen for a pawn)
-	SEE_MAX = 880  // best outcome (capturing an undefended queen)
+	// SEE_MAX = 880  // best outcome (capturing an undefended queen)
 )
 
 func getSee(brd *Board, from, to int, capturedPiece Piece) int {
@@ -149,6 +119,7 @@ func getSee(brd *Board, from, to int, capturedPiece Piece) int {
 		// this move is illegal and will be discarded by search.  return the lowest possible
 		// SEE value so that this move will be put at end of list.  If cutoff occurs before then,
 		// the cost of detecting the illegal move will be saved.
+		// TODO: send this in UCI-compatible format
 		fmt.Println("king capture detected in getSee()!")
 		return SEE_MIN
 	}

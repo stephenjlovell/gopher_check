@@ -92,9 +92,10 @@ func writeMagicsToDisk() {
 	defer f.Close()
 
 	data, err := json.Marshal(magics)
-
 	checkError(err)
-	f.Write(data) // write the magics to disk as JSON.
+
+	_, err = f.Write(data) // write the magics to disk as JSON.
+	checkError(err)
 }
 
 func loadMagics() (success bool) {

@@ -108,8 +108,8 @@ func NewCapture(from, to int, piece, capturedPiece Piece) Move {
 		(Move(capturedPiece) << 15) | (Move(EMPTY) << 18)
 }
 
-// since moving piece is always PAWN (0) for promotions, no need to merge in the moving piece.
-func NewPromotion(from, to int, piece, promotedTo Piece) Move {
-	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) |
-		(Move(EMPTY) << 15) | (Move(promotedTo) << 18)
-}
+// // since moving piece is always PAWN (0) for promotions, no need to merge in the moving piece.
+// func NewPromotion(from, to int, piece, promotedTo Piece) Move {
+// 	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) |
+// 		(Move(EMPTY) << 15) | (Move(promotedTo) << 18)
+// }

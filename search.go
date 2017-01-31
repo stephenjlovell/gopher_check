@@ -44,16 +44,16 @@ var searchId int
 type Search struct {
 	htable HistoryTable // must be listed first to ensure cache alignment for atomic w/r
 	SearchParams
-	bestScore             [2]int
-	cancel                 chan bool
-	allowedMoves          []Move
+	bestScore            [2]int
+	cancel               chan bool
+	allowedMoves         []Move
 	bestMove, ponderMove Move
-	alpha, beta, nodes     int
+	alpha, beta, nodes   int
 	sideToMove           uint8
-	gt                     *GameTimer
-	wg                     *sync.WaitGroup
-	uci                    *UCIAdapter
-	once                   sync.Once
+	gt                   *GameTimer
+	// wg                     *sync.WaitGroup
+	uci  *UCIAdapter
+	once sync.Once
 	sync.Mutex
 }
 
@@ -69,14 +69,14 @@ type SearchResult struct {
 func NewSearch(params SearchParams, gt *GameTimer, uci *UCIAdapter, allowedMoves []Move) *Search {
 	s := &Search{
 		bestScore:    [2]int{-INF, -INF},
-		cancel:        make(chan bool),
-		uci:           uci,
+		cancel:       make(chan bool),
+		uci:          uci,
 		bestMove:     NO_MOVE,
 		ponderMove:   NO_MOVE,
-		alpha:         -INF,
-		beta:          -INF,
-		gt:            gt,
-		SearchParams:  params,
+		alpha:        -INF,
+		beta:         -INF,
+		gt:           gt,
+		SearchParams: params,
 		allowedMoves: allowedMoves,
 	}
 	gt.s = s

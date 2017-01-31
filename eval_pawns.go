@@ -30,10 +30,10 @@ var duoBonus = [2][8]int{
 	{0, 0, 1, 1, 1, 2, 0, 0},
 }
 
-var promoteRow = [2][2]int{
-	{1, 2},
-	{6, 5},
-}
+// var promoteRow = [2][2]int{
+// 	{1, 2},
+// 	{6, 5},
+// }
 
 // PAWN EVALUATION
 // Good structures:

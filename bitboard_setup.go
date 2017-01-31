@@ -32,7 +32,8 @@ var bishopOffsets = [4]int{7, 9, -7, -9}
 var rookOffsets = [4]int{8, 1, -8, -1}
 var kingOffsets = [8]int{-9, -7, 7, 9, -8, -1, 1, 8}
 var pawnAttackOffsets = [4]int{9, 7, -9, -7}
-var pawnAdvanceOffsets = [4]int{8, 16, -8, -16}
+
+// var pawnAdvanceOffsets = [4]int{8, 16, -8, -16}
 
 var directions [64][64]int
 
