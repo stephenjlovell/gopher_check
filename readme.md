@@ -14,7 +14,7 @@ You can display the currently installed version number by passing the --version 
 
     $ gopher_check --version
     ---------------------------------------
-     ♛ GopherCheck v.0.1.1 ♛
+     ♛ GopherCheck v.0.2.0 ♛
      Copyright © 2014 Stephen J. Lovell
     ---------------------------------------
 

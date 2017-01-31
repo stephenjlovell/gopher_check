@@ -15,6 +15,8 @@ import (
 	"github.com/pkg/profile"
 )
 
+var version = "0.2.0"
+
 func max(a, b int) int {
 	if a > b {
 		return a
@@ -55,8 +57,6 @@ func init() {
 	resetMainTt()
 	setupLoadBalancer(numCPU)
 }
-
-var version = "0.1.1"
 
 func printName() {
 	fmt.Printf("\n---------------------------------------\n")
