@@ -27,3 +27,10 @@ Upgraded to Go 1.7
   Overhead: 45.4335m
   Timeout: 2.0s
   PASS
+
+1/31/17, 2.9 GHz Core i5 (2x physical cores, 4 hyper-threads)
+Implemented memory recycling for move lists
+  1034.6923m nodes searched in 408.7054s (2.5316m NPS)
+  Total score: 289/300
+  Overhead: 53.8827m
+  Timeout: 2.0s

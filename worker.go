@@ -34,12 +34,12 @@ type Worker struct {
 	searchOverhead int
 
 	spList SPList
-	stk     Stack
+	stk    Stack
 
 	assignSp chan *SplitPoint
 
-	ptt        *PawnTT
-	recycler   *Recycler
+	ptt       *PawnTT
+	recycler  *Recycler
 	currentSp *SplitPoint
 
 	mask  uint8
@@ -99,7 +99,6 @@ func (w *Worker) Help(b *Balancer) {
 	go func() {
 		var bestSp *SplitPoint
 		for {
-
 			bestSp = nil
 			for _, master := range b.workers { // try to find a good SP
 				if master.index == w.index {
@@ -115,7 +114,7 @@ func (w *Worker) Help(b *Balancer) {
 			}
 
 			if bestSp == nil || bestSp.WorkerFinished() { // No best SP was available.
-				b.done <- w             // Worker is completely idle and available to help any processor.
+				b.done <- w           // Worker is completely idle and available to help any processor.
 				bestSp = <-w.assignSp // Wait for the next SP to be discovered.
 			} else {
 				bestSp.AddServant(w.mask)

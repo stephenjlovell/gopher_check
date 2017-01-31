@@ -31,16 +31,11 @@ import (
 //     with the SP before sending the SP to the worker to avoid a data race with the SP's
 // 		 WaitGroup.
 
-const (
-	MAX_WORKERS = 8
-)
-
 var loadBalancer *Balancer
 
 func setupLoadBalancer(numCPU int) {
-	numWorkers := uint8(min(numCPU, MAX_WORKERS))
-	loadBalancer = NewLoadBalancer(numWorkers)
-	loadBalancer.Start()
+	loadBalancer = NewLoadBalancer(uint8(numCPU))
+	loadBalancer.Start(numCPU)
 }
 
 func NewLoadBalancer(numWorkers uint8) *Balancer {
@@ -64,14 +59,18 @@ func NewLoadBalancer(numWorkers uint8) *Balancer {
 
 type Balancer struct {
 	workers []*Worker
-	sync.Mutex
+	// sync.Mutex
+	once sync.Once
 	done chan *Worker
 }
 
-func (b *Balancer) Start() {
-	for _, w := range b.workers[1:] {
-		w.Help(b) // Start each worker except for the root worker.
-	}
+func (b *Balancer) Start(numCPU int) {
+	b.once.Do(func() {
+		// fmt.Printf("Initializing %d workers\n", numCPU)
+		for _, w := range b.workers[1:] {
+			w.Help(b) // Start each worker except for the root worker.
+		}
+	})
 }
 
 func (b *Balancer) Overhead() int {
