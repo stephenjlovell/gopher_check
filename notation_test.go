@@ -6,14 +6,17 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 )
 
 func TestEPDParsing(t *testing.T) {
-	test := loadEpdFile("test_suites/wac_300.epd")
-
+	test, err := loadEpdFile("test_suites/wac_300.epd")
+	if err != nil {
+		fmt.Print(err)
+		return
+	}
 	for _, epd := range test {
 		epd.Print()
 	}
-
 }

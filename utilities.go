@@ -11,7 +11,11 @@ import (
 )
 
 func RunTestSuite(testSuite string, depth, timeout int) {
-	test := loadEpdFile(testSuite)
+	test, err := loadEpdFile(testSuite)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	var moveStr string
 	sum, score := 0, 0
 	var gt *GameTimer
@@ -35,17 +39,9 @@ func RunTestSuite(testSuite string, depth, timeout int) {
 	}
 	secondsElapsed := time.Since(start).Seconds()
 	mNodes := float64(sum) / 1000000.0
-	fmt.Printf("\n%.4fm nodes searched in %.4fs (%.4fm NPS)\n", mNodes, secondsElapsed, mNodes/secondsElapsed)
-
+	fmt.Printf("\n%.4fm nodes searched in %.4fs (%.4fm NPS)\n",
+		mNodes, secondsElapsed, mNodes/secondsElapsed)
 	fmt.Printf("Total score: %d/%d\n", score, len(test))
-
-	// fmt.Printf("Average Branching factor by iteration:\n")
-	// var branching float64
-	// for d := 2; d <= depth; d++ {
-	// 	branching = math.Pow(float64(nodes_per_iteration[d])/float64(nodes_per_iteration[1]), float64(1)/float64(d-1))
-	// 	fmt.Printf("%d ABF: %.4f\n", d, branching)
-	// }
-
 	fmt.Printf("Overhead: %.4fm\n", float64(loadBalancer.Overhead())/1000000.0)
 	fmt.Printf("Timeout: %.1fs\n", float64(timeout)/1000.0)
 	// fmt.Printf("PV Accuracy: %d/%d (%.2f)\n\n", pv_accuracy[1], pv_accuracy[0]+pv_accuracy[1],

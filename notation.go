@@ -9,6 +9,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -26,17 +27,21 @@ type EPD struct {
 
 func (epd *EPD) Print() {
 	fmt.Println(epd.id)
-	// epd.brd.PrintDetails()
-	// fmt.Println("Best moves:")
-	// fmt.Println(epd.best_moves)
-	// fmt.Println("Avoid moves:")
-	// fmt.Println(epd.avoid_moves)
 }
 
-func loadEpdFile(dir string) []*EPD {
+func (epd *EPD) PrintDetails() {
+	epd.Print()
+	epd.brd.PrintDetails()
+	fmt.Println("Best moves:")
+	fmt.Println(epd.bestMoves)
+	fmt.Println("Avoid moves:")
+	fmt.Println(epd.avoidMoves)
+}
+
+func loadEpdFile(dir string) ([]*EPD, error) {
 	epdFile, err := os.Open(dir)
 	if err != nil {
-		panic(err)
+		return nil, errors.New(fmt.Sprintf("The specified EPD file could not be loaded.:\n%s\n", dir))
 	}
 	var testPositions []*EPD
 	scanner := bufio.NewScanner(epdFile)
@@ -44,7 +49,7 @@ func loadEpdFile(dir string) []*EPD {
 		epd := ParseEPDString(scanner.Text())
 		testPositions = append(testPositions, epd)
 	}
-	return testPositions
+	return testPositions, err
 }
 
 // 2k4B/bpp1qp2/p1b5/7p/1PN1n1p1/2Pr4/P5PP/R3QR1K b - - bm Ng3+ g3; id "WAC.273";
