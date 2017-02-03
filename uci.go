@@ -255,7 +255,8 @@ func (uci *UCIAdapter) identify() {
 func (uci *UCIAdapter) option() { // option name option_name [ parameters ]
 	// tells the GUI which parameters can be changed in the engine.
 	uci.Send("option name Ponder type check default false\n")
-	uci.Send(fmt.Sprintf("option name CPU type spin default 0 min 1 max %d\n", runtime.NumCPU()))
+	numCPU := runtime.NumCPU()
+	uci.Send(fmt.Sprintf("option name CPU type spin default %d min 1 max %d\n", numCPU, numCPU))
 }
 
 // some example options from Toga 1.3.1:
@@ -311,10 +312,11 @@ func (uci *UCIAdapter) setOption(uciFields []string) {
 				uci.invalid(uciFields)
 				return
 			}
-			// fmt.Printf("setting up load balancer for %d CPU", numCPU)
-			if numCPU > 0 && runtime.NumCPU() > numCPU {
+			if numCPU > 0 && runtime.NumCPU() >= numCPU {
+				if uci.optionDebug {
+					uci.InfoString(fmt.Sprintf("setting up load balancer for %d CPU\n", numCPU))
+				}
 				setupLoadBalancer(numCPU)
-				// runtime.GC()
 			}
 		}
 	default:
