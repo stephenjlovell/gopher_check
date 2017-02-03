@@ -2,3 +2,4 @@
 ./gopher_check
 ./log.txt
 ./*.pprof
+.DS_Store
