@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -77,10 +78,19 @@ func (uci *UCIAdapter) Read(reader *bufio.Reader) {
 	var input string
 	var uciFields []string
 
-	f, err := os.OpenFile("log.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+	f, err := os.OpenFile("./log.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
-		fmt.Printf("error opening file: %v\n", err)
+		fmt.Printf("info string error opening file: %v\n", err)
+	} else {
+		fmt.Printf("info string log file created\n")
+
+		dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+		if err != nil {
+			// log.Fatal(err)
+		}
+		fmt.Println(dir)
 	}
+
 	defer f.Close()
 	log.SetOutput(f)
 

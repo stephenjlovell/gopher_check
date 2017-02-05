@@ -30,7 +30,7 @@ const (
 
 const (
 	MAX_DEPTH = 32 // default maximum search depth
-	COMMS_MIN = 7  // minimum depth at which to send info to GUI.
+	COMMS_MIN = 1  // minimum depth at which to send info to GUI.
 )
 
 const (
@@ -159,16 +159,15 @@ func (s *Search) iterativeDeepening(brd *Board) int {
 	inCheck := brd.InCheck()
 
 	for d := 1; d <= s.maxDepth; d++ {
-
-		stk[0].inCheck = inCheck
-		guess, total = s.ybw(brd, stk, s.alpha, s.beta, d, 0, Y_PV, SP_NONE, false)
-		sum += total
-
 		select {
 		case <-s.cancel:
 			return sum
 		default:
 		}
+
+		stk[0].inCheck = inCheck
+		guess, total = s.ybw(brd, stk, s.alpha, s.beta, d, 0, Y_PV, SP_NONE, false)
+		sum += total
 
 		if stk[0].pv.m.IsMove() {
 			s.Lock()

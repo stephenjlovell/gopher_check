@@ -41,8 +41,6 @@ var oppositeDir = [16]int{SE, SW, NW, NE, SOUTH, WEST, NORTH, EAST, DIR_INVALID}
 
 // var middle_rows BB
 
-var maskOfLength [65]uint64
-
 var rowMasks, columnMasks [8]BB
 
 var pawnIsolatedMasks, pawnSideMasks, pawnDoubledMasks, knightMasks, bishopMasks, rookMasks,
@@ -67,7 +65,6 @@ func setupSquareMasks() {
 	for i := 0; i < 64; i++ {
 		sqMaskOn[i] = BB(1 << uint(i))
 		sqMaskOff[i] = (^sqMaskOn[i])
-		maskOfLength[i] = uint64(sqMaskOn[i] - 1)
 	}
 }
 

@@ -827,9 +827,8 @@ func getChecks(brd *Board, htable *HistoryTable, remainingMoves *MoveList) {
 
 func getPromotionAdvances(brd *Board, winning, losing *MoveList, from, to int) {
 	var m Move
-	var sort uint64
 	m = NewMove(from, to, PAWN, EMPTY, QUEEN)
-	sort = sortPromotionAdvances(brd, from, to, QUEEN)
+	sort := sortPromotionAdvances(brd, from, to, QUEEN)
 	if sort >= SORT_WINNING_PROMOTION {
 		winning.Push(SortItem{sort, m})
 	} else {
