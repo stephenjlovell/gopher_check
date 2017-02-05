@@ -48,7 +48,7 @@ type Search struct {
 	once         sync.Once
 	allowedMoves []Move
 	bestScore    [2]int
-	sync.Mutex
+	// sync.Mutex
 	cancel               chan bool
 	bestMove, ponderMove Move
 	gt                   *GameTimer
@@ -91,7 +91,7 @@ func NewSearch(params SearchParams, gt *GameTimer, uci *UCIAdapter, allowedMoves
 func (s *Search) sendResult() {
 	// UCIInfoString(fmt.Sprintf("Search %d aborting...\n", search_id))
 	s.once.Do(func() {
-		s.Lock()
+		// s.Lock()
 		if s.uci != nil {
 			if s.ponder {
 				s.uci.result <- s.Result() // queue result to be sent when requested by GUI.
@@ -99,7 +99,7 @@ func (s *Search) sendResult() {
 				s.uci.BestMove(s.Result()) // send result immediately
 			}
 		}
-		s.Unlock()
+		// s.Unlock()
 	})
 }
 
@@ -159,34 +159,32 @@ func (s *Search) iterativeDeepening(brd *Board) int {
 	inCheck := brd.InCheck()
 
 	for d := 1; d <= s.maxDepth; d++ {
-		select {
-		case <-s.cancel:
-			return sum
-		default:
-		}
 
 		stk[0].inCheck = inCheck
 		guess, total = s.ybw(brd, stk, s.alpha, s.beta, d, 0, Y_PV, SP_NONE, false)
 		sum += total
 
+		select { // if the cancel signal was received mid-search, the current guess is not useful.
+		case <-s.cancel:
+			return sum
+		default:
+		}
+
 		if stk[0].pv.m.IsMove() {
-			s.Lock()
+			// s.Lock()
 			s.bestMove, s.bestScore[c] = stk[0].pv.m, guess
 			if stk[0].pv.next != nil {
 				s.ponderMove = stk[0].pv.next.m
 			}
-			s.Unlock()
+			// s.Unlock()
 			stk[0].pv.SavePV(brd, d, guess) // install PV to transposition table prior to next iteration.
 		} else {
 			s.sendInfo("Nil PV returned to ID\n")
 		}
-		// nodes_per_iteration[d] += total
 		if d >= COMMS_MIN && (s.verbose || s.uci != nil) { // don't print info for first few plies to reduce communication traffic.
 			s.uci.Info(Info{guess, d, sum, s.gt.Elapsed(), stk})
 		}
 	}
-
-	// TODO: BUG: 'orphaned' workers occasionally still processing after ID loop
 
 	return sum
 }

@@ -109,9 +109,9 @@ func (brd *Board) EvadesCheck(m Move) bool {
 		// 8/PPKR4/1Bn4P/3P3R/8/2p4r/pp4p1/r6k w - - 5 2  (r h3h5 x r)...?
 
 		if threats == 0 {
-			fmt.Println("EvadesCheck() called from non-check position!")
-			m.Print()
-			brd.PrintDetails()
+			fmt.Println("info string EvadesCheck() called from non-check position!")
+			// m.Print()
+			// brd.PrintDetails()
 			return true // no threats to evade.
 		}
 

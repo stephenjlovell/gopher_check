@@ -15,8 +15,8 @@ type Stack []StackItem
 
 type StackItem struct {
 	hashKey      uint64 // use hash key to search for repetitions
-	eval          int
-	killers       KEntry
+	eval         int
+	killers      KEntry
 	singularMove Move
 
 	sp *SplitPoint
@@ -29,10 +29,10 @@ type StackItem struct {
 func (thisStk *StackItem) Copy() *StackItem {
 	return &StackItem{
 		// split point is not copied over.
-		pv:            thisStk.pv,
-		killers:       thisStk.killers,
+		pv:           thisStk.pv,
+		killers:      thisStk.killers,
 		singularMove: thisStk.singularMove,
-		eval:          thisStk.eval,
+		eval:         thisStk.eval,
 		hashKey:      thisStk.hashKey,
 		inCheck:      thisStk.inCheck,
 		canNull:      thisStk.canNull,

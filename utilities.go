@@ -36,6 +36,7 @@ func RunTestSuite(testSuite string, depth, timeout int) {
 			fmt.Printf("%d.", i+1)
 		}
 		sum += search.nodes
+		// search.htable.PrintMax()
 	}
 	secondsElapsed := time.Since(start).Seconds()
 	mNodes := float64(sum) / 1000000.0
@@ -44,8 +45,6 @@ func RunTestSuite(testSuite string, depth, timeout int) {
 	fmt.Printf("Total score: %d/%d\n", score, len(test))
 	fmt.Printf("Overhead: %.4fm\n", float64(loadBalancer.Overhead())/1000000.0)
 	fmt.Printf("Timeout: %.1fs\n", float64(timeout)/1000.0)
-	// fmt.Printf("PV Accuracy: %d/%d (%.2f)\n\n", pv_accuracy[1], pv_accuracy[0]+pv_accuracy[1],
-	// 	float64(pv_accuracy[1])/float64(pv_accuracy[0]+pv_accuracy[1]))
 }
 
 func correctMove(epd *EPD, moveStr string) bool {

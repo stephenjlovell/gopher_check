@@ -119,8 +119,8 @@ func getSee(brd *Board, from, to int, capturedPiece Piece) int {
 		// this move is illegal and will be discarded by search.  return the lowest possible
 		// SEE value so that this move will be put at end of list.  If cutoff occurs before then,
 		// the cost of detecting the illegal move will be saved.
-		// TODO: send this in UCI-compatible format
-		fmt.Println("king capture detected in getSee()!")
+
+		fmt.Println("info string king capture detected in getSee()!")
 		return SEE_MIN
 	}
 	t = brd.TypeAt(from)

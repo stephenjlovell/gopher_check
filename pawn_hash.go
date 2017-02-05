@@ -17,9 +17,9 @@ type PawnEntry struct {
 	rightAttacks [2]BB
 	allAttacks   [2]BB
 	passedPawns  [2]BB
-	value         [2]int
-	key           uint32
-	count         [2]uint8
+	value        [2]int
+	key          uint32
+	count        [2]uint8
 }
 
 func NewPawnTT() *PawnTT {

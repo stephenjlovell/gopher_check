@@ -5,14 +5,14 @@
 
 package main
 
-const ( // type
-	PAWN = iota
-	KNIGHT
-	BISHOP
-	ROOK
-	QUEEN
-	KING
-	EMPTY // no piece located at this square
+const (
+	PAWN   = iota
+	KNIGHT // 1
+	BISHOP // 2
+	ROOK   // 3
+	QUEEN  // 4
+	KING   // 5
+	EMPTY  //  6 no piece located at this square
 )
 
 const (
