@@ -15,7 +15,7 @@ import (
 	"github.com/pkg/profile"
 )
 
-var version = "0.2.1"
+var version = "0.2.2"
 
 func max(a, b int) int {
 	if a > b {
