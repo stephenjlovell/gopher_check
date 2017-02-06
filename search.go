@@ -320,7 +320,7 @@ searchMoves:
 	}
 
 	singularNode := ply > 0 && nodeType == Y_CUT && (hashResult&BETA_FOUND) > 0 &&
-		firstMove != NO_MOVE && depth > 6 && thisStk.canNull
+		firstMove.IsMove() && depth > 6 && thisStk.canNull
 
 	memento := brd.NewMemento()
 	recycler := brd.worker.recycler
@@ -347,6 +347,7 @@ searchMoves:
 		total = 0
 		rDepth = depth
 
+		// TODO: verify safety for parallel search
 		// Singular extension
 		if singularNode && spType == SP_NONE && m == firstMove {
 			sBeta := hashScore - (depth << 1)

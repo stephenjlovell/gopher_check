@@ -81,14 +81,19 @@ func (brd *Board) EvadesCheck(m Move) bool {
 	return true
 }
 
+// Determines if a move is otherwise legal for brd, without considering king safety.
 func (brd *Board) ValidMove(m Move, inCheck bool) bool {
 	if !m.IsMove() {
 		return false
 	}
 	c, e := brd.c, brd.Enemy()
 	piece, from, to, capturedPiece := m.Piece(), m.From(), m.To(), m.CapturedPiece()
-
+	// Check that the piece is of the correct type and color.
 	if brd.TypeAt(from) != piece || brd.pieces[c][piece]&sqMaskOn[from] == 0 {
+		// if brd.TypeAt(from) == piece {
+		// 	brd.Print()
+		// 	m.Print()
+		// }
 		// fmt.Printf("No piece of this type available at from square!{%s}", m.ToString())
 		return false
 	}
@@ -118,18 +123,18 @@ func (brd *Board) ValidMove(m Move, inCheck bool) bool {
 		} else if capturedPiece == EMPTY {
 			// fmt.Printf("Invalid pawn move!{%s}", m.ToString())
 			return false
-		} else {
-			if capturedPiece == PAWN && brd.TypeAt(to) == EMPTY {
-				if brd.enpTarget != SQ_INVALID && pawnStopSq[e][to] == int(brd.enpTarget) {
-					return true
-				} else {
-					// fmt.Printf("Invalid En-passant move!{%s}", m.ToString())
-					return false
-				}
+		} else if capturedPiece == PAWN && brd.TypeAt(to) == EMPTY {
+			if c == WHITE {
+				return brd.enpTarget != SQ_INVALID && pawnSideMasks[brd.enpTarget]&sqMaskOn[from] > 0 &&
+					int(brd.enpTarget)+8 == to
 			} else {
-				return brd.TypeAt(to) == capturedPiece
+				return brd.enpTarget != SQ_INVALID && pawnSideMasks[brd.enpTarget]&sqMaskOn[from] > 0 &&
+					int(brd.enpTarget)-8 == to
 			}
+		} else {
+			return brd.TypeAt(to) == capturedPiece
 		}
+
 	case KING:
 
 		if abs(to-from) == 2 { // validate castle moves
@@ -174,6 +179,5 @@ func (brd *Board) ValidMove(m Move, inCheck bool) bool {
 			return false
 		}
 	}
-
 	return brd.TypeAt(to) == capturedPiece
 }
