@@ -131,32 +131,35 @@ func (brd *Board) ValidMove(m Move, inCheck bool) bool {
 			}
 		}
 	case KING:
+
 		if abs(to-from) == 2 { // validate castle moves
+			if inCheck {
+				return false
+			}
 			occ := brd.AllOccupied()
-			if c == WHITE && !inCheck && (brd.castle&12) > 0 {
+			castle := brd.castle
+			if c == WHITE {
 				switch to {
 				case C1:
-					if (brd.castle&C_WQ > uint8(0)) && castleQueensideIntervening[WHITE]&occ == 0 &&
-						!isAttackedBy(brd, occ, B1, e, c) && !isAttackedBy(brd, occ, C1, e, c) &&
-						!isAttackedBy(brd, occ, D1, e, c) {
+					if (castle&C_WQ > uint8(0)) && castleQueensideIntervening[WHITE]&occ == 0 &&
+						!isAttackedBy(brd, occ, C1, e, c) && !isAttackedBy(brd, occ, D1, e, c) {
 						return true
 					}
 				case G1:
-					if (brd.castle&C_WK > uint8(0)) && castleKingsideIntervening[WHITE]&occ == 0 &&
+					if (castle&C_WK > uint8(0)) && castleKingsideIntervening[WHITE]&occ == 0 &&
 						!isAttackedBy(brd, occ, F1, e, c) && !isAttackedBy(brd, occ, G1, e, c) {
 						return true
 					}
 				}
-			} else if c == BLACK && !inCheck && (brd.castle&3) > 0 {
+			} else {
 				switch to {
 				case C8:
-					if (brd.castle&C_BQ > uint8(0)) && castleQueensideIntervening[BLACK]&occ == 0 &&
-						!isAttackedBy(brd, occ, B8, e, c) && !isAttackedBy(brd, occ, C8, e, c) &&
-						!isAttackedBy(brd, occ, D8, e, c) {
+					if (castle&C_BQ > uint8(0)) && castleQueensideIntervening[BLACK]&occ == 0 &&
+						!isAttackedBy(brd, occ, C8, e, c) && !isAttackedBy(brd, occ, D8, e, c) {
 						return true
 					}
 				case G8:
-					if (brd.castle&C_BK > uint8(0)) && castleKingsideIntervening[BLACK]&occ == 0 &&
+					if (castle&C_BK > uint8(0)) && castleKingsideIntervening[BLACK]&occ == 0 &&
 						!isAttackedBy(brd, occ, F8, e, c) && !isAttackedBy(brd, occ, G8, e, c) {
 						return true
 					}
