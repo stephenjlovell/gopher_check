@@ -26,16 +26,20 @@ func TestLegalMoveGen(t *testing.T) {
 // 	depth := 5
 // 	legal_movegen(PerftValidation, StartPos(), depth, legal_max_tree[depth], true)
 // }
-//
 
 // func TestPerftSuite(t *testing.T) {
-// 	depth := 4
-// 	test_positions := load_epd_file("test_suites/perftsuite.epd")  // http://www.rocechess.ch/perft.html
-// 	for i, epd := range test_positions {
-// 		if expected, ok := epd.node_count[depth]; ok {
+// 	depth := 6
+// 	testPositions, err := loadEpdFile("test_suites/perftsuite.epd") // http://www.rocechess.ch/perft.html
+// 	if err != nil {
+// 		panic("could not load epd file")
+// 	}
+//
+// 	for i, epd := range testPositions {
+// 		if expected, ok := epd.nodeCount[depth]; ok {
 // 			fmt.Printf("%d.", i+1)
 // 			epd.brd.Print()
-// 			legal_movegen(Perft, epd.brd, depth, expected, false)
+// 			fmt.Println(epd.fen)
+// 			legalMovegen(Perft, epd.brd, depth, expected, false)
 // 		}
 // 	}
 // }

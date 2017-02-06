@@ -23,6 +23,7 @@ type EPD struct {
 	avoidMoves []string
 	nodeCount  map[int]int
 	id         string
+	fen        string
 }
 
 func (epd *EPD) Print() {
@@ -61,6 +62,7 @@ func ParseEPDString(str string) *EPD {
 	fenFields := strings.Split(epdFields[0], " ")
 
 	epd.brd = ParseFENSlice(fenFields[:4])
+	epd.fen = strings.Join(fenFields[:4], " ")
 
 	bm := regexp.MustCompile("bm")
 	am := regexp.MustCompile("am")
