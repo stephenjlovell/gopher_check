@@ -18,7 +18,7 @@ const ( // TODO: expose these as options via UCI interface.
 	NULL_MOVE_MIN   = 3  // Do not use null-move pruning below this depth.
 	MIN_CHECK_DEPTH = -2 // During Q-Search, consider all evasions when in check at or above this depth.
 
-	DRAW_VALUE = -KNIGHT_VALUE // The value to assign to a draw
+	DRAW_VALUE = KNIGHT_VALUE // The value to assign to a draw
 )
 
 const (
@@ -89,9 +89,7 @@ func NewSearch(params SearchParams, gt *GameTimer, uci *UCIAdapter, allowedMoves
 }
 
 func (s *Search) sendResult() {
-	// UCIInfoString(fmt.Sprintf("Search %d aborting...\n", search_id))
 	s.once.Do(func() {
-		// s.Lock()
 		if s.uci != nil {
 			if s.ponder {
 				s.uci.result <- s.Result() // queue result to be sent when requested by GUI.
@@ -99,7 +97,6 @@ func (s *Search) sendResult() {
 				s.uci.BestMove(s.Result()) // send result immediately
 			}
 		}
-		// s.Unlock()
 	})
 }
 
@@ -171,13 +168,13 @@ func (s *Search) iterativeDeepening(brd *Board) int {
 		}
 
 		if stk[0].pv.m.IsMove() {
-			// s.Lock()
 			s.bestMove, s.bestScore[c] = stk[0].pv.m, guess
 			if stk[0].pv.next != nil {
 				s.ponderMove = stk[0].pv.next.m
 			}
-			// s.Unlock()
-			stk[0].pv.SavePV(brd, d, guess) // install PV to transposition table prior to next iteration.
+
+			// stk[0].pv.SavePV(brd, d, guess) // install PV to transposition table prior to next iteration.
+
 		} else {
 			s.sendInfo("Nil PV returned to ID\n")
 		}
@@ -214,7 +211,7 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, nodeType,
 	sum := 1
 
 	var nullDepth, hashResult, eval, subtotal, total, legalSearched, childType, rDepth int
-	var hashScore int
+	// var hashScore int
 	canPrune, fPrune, canReduce := false, false, false
 	bestMove, firstMove := NO_MOVE, NO_MOVE
 
@@ -234,7 +231,7 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, nodeType,
 
 	thisStk = &stk[ply]
 
-	if ply > 0 { // Mate Distance Pruning
+	if nodeType != Y_PV { // Mate Distance Pruning
 		mateValue := max(ply-MATE, alpha)
 		if mateValue >= min(MATE-ply, beta) {
 			return mateValue, sum
@@ -243,7 +240,7 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, nodeType,
 
 	thisStk.hashKey = brd.hashKey
 	if stk.IsRepetition(ply, brd.halfmoveClock) { // check for draw by threefold repetition
-		return DRAW_VALUE - ply, 1
+		return ply - DRAW_VALUE, 1
 	}
 
 	inCheck = thisStk.inCheck
@@ -252,13 +249,13 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, nodeType,
 		if isCheckmate(brd, inCheck) {
 			return ply - MATE, 1
 		} else {
-			return DRAW_VALUE - ply, 1
+			return ply - DRAW_VALUE, 1
 		}
 	}
 
 	nullDepth = depth - 4
 	firstMove, hashResult = mainTt.probe(brd, depth, nullDepth, alpha, beta, &score)
-	hashScore = score
+	// hashScore = score
 
 	eval = evaluate(brd, alpha, beta)
 	thisStk.eval = eval
@@ -319,8 +316,8 @@ searchMoves:
 		}
 	}
 
-	singularNode := ply > 0 && nodeType == Y_CUT && (hashResult&BETA_FOUND) > 0 &&
-		firstMove.IsMove() && depth > 6 && thisStk.canNull
+	// singularNode := ply > 0 && nodeType == Y_CUT && (hashResult&BETA_FOUND) > 0 &&
+	// 	firstMove.IsMove() && depth > 6 && thisStk.canNull
 
 	memento := brd.NewMemento()
 	recycler := brd.worker.recycler
@@ -347,17 +344,17 @@ searchMoves:
 		total = 0
 		rDepth = depth
 
-		// TODO: verify safety for parallel search
-		// Singular extension
-		if singularNode && spType == SP_NONE && m == firstMove {
-			sBeta := hashScore - (depth << 1)
-			thisStk.singularMove, thisStk.canNull = m, false
-			score, total = s.ybw(brd, stk, sBeta-1, sBeta, depth/2, ply, Y_CUT, SP_NONE, checked)
-			thisStk.singularMove, thisStk.canNull = NO_MOVE, true
-			if score < sBeta {
-				rDepth = depth + 1 // extend moves that are expected to be the only move searched.
-			}
-		}
+		// // TODO: verify safety for parallel search
+		// // Singular extension
+		// if singularNode && spType == SP_NONE && m == firstMove {
+		// 	sBeta := hashScore - (depth << 1)
+		// 	thisStk.singularMove, thisStk.canNull = m, false
+		// 	score, total = s.ybw(brd, stk, sBeta-1, sBeta, depth/2, ply, Y_CUT, SP_NONE, checked)
+		// 	thisStk.singularMove, thisStk.canNull = NO_MOVE, true
+		// 	if score < sBeta {
+		// 		rDepth = depth + 1 // extend moves that are expected to be the only move searched.
+		// 	}
+		// }
 
 		makeMove(brd, m)
 
@@ -548,7 +545,7 @@ searchMoves:
 			return ply - MATE, sum
 		} else { // Draw.
 			mainTt.store(brd, NO_MOVE, depth, EXACT, 0)
-			return 0, sum
+			return ply - DRAW_VALUE, sum
 		}
 	}
 }
@@ -561,7 +558,7 @@ func (s *Search) quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) 
 
 	thisStk.hashKey = brd.hashKey
 	if stk.IsRepetition(ply, brd.halfmoveClock) { // check for draw by threefold repetition
-		return DRAW_VALUE - ply, 1
+		return ply - DRAW_VALUE, 1
 	}
 
 	inCheck := thisStk.inCheck
@@ -569,7 +566,7 @@ func (s *Search) quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) 
 		if isCheckmate(brd, inCheck) {
 			return ply - MATE, 1
 		} else {
-			return DRAW_VALUE - ply, 1
+			return ply - DRAW_VALUE, 1
 		}
 	}
 

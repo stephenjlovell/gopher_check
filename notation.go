@@ -104,7 +104,7 @@ func ParseEPDString(str string) *EPD {
 	return epd
 }
 
-var sanChars = [6]string{"P", "N", "B", "R", "Q", "K"}
+var sanChars = [8]string{"P", "N", "B", "R", "Q", "K"}
 
 func ToSAN(brd *Board, m Move) string { // convert move to Standard Algebraic Notation (SAN)
 	piece, from, to := m.Piece(), m.From(), m.To()

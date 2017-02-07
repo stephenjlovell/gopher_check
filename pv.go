@@ -28,34 +28,24 @@ func (pv *PV) ToUCI() string {
 	return str
 }
 
-var pvAccuracy [2]int
-
 func (pv *PV) SavePV(brd *Board, value, depth int) {
-	var lastValue int
 	var m Move
 	var inCheck bool
-
 	copy := brd.Copy() // create a local copy of the board to avoid having to unmake moves.
+	// fmt.Printf("\n%s\n", pv.ToUCI())
 	for pv != nil {
 		m = pv.m
 		inCheck = copy.InCheck()
-
 		if !copy.ValidMove(m, inCheck) || !copy.LegalMove(m, inCheck) {
 			break
 		}
-
-		lastValue = pv.value
+		// fmt.Printf("%d, ", pv.depth)
 		mainTt.store(copy, m, pv.depth, EXACT, pv.value)
 
 		makeMove(copy, m)
 		pv = pv.next
 	}
-
-	if abs(value) == abs(lastValue) {
-		pvAccuracy[1] += 1
-	} else {
-		pvAccuracy[0] += 1
-	}
+	// fmt.Printf("\n")
 
 }
 
