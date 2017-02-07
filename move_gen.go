@@ -533,8 +533,8 @@ func getEvasions(brd *Board, htable *HistoryTable, winning, losing, remainingMov
 				// In addition to making sure this capture will get the king out of check and that
 				// the piece is not pinned, verify that removing the enemy pawn does not leave the
 				// king in check.
-				if (sqMaskOn[to]&defenseMap) > 0 && pinnedCanMove(brd, from, to, c, e) &&
-					isPinned(brd, int(enpTarget), c, e)&sqMaskOn[to] > 0 {
+				if (sqMaskOn[to]&defenseMap) > 0 && isPinned(brd, occ&sqMaskOff[enpTarget],
+					m.From(), brd.c, brd.Enemy())&sqMaskOn[m.To()] > 0 {
 					m = NewCapture(from, to, PAWN, PAWN)
 					winning.Push(SortItem{SortCapture(PAWN, PAWN, 0), m})
 				}
@@ -564,7 +564,7 @@ func getEvasions(brd *Board, htable *HistoryTable, winning, losing, remainingMov
 			from = furthestForward(c, f) // Locate each knight for the side to move.
 			// Knights cannot move if pinned by a sliding piece, since they can't move along the ray between
 			// the threat piece and their own king.
-			if isPinned(brd, from, c, e) == BB(ANY_SQUARE_MASK) {
+			if isPinned(brd, occ, from, c, e) == BB(ANY_SQUARE_MASK) {
 				for t := (knightMasks[from] & defenseMap); t > 0; t.Clear(to) { // generate to squares
 					to = furthestForward(c, t)
 					if sqMaskOn[to]&enemy > 0 {

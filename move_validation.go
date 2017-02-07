@@ -19,15 +19,20 @@ func (brd *Board) LegalMove(m Move, inCheck bool) bool {
 // Moves generated while in check should already be legal, since we determine this
 // as a side-effect of generating evasions.
 func (brd *Board) AvoidsCheck(m Move, inCheck bool) bool {
-	return inCheck || brd.PseudolegalAvoidsCheck(m)
+	// return inCheck || brd.PseudolegalAvoidsCheck(m)
+	if inCheck && !brd.PseudolegalAvoidsCheck(m) {
+		fmt.Println("{!}")
+	}
+	return brd.PseudolegalAvoidsCheck(m)
 }
 
 func (brd *Board) PseudolegalAvoidsCheck(m Move) bool {
 	switch m.Piece() {
 	case PAWN:
 		if m.CapturedPiece() == PAWN && brd.TypeAt(m.To()) == EMPTY { // En-passant
-			return pinnedCanMove(brd, m.From(), m.To(), brd.c, brd.Enemy()) &&
-				isPinned(brd, int(brd.enpTarget), brd.c, brd.Enemy())&sqMaskOn[m.To()] > 0
+			// detect if the moving pawn would be pinned in the absence of the captured pawn.
+			return isPinned(brd, brd.AllOccupied()&sqMaskOff[brd.enpTarget],
+				m.From(), brd.c, brd.Enemy())&sqMaskOn[m.To()] > 0
 		} else {
 			return pinnedCanMove(brd, m.From(), m.To(), brd.c, brd.Enemy())
 		}
@@ -56,9 +61,9 @@ func (brd *Board) EvadesCheck(m Move) bool {
 
 		if threats == 0 {
 			fmt.Println("info string EvadesCheck() called from non-check position!")
-			// m.Print()
-			// brd.PrintDetails()
-			return true // no threats to evade.
+			brd.Print()
+			m.Print()
+			return brd.PseudolegalAvoidsCheck(m)
 		}
 
 		if popCount(threats) > 1 {
@@ -101,8 +106,8 @@ func (brd *Board) ValidMove(m Move, inCheck bool) bool {
 		// fmt.Printf("To square occupied by own piece!{%s}", m.ToString())
 		return false
 	}
-	if capturedPiece == KING || brd.pieces[c][KING] == 0 {
-		// fmt.Printf("King capture detected!{%s}", m.ToString())
+	if capturedPiece == KING {
+		fmt.Printf("info string King capture detected in ValidMove! (%s)\n", m.ToString())
 		return false
 	}
 	switch piece {

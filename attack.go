@@ -53,6 +53,10 @@ func isAttackedBy(brd *Board, occ BB, sq int, attacker, defender uint8) bool {
 	return false
 }
 
+func pinnedCanMove(brd *Board, from, to int, c, e uint8) bool {
+	return isPinned(brd, brd.AllOccupied(), from, c, e)&sqMaskOn[to] > 0
+}
+
 // Determines if a piece is blocking a ray attack to its king, and cannot move off this ray
 // without placing its king in check.
 // Returns the area to which the piece can move without leaving its king in check.
@@ -62,15 +66,13 @@ func isAttackedBy(brd *Board, occ BB, sq int, attacker, defender uint8) bool {
 // 3. Scan in the opposite direction to see detect any potential threats along this ray.
 
 // Return a bitboard of locations the piece at sq can move to without leaving the king in check.
-func isPinned(brd *Board, sq int, c, e uint8) BB {
-	occ := brd.AllOccupied()
+
+func isPinned(brd *Board, occ BB, sq int, c, e uint8) BB {
 	var line, attacks, threat BB
 	kingSq := brd.KingSq(c)
-	dir := directions[sq][kingSq] // get direction toward king
-
 	line = lineMasks[sq][kingSq]
 	if line > 0 { // can only be pinned if on a ray to the king.
-		if dir < NORTH {
+		if directions[sq][kingSq] < NORTH { // direction toward king
 			attacks = bishopAttacks(occ, sq)
 			threat = line & attacks & (brd.pieces[e][BISHOP] | brd.pieces[e][QUEEN])
 		} else {
@@ -116,12 +118,14 @@ func getSee(brd *Board, from, to int, capturedPiece Piece) int {
 	count := 1
 
 	if capturedPiece == KING {
-		// this move is illegal and will be discarded by search.  return the lowest possible
+		// this move is illegal and will be discarded by the move selector. Return the lowest possible
 		// SEE value so that this move will be put at end of list.  If cutoff occurs before then,
 		// the cost of detecting the illegal move will be saved.
-
 		fmt.Println("info string king capture detected in getSee()!")
-		return SEE_MIN
+		fmt.Printf("info string %s%s x %s", SquareString(from), SquareString(to), sanChars[capturedPiece])
+		brd.Print()
+		panic("king capture detected in getSee()!")
+		// return SEE_MIN
 	}
 	t = brd.TypeAt(from)
 	if t == KING { // Only commit to the attack if target piece is undefended.
@@ -189,10 +193,6 @@ func getSee(brd *Board, from, to int, capturedPiece Piece) int {
 	}
 	// fmt.Printf(" %d ", piece_list[0])
 	return pieceList[0]
-}
-
-func pinnedCanMove(brd *Board, from, to int, c, e uint8) bool {
-	return isPinned(brd, from, brd.c, brd.Enemy())&sqMaskOn[to] > 0
 }
 
 func isCheckmate(brd *Board, inCheck bool) bool {
