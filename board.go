@@ -19,19 +19,21 @@ var printMutex sync.Mutex
 
 // When spawning new goroutines for subtree search, a deep copy of the Board struct will have to be made
 // and passed to the new goroutine.  Keep this struct as small as possible.
+// TODO: change material to uint16
 type Board struct {
 	pieces         [2][6]BB  // 768 bits
 	squares        [64]Piece // 512 bits
 	occupied       [2]BB     // 128 bits
-	material       [2]int32  // 64  bits
-	hashKey        uint64    // 64  bits
-	pawnHashKey    uint32    // 32  bits
-	c              uint8     // 8   bits
-	castle         uint8     // 8   bits
-	enpTarget      uint8     // 8 	bits
-	halfmoveClock  uint8     // 8 	bits
-	endgameCounter uint8     // 8 	bits
-	worker         *Worker
+	material       [2]int32  //  64 bits
+	hashKey        uint64    //  64 bits
+	worker         *Worker   //  64 bits
+	pawnHashKey    uint32    //  32 bits
+	c              uint8     //   8 bits
+	castle         uint8     //   8 bits
+	enpTarget      uint8     //   8 bits
+	halfmoveClock  uint8     //   8 bits
+	endgameCounter uint8     //   8 bits
+
 }
 
 type BoardMemento struct { // memento object used to store board state to unmake later.

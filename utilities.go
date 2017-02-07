@@ -60,3 +60,110 @@ func correctMove(epd *EPD, moveStr string) bool {
 	}
 	return false
 }
+
+func CompareBoards(brd, other *Board) bool {
+	equal := true
+	if brd.pieces != other.pieces {
+		fmt.Println("Board.pieces unequal")
+		equal = false
+	}
+	if brd.squares != other.squares {
+		fmt.Println("Board.squares unequal")
+		fmt.Println("original:")
+		brd.Print()
+		fmt.Println("new board:")
+		other.Print()
+		equal = false
+	}
+	if brd.occupied != other.occupied {
+		fmt.Println("Board.occupied unequal")
+		for i := 0; i < 2; i++ {
+			fmt.Printf("side: %d\n", i)
+			fmt.Println("original:")
+			brd.occupied[i].Print()
+			fmt.Println("new board:")
+			other.occupied[i].Print()
+		}
+		equal = false
+	}
+	if brd.material != other.material {
+		fmt.Println("Board.material unequal")
+		equal = false
+	}
+	if brd.hashKey != other.hashKey {
+		fmt.Println("Board.hashKey unequal")
+		equal = false
+	}
+	if brd.pawnHashKey != other.pawnHashKey {
+		fmt.Println("Board.pawnHashKey unequal")
+		equal = false
+	}
+	if brd.c != other.c {
+		fmt.Println("Board.c unequal")
+		equal = false
+	}
+	if brd.castle != other.castle {
+		fmt.Println("Board.castle unequal")
+		equal = false
+	}
+	if brd.enpTarget != other.enpTarget {
+		fmt.Println("Board.enpTarget unequal")
+		equal = false
+	}
+	if brd.halfmoveClock != other.halfmoveClock {
+		fmt.Println("Board.halfmoveClock unequal")
+		equal = false
+	}
+	if brd.endgameCounter != other.endgameCounter {
+		fmt.Println("Board.endgameCounter unequal")
+		equal = false
+	}
+	return equal
+}
+
+func isBoardConsistent(brd *Board) bool {
+	var squares [64]Piece
+	var occupied [2]BB
+	var material [2]int32
+
+	var sq int
+	for sq := 0; sq < 64; sq++ {
+		squares[sq] = EMPTY
+	}
+	consistent := true
+
+	for c := uint8(BLACK); c <= WHITE; c++ {
+		for pc := Piece(PAWN); pc <= KING; pc++ {
+			if occupied[c]&brd.pieces[c][pc] > 0 {
+				fmt.Printf("brd.pieces[%d][%d] overlaps with another pieces bitboard.\n", c, pc)
+				consistent = false
+			}
+			occupied[c] |= brd.pieces[c][pc]
+
+			for bb := brd.pieces[c][pc]; bb > 0; bb.Clear(sq) {
+				sq = furthestForward(c, bb)
+				material[c] += int32(pc.Value() + mainPst[c][pc][sq])
+				if squares[sq] != EMPTY {
+					fmt.Printf("brd.pieces[%d][%d] overlaps with another pieces bitboard at %s.\n", c, pc, SquareString(sq))
+					consistent = false
+				}
+				squares[sq] = pc
+			}
+		}
+	}
+
+	if squares != brd.squares {
+		fmt.Println("brd.squares inconsistent")
+		consistent = false
+	}
+	if occupied != brd.occupied {
+		fmt.Println("brd.occupied inconsistent")
+		consistent = false
+	}
+	if material != brd.material {
+		fmt.Println("brd.material inconsistent")
+		consistent = false
+	}
+
+	return consistent
+}

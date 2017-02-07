@@ -35,22 +35,11 @@ func colorAttackMap(brd *Board, occ BB, sq int, c, e uint8) BB {
 }
 
 func isAttackedBy(brd *Board, occ BB, sq int, attacker, defender uint8) bool {
-	if pawnAttackMasks[defender][sq]&brd.pieces[attacker][PAWN] > 0 { // Pawns
-		return true
-	}
-	if knightMasks[sq]&(brd.pieces[attacker][KNIGHT]) > 0 { // Knights
-		return true
-	}
-	if kingMasks[sq]&(brd.pieces[attacker][KING]) > 0 { // Kings
-		return true
-	}
-	if bishopAttacks(occ, sq)&(brd.pieces[attacker][BISHOP]|brd.pieces[attacker][QUEEN]) > 0 { // Bishops and Queens
-		return true
-	}
-	if rookAttacks(occ, sq)&(brd.pieces[attacker][ROOK]|brd.pieces[attacker][QUEEN]) > 0 { // Rooks and Queens
-		return true
-	}
-	return false
+	return (pawnAttackMasks[defender][sq]&brd.pieces[attacker][PAWN] > 0) || // Pawns
+		(knightMasks[sq]&(brd.pieces[attacker][KNIGHT]) > 0) || // Knights
+		(kingMasks[sq]&(brd.pieces[attacker][KING]) > 0) || // Kings
+		(bishopAttacks(occ, sq)&(brd.pieces[attacker][BISHOP]|brd.pieces[attacker][QUEEN]) > 0) || // Bishops and Queens
+		(rookAttacks(occ, sq)&(brd.pieces[attacker][ROOK]|brd.pieces[attacker][QUEEN]) > 0) // Rooks and Queens
 }
 
 func pinnedCanMove(brd *Board, from, to int, c, e uint8) bool {
