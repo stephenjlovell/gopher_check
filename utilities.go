@@ -124,10 +124,10 @@ func CompareBoards(brd, other *Board) bool {
 func isBoardConsistent(brd *Board) bool {
 	var squares [64]Piece
 	var occupied [2]BB
-	var material [2]int32
+	var material [2]int16
 
 	var sq int
-	for sq := 0; sq < 64; sq++ {
+	for sq = 0; sq < 64; sq++ {
 		squares[sq] = EMPTY
 	}
 	consistent := true
@@ -142,7 +142,7 @@ func isBoardConsistent(brd *Board) bool {
 
 			for bb := brd.pieces[c][pc]; bb > 0; bb.Clear(sq) {
 				sq = furthestForward(c, bb)
-				material[c] += int32(pc.Value() + mainPst[c][pc][sq])
+				material[c] += int16(pc.Value() + mainPst[c][pc][sq])
 				if squares[sq] != EMPTY {
 					fmt.Printf("brd.pieces[%d][%d] overlaps with another pieces bitboard at %s.\n", c, pc, SquareString(sq))
 					consistent = false

@@ -21,19 +21,19 @@ var printMutex sync.Mutex
 // and passed to the new goroutine.  Keep this struct as small as possible.
 // TODO: change material to uint16
 type Board struct {
-	pieces         [2][6]BB  // 768 bits
-	squares        [64]Piece // 512 bits
-	occupied       [2]BB     // 128 bits
-	material       [2]int32  //  64 bits
-	hashKey        uint64    //  64 bits
-	worker         *Worker   //  64 bits
-	pawnHashKey    uint32    //  32 bits
-	c              uint8     //   8 bits
-	castle         uint8     //   8 bits
-	enpTarget      uint8     //   8 bits
-	halfmoveClock  uint8     //   8 bits
-	endgameCounter uint8     //   8 bits
-
+	pieces         [2][8]BB  // 1024 bits
+	squares        [64]Piece //  512 bits
+	occupied       [2]BB     //  128 bits
+	hashKey        uint64    //   64 bits
+	worker         *Worker   //   64 bits
+	material       [2]int16  //   32 bits
+	pawnHashKey    uint32    //   32 bits
+	c              uint8     //    8 bits
+	castle         uint8     //    8 bits
+	enpTarget      uint8     //    8 bits
+	halfmoveClock  uint8     //    8 bits
+	endgameCounter uint8     //    8 bits
+	// ...24 bits padding
 }
 
 type BoardMemento struct { // memento object used to store board state to unmake later.
@@ -59,7 +59,6 @@ func (brd *Board) InCheck() bool { // determines if side to move is in check
 }
 
 func (brd *Board) KingSq(c uint8) int {
-	// assert(brd.pieces[c][KING] > 0, "King missing from board")
 	return furthestForward(c, brd.pieces[c][KING])
 }
 

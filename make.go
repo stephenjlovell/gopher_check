@@ -240,7 +240,7 @@ func removePiece(brd *Board, removedPiece Piece, sq int, e uint8) {
 func unmakeRemovePiece(brd *Board, removedPiece Piece, sq int, e uint8) {
 	brd.pieces[e][removedPiece].Clear(sq)
 	brd.occupied[e].Clear(sq)
-	brd.material[e] -= int32(removedPiece.Value() + mainPst[e][removedPiece][sq])
+	brd.material[e] -= int16(removedPiece.Value() + mainPst[e][removedPiece][sq])
 	brd.endgameCounter -= endgameCountValues[removedPiece]
 }
 
@@ -253,7 +253,7 @@ func unmakeAddPiece(brd *Board, addedPiece Piece, sq int, c uint8) {
 	brd.pieces[c][addedPiece].Add(sq)
 	brd.squares[sq] = addedPiece
 	brd.occupied[c].Add(sq)
-	brd.material[c] += int32(addedPiece.Value() + mainPst[c][addedPiece][sq])
+	brd.material[c] += int16(addedPiece.Value() + mainPst[c][addedPiece][sq])
 	brd.endgameCounter += endgameCountValues[addedPiece]
 }
 
@@ -269,7 +269,7 @@ func unmakeRelocatePiece(brd *Board, piece Piece, from, to int, c uint8) {
 	brd.occupied[c] ^= fromTo
 	brd.squares[from] = EMPTY
 	brd.squares[to] = piece
-	brd.material[c] += int32(mainPst[c][piece][to] - mainPst[c][piece][from])
+	brd.material[c] += int16(mainPst[c][piece][to] - mainPst[c][piece][from])
 }
 
 func relocateKing(brd *Board, piece, capturedPiece Piece, from, to int, c uint8) {

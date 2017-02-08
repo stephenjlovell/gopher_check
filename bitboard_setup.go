@@ -33,13 +33,9 @@ var rookOffsets = [4]int{8, 1, -8, -1}
 var kingOffsets = [8]int{-9, -7, 7, 9, -8, -1, 1, 8}
 var pawnAttackOffsets = [4]int{9, 7, -9, -7}
 
-// var pawnAdvanceOffsets = [4]int{8, 16, -8, -16}
-
 var directions [64][64]int
 
 var oppositeDir = [16]int{SE, SW, NW, NE, SOUTH, WEST, NORTH, EAST, DIR_INVALID}
-
-// var middle_rows BB
 
 var rowMasks, columnMasks [8]BB
 

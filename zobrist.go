@@ -11,8 +11,10 @@ package main
 // piece/square combination, and merging in keys representing the side to move, castling rights,
 // and any en-passant target square.
 var pawnZobristTable [2][64]uint32
-var zobristTable [2][8][64]uint64 // keep array dimensions powers of 2 for faster array access.
-var enpTable [65]uint64           // integer keys representing the en-passant target square, if any.
+var zobristTable [2][8][64]uint64
+
+// integer keys representing the en-passant target square, if any.
+var enpTable [128]uint64
 var castleTable [16]uint64
 var sideKey64 uint64 // keys representing a change in side-to-move.
 
