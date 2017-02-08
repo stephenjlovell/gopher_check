@@ -13,12 +13,13 @@ const (
 )
 
 func makeMove(brd *Board, move Move) {
-	c := brd.c
-	piece := move.Piece()
 	from := move.From()
 	to := move.To()
-	capturedPiece := move.CapturedPiece()
+	updateCastleRights(brd, from, to)
 
+	capturedPiece := move.CapturedPiece()
+	c := brd.c
+	piece := move.Piece()
 	enpTarget := brd.enpTarget
 	brd.hashKey ^= enpZobrist(enpTarget) // XOR out old en passant target.
 	brd.enpTarget = SQ_INVALID
@@ -37,9 +38,6 @@ func makeMove(brd *Board, move Move) {
 			}
 		case PAWN: // Destination square will be empty if en passant capture
 			if enpTarget != SQ_INVALID && brd.TypeAt(to) == EMPTY {
-				// fmt.Println(move.ToString())
-				// brd.Print()
-
 				brd.pawnHashKey ^= pawnZobrist(int(enpTarget), brd.Enemy())
 				removePiece(brd, PAWN, int(enpTarget), brd.Enemy())
 				brd.squares[enpTarget] = EMPTY
@@ -47,11 +45,6 @@ func makeMove(brd *Board, move Move) {
 				brd.pawnHashKey ^= pawnZobrist(to, brd.Enemy())
 				removePiece(brd, PAWN, to, brd.Enemy())
 			}
-		case ROOK:
-			if brd.castle > 0 {
-				updateCastleRights(brd, to)
-			}
-			removePiece(brd, capturedPiece, to, brd.Enemy())
 		default: // any non-pawn piece is captured
 			removePiece(brd, capturedPiece, to, brd.Enemy())
 		}
@@ -67,45 +60,29 @@ func makeMove(brd *Board, move Move) {
 
 	case KING:
 		switch capturedPiece {
-		case ROOK:
-			if brd.castle > 0 {
-				updateCastleRights(brd, from)
-				updateCastleRights(brd, to) //
-			}
-			removePiece(brd, capturedPiece, to, brd.Enemy())
-			brd.halfmoveClock = 0 // All capture moves are irreversible.
 		case EMPTY:
 			brd.halfmoveClock += 1
-			if brd.castle > 0 {
-				updateCastleRights(brd, from)
-				if abs(to-from) == 2 { // king is castling.
-					brd.halfmoveClock = 0
-					if c == WHITE {
-						if to == G1 {
-							relocatePiece(brd, ROOK, H1, F1, c)
-						} else {
-							relocatePiece(brd, ROOK, A1, D1, c)
-						}
+			if abs(to-from) == 2 { // king is castling.
+				brd.halfmoveClock = 0
+				if c == WHITE {
+					if to == G1 {
+						relocatePiece(brd, ROOK, H1, F1, c)
 					} else {
-						if to == G8 {
-							relocatePiece(brd, ROOK, H8, F8, c)
-						} else {
-							relocatePiece(brd, ROOK, A8, D8, c)
-						}
+						relocatePiece(brd, ROOK, A1, D1, c)
+					}
+				} else {
+					if to == G8 {
+						relocatePiece(brd, ROOK, H8, F8, c)
+					} else {
+						relocatePiece(brd, ROOK, A8, D8, c)
 					}
 				}
 			}
 		case PAWN:
-			if brd.castle > 0 {
-				updateCastleRights(brd, from)
-			}
 			removePiece(brd, capturedPiece, to, brd.Enemy())
 			brd.pawnHashKey ^= pawnZobrist(to, brd.Enemy())
 			brd.halfmoveClock = 0 // All capture moves are irreversible.
 		default:
-			if brd.castle > 0 {
-				updateCastleRights(brd, from)
-			}
 			removePiece(brd, capturedPiece, to, brd.Enemy())
 			brd.halfmoveClock = 0 // All capture moves are irreversible.
 		}
@@ -114,28 +91,15 @@ func makeMove(brd *Board, move Move) {
 	case ROOK:
 		switch capturedPiece {
 		case ROOK:
-			if brd.castle > 0 {
-				updateCastleRights(brd, from)
-				updateCastleRights(brd, to)
-			}
 			removePiece(brd, capturedPiece, to, brd.Enemy())
 			brd.halfmoveClock = 0 // All capture moves are irreversible.
 		case EMPTY:
-			if brd.castle > 0 {
-				updateCastleRights(brd, from)
-			}
 			brd.halfmoveClock += 1
 		case PAWN:
-			if brd.castle > 0 {
-				updateCastleRights(brd, from)
-			}
 			removePiece(brd, capturedPiece, to, brd.Enemy())
 			brd.halfmoveClock = 0 // All capture moves are irreversible.
 			brd.pawnHashKey ^= pawnZobrist(to, brd.Enemy())
 		default:
-			if brd.castle > 0 {
-				updateCastleRights(brd, from)
-			}
 			removePiece(brd, capturedPiece, to, brd.Enemy())
 			brd.halfmoveClock = 0 // All capture moves are irreversible.
 		}
@@ -144,9 +108,6 @@ func makeMove(brd *Board, move Move) {
 	default:
 		switch capturedPiece {
 		case ROOK:
-			if brd.castle > 0 {
-				updateCastleRights(brd, to) //
-			}
 			removePiece(brd, capturedPiece, to, brd.Enemy())
 			brd.halfmoveClock = 0 // All capture moves are irreversible.
 		case EMPTY:
@@ -168,7 +129,6 @@ func makeMove(brd *Board, move Move) {
 
 // Castle flag, enp target, hash key, pawn hash key, and halfmove clock are all restored during search
 func unmakeMove(brd *Board, move Move, memento *BoardMemento) {
-
 	brd.c ^= 1 // flip the current side to move.
 
 	c := brd.c
@@ -243,44 +203,40 @@ func unmakeMove(brd *Board, move Move, memento *BoardMemento) {
 	brd.halfmoveClock = memento.halfmoveClock
 }
 
-// Whenever a king or rook moves off its initial square or is captured,
-// update castle rights via the procedure associated with that square.
-func updateCastleRights(brd *Board, sq int) {
-	switch sq { // if brd.castle remains unchanged, hash key will be unchanged.
-	case A1:
-		brd.hashKey ^= castleZobrist(brd.castle)
-		brd.castle &= (^uint8(C_WQ))
-		brd.hashKey ^= castleZobrist(brd.castle)
-	case E1: // white king starting position
-		brd.hashKey ^= castleZobrist(brd.castle)
-		brd.castle &= (^uint8(C_WK | C_WQ))
-		brd.hashKey ^= castleZobrist(brd.castle)
-	case H1:
-		brd.hashKey ^= castleZobrist(brd.castle)
-		brd.castle &= (^uint8(C_WK))
-		brd.hashKey ^= castleZobrist(brd.castle)
-	case A8:
-		brd.hashKey ^= castleZobrist(brd.castle)
-		brd.castle &= (^uint8(C_BQ))
-		brd.hashKey ^= castleZobrist(brd.castle)
-	case E8: // black king starting position
-		brd.hashKey ^= castleZobrist(brd.castle)
-		brd.castle &= (^uint8(C_BK | C_BQ))
-		brd.hashKey ^= castleZobrist(brd.castle)
-	case H8:
-		brd.hashKey ^= castleZobrist(brd.castle)
-		brd.castle &= (^uint8(C_BK))
+// Update castling rights whenever a piece moves from or to a square associated with the
+// current castling rights.
+func updateCastleRights(brd *Board, from, to int) {
+	if castle := brd.castle; castle > 0 && (sqMaskOn[from]|sqMaskOn[to])&castleMasks[castle] > 0 {
+		updateCasleRightsForSq(brd, from)
+		updateCasleRightsForSq(brd, to)
+		brd.hashKey ^= castleZobrist(castle)
 		brd.hashKey ^= castleZobrist(brd.castle)
 	}
 }
 
+func updateCasleRightsForSq(brd *Board, sq int) {
+	switch sq { // if brd.castle remains unchanged, hash key will be unchanged.
+	case A1:
+		brd.castle &= (^uint8(C_WQ))
+	case E1: // white king starting position
+		brd.castle &= (^uint8(C_WK | C_WQ))
+	case H1:
+		brd.castle &= (^uint8(C_WK))
+	case A8:
+		brd.castle &= (^uint8(C_BQ))
+	case E8: // black king starting position
+		brd.castle &= (^uint8(C_BK | C_BQ))
+	case H8:
+		brd.castle &= (^uint8(C_BK))
+	default:
+	}
+}
+
 func removePiece(brd *Board, removedPiece Piece, sq int, e uint8) {
-	brd.pieces[e][removedPiece].Clear(sq)
-	brd.occupied[e].Clear(sq)
-	brd.material[e] -= int32(removedPiece.Value() + mainPst[e][removedPiece][sq])
-	brd.endgameCounter -= endgameCountValues[removedPiece]
+	unmakeRemovePiece(brd, removedPiece, sq, e)
 	brd.hashKey ^= zobrist(removedPiece, sq, e) // XOR out the captured piece
 }
+
 func unmakeRemovePiece(brd *Board, removedPiece Piece, sq int, e uint8) {
 	brd.pieces[e][removedPiece].Clear(sq)
 	brd.occupied[e].Clear(sq)
@@ -289,13 +245,10 @@ func unmakeRemovePiece(brd *Board, removedPiece Piece, sq int, e uint8) {
 }
 
 func addPiece(brd *Board, addedPiece Piece, sq int, c uint8) {
-	brd.pieces[c][addedPiece].Add(sq)
-	brd.squares[sq] = addedPiece
-	brd.occupied[c].Add(sq)
-	brd.material[c] += int32(addedPiece.Value() + mainPst[c][addedPiece][sq])
-	brd.endgameCounter += endgameCountValues[addedPiece]
+	unmakeAddPiece(brd, addedPiece, sq, c)
 	brd.hashKey ^= zobrist(addedPiece, sq, c) // XOR in key for added_piece
 }
+
 func unmakeAddPiece(brd *Board, addedPiece Piece, sq int, c uint8) {
 	brd.pieces[c][addedPiece].Add(sq)
 	brd.squares[sq] = addedPiece
@@ -305,15 +258,11 @@ func unmakeAddPiece(brd *Board, addedPiece Piece, sq int, c uint8) {
 }
 
 func relocatePiece(brd *Board, piece Piece, from, to int, c uint8) {
-	fromTo := (sqMaskOn[from] | sqMaskOn[to])
-	brd.pieces[c][piece] ^= fromTo
-	brd.occupied[c] ^= fromTo
-	brd.squares[from] = EMPTY
-	brd.squares[to] = piece
-	brd.material[c] += int32(mainPst[c][piece][to] - mainPst[c][piece][from])
+	unmakeRelocatePiece(brd, piece, from, to, c)
 	// XOR out the key for piece at from, and XOR in the key for piece at to.
 	brd.hashKey ^= (zobrist(piece, from, c) ^ zobrist(piece, to, c))
 }
+
 func unmakeRelocatePiece(brd *Board, piece Piece, from, to int, c uint8) {
 	fromTo := (sqMaskOn[from] | sqMaskOn[to])
 	brd.pieces[c][piece] ^= fromTo
@@ -324,14 +273,11 @@ func unmakeRelocatePiece(brd *Board, piece Piece, from, to int, c uint8) {
 }
 
 func relocateKing(brd *Board, piece, capturedPiece Piece, from, to int, c uint8) {
-	fromTo := (sqMaskOn[from] | sqMaskOn[to])
-	brd.pieces[c][piece] ^= fromTo
-	brd.occupied[c] ^= fromTo
-	brd.squares[from] = EMPTY
-	brd.squares[to] = piece
+	unmakeRelocateKing(brd, piece, capturedPiece, from, to, c)
 	// XOR out the key for piece at from, and XOR in the key for piece at to.
 	brd.hashKey ^= (zobrist(piece, from, c) ^ zobrist(piece, to, c))
 }
+
 func unmakeRelocateKing(brd *Board, piece, capturedPiece Piece, from, to int, c uint8) {
 	fromTo := (sqMaskOn[from] | sqMaskOn[to])
 	brd.pieces[c][piece] ^= fromTo

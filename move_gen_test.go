@@ -15,10 +15,8 @@ import (
 
 var legalMaxTree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860, 84998978956, 2439530234167}
 
-// var legal_max_tree = [10]int{1, 24, 496, 9483, 182838, 3605103, 71179139}
-
 func TestLegalMoveGen(t *testing.T) {
-	depth := 5
+	depth := 6
 	legalMovegen(Perft, StartPos(), depth, legalMaxTree[depth], true)
 }
 
@@ -44,11 +42,14 @@ func TestLegalMoveGen(t *testing.T) {
 // 	}
 // }
 
+// TODO: add parallelism
+
 func legalMovegen(fn func(*Board, *HistoryTable, Stack, int, int) int, brd *Board, depth, expected int, verbose bool) {
 	htable := new(HistoryTable)
 	copy := brd.Copy()
 	start := time.Now()
 	stk := make(Stack, MAX_STACK, MAX_STACK)
+
 	sum := fn(brd, htable, stk, depth, 0)
 
 	if verbose {

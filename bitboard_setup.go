@@ -43,6 +43,8 @@ var oppositeDir = [16]int{SE, SW, NW, NE, SOUTH, WEST, NORTH, EAST, DIR_INVALID}
 
 var rowMasks, columnMasks [8]BB
 
+var castleMasks [16]BB
+
 var pawnIsolatedMasks, pawnSideMasks, pawnDoubledMasks, knightMasks, bishopMasks, rookMasks,
 	queenMasks, kingMasks, sqMaskOn, sqMaskOff [64]BB
 
@@ -246,6 +248,21 @@ func setupCastleMasks() {
 	castleKingsideIntervening[WHITE] |= (sqMaskOn[F1] | sqMaskOn[G1])
 	castleQueensideIntervening[BLACK] = (castleQueensideIntervening[WHITE] << 56)
 	castleKingsideIntervening[BLACK] = (castleKingsideIntervening[WHITE] << 56)
+
+	for i := uint8(0); i < 16; i++ {
+		if i&C_WQ > 0 {
+			castleMasks[i] |= (sqMaskOn[A1] | sqMaskOn[E1])
+		}
+		if i&C_WK > 0 {
+			castleMasks[i] |= (sqMaskOn[E1] | sqMaskOn[H1])
+		}
+		if i&C_BQ > 0 {
+			castleMasks[i] |= (sqMaskOn[A8] | sqMaskOn[E8])
+		}
+		if i&C_BK > 0 {
+			castleMasks[i] |= (sqMaskOn[E8] | sqMaskOn[H8])
+		}
+	}
 }
 
 func setupMasks() {
