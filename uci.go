@@ -82,13 +82,11 @@ func (uci *UCIAdapter) Read(reader *bufio.Reader) {
 	if err != nil {
 		fmt.Printf("info string error opening file: %v\n", err)
 	} else {
-		fmt.Printf("info string log file created\n")
-
 		dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
 		if err != nil {
 			// log.Fatal(err)
 		}
-		fmt.Println(dir)
+		fmt.Printf("info string log file created: %s\n", dir)
 	}
 
 	defer f.Close()
