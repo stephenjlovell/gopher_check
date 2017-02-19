@@ -203,9 +203,13 @@ func (uci *UCIAdapter) Read(reader *bufio.Reader) {
 				// 	There are a number of commands that can follow this command, all will be sent in the same string.
 				// 	If one command is not send its value should be interpreted as it would not influence the search.
 			case "go":
-				ponder = uci.start(uciFields[1:]) // parse any parameters given by GUI and begin searching.
-				if !uci.optionPonder || !ponder {
-					uci.moveCounter++
+				if uci.brd != nil {
+					ponder = uci.start(uciFields[1:]) // parse any parameters given by GUI and begin searching.
+					if !uci.optionPonder || !ponder {
+						uci.moveCounter++
+					}
+				} else {
+					uci.InfoString("You must set the current position via the position command before searching.\n")
 				}
 				// * stop
 				// 	stop calculating as soon as possible,
