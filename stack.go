@@ -15,13 +15,12 @@ type Stack []StackItem
 
 type StackItem struct {
 	hashKey      uint64 // use hash key to search for repetitions
-	eval         int
 	killers      KEntry
 	singularMove Move
 
-	sp *SplitPoint
-	pv *PV
-
+	sp      *SplitPoint
+	pv      *PV
+	eval    int16
 	inCheck bool
 	canNull bool
 }

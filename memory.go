@@ -15,13 +15,13 @@ const (
 )
 
 const (
-	NO_MATCH = 1 << iota
-	ORDERING_ONLY
-	AVOID_NULL
-	ALPHA_FOUND
-	BETA_FOUND
-	EXACT_FOUND
-	CUTOFF_FOUND
+	NO_MATCH      = 1 << iota // 0000001
+	ORDERING_ONLY             // 0000010
+	AVOID_NULL                // 0000100
+	ALPHA_FOUND               // 0001000
+	BETA_FOUND                // 0010000
+	EXACT_FOUND               // 0100000
+	CUTOFF_FOUND              // 1000000
 )
 
 const (

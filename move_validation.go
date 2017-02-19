@@ -59,13 +59,13 @@ func (brd *Board) EvadesCheck(m Move) bool {
 
 	if threats == 0 {
 		fmt.Println("info string EvadesCheck() called from non-check position!")
-		brd.Print()
-		m.Print()
-		fmt.Printf("King sq: %d\n", kingSq)
-		fmt.Println(brd.InCheck())
-		if !isBoardConsistent(brd) {
-			panic("inconsistent board state")
-		}
+		// brd.Print()
+		// m.Print()
+		// fmt.Printf("King sq: %d\n", kingSq)
+		// fmt.Println(brd.InCheck())
+		// if !isBoardConsistent(brd) {
+		// 	panic("inconsistent board state")
+		// }
 		return brd.PseudolegalAvoidsCheck(m)
 	}
 

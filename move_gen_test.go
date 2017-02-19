@@ -16,7 +16,7 @@ import (
 var legalMaxTree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860, 84998978956, 2439530234167}
 
 func TestLegalMoveGen(t *testing.T) {
-	depth := 6
+	depth := 5
 	legalMovegen(Perft, StartPos(), depth, legalMaxTree[depth], true)
 }
 

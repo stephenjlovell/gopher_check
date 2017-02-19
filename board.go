@@ -19,7 +19,6 @@ var printMutex sync.Mutex
 
 // When spawning new goroutines for subtree search, a deep copy of the Board struct will have to be made
 // and passed to the new goroutine.  Keep this struct as small as possible.
-// TODO: change material to uint16
 type Board struct {
 	pieces         [2][8]BB  // 1024 bits
 	squares        [64]Piece //  512 bits

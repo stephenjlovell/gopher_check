@@ -5,13 +5,11 @@
 
 package main
 
-// "fmt"
-
 const (
 	KILLER_COUNT = 3
 )
 
-type KEntry [KILLER_COUNT]Move
+type KEntry [4]Move // keep power of 2 array size
 
 func (s *StackItem) StoreKiller(m Move) {
 	killers := &s.killers

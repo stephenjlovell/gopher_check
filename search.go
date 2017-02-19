@@ -44,19 +44,15 @@ var searchId int
 type Search struct {
 	htable HistoryTable // must be listed first to ensure cache alignment for atomic w/r
 	SearchParams
-	sideToMove   uint8 // SearchParams would otherwise create padding
-	once         sync.Once
-	allowedMoves []Move
-	bestScore    [2]int
-	// sync.Mutex
+	sideToMove           uint8 // SearchParams would otherwise create padding
+	once                 sync.Once
+	allowedMoves         []Move
+	bestScore            [2]int
 	cancel               chan bool
 	bestMove, ponderMove Move
 	gt                   *GameTimer
 	uci                  *UCIAdapter
 	alpha, beta, nodes   int
-
-	// wg                     *sync.WaitGroup
-
 }
 
 type SearchParams struct {
@@ -173,7 +169,7 @@ func (s *Search) iterativeDeepening(brd *Board) int {
 				s.ponderMove = stk[0].pv.next.m
 			}
 
-			// stk[0].pv.SavePV(brd, d, guess) // install PV to transposition table prior to next iteration.
+			stk[0].pv.SavePV(brd, d, guess) // install PV to transposition table prior to next iteration.
 
 		} else {
 			s.sendInfo("Nil PV returned to ID\n")
@@ -223,7 +219,7 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, nodeType,
 		sp.Lock()
 		selector = sp.selector
 		thisStk = sp.thisStk
-		eval = thisStk.eval
+		eval = int(thisStk.eval)
 		inCheck = thisStk.inCheck
 		sp.Unlock()
 		goto searchMoves
@@ -246,6 +242,7 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, nodeType,
 	inCheck = thisStk.inCheck
 
 	if brd.halfmoveClock >= 100 { // check for draw by halfmove rule
+		// TODO: handle non-king moves that escape from check
 		if isCheckmate(brd, inCheck) {
 			return ply - MATE, 1
 		} else {
@@ -258,7 +255,7 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, nodeType,
 	// hashScore = score
 
 	eval = evaluate(brd, alpha, beta)
-	thisStk.eval = eval
+	thisStk.eval = int16(eval)
 
 	if nodeType != Y_PV {
 		if (hashResult & CUTOFF_FOUND) > 0 { // Hash hit valid for current bounds.
@@ -316,6 +313,10 @@ searchMoves:
 		}
 	}
 
+	// if nodeType == Y_PV {
+	// 	fmt.Printf("%d:%t, %b\n", ply, hashResult&EXACT_FOUND > 0, hashResult)
+	// }
+
 	// singularNode := ply > 0 && nodeType == Y_CUT && (hashResult&BETA_FOUND) > 0 &&
 	// 	firstMove.IsMove() && depth > 6 && thisStk.canNull
 
@@ -371,6 +372,7 @@ searchMoves:
 			if stage == STAGE_WINNING && mayPromote && m.IsPromotion() {
 				rDepth = depth + 1 // extend winning promotions only
 			} else if givesCheck && checked && ply > 0 && (stage < STAGE_LOSING ||
+				// don't extend suicidal checks
 				(stage == STAGE_REMAINING && getSee(brd, m.From(), m.To(), EMPTY) >= 0)) {
 				rDepth = depth + 1 // only extend "useful" checks after the first check in a variation.
 			} else if canReduce && !mayPromote && !givesCheck &&
@@ -384,7 +386,7 @@ searchMoves:
 
 		// time to search deeper:
 		if nodeType == Y_PV && alpha > oldAlpha {
-			score, subtotal = s.ybw(brd, stk, -alpha-1, -alpha, rDepth-1, ply+1, childType, SP_NONE, checked)
+			score, subtotal = s.ybw(brd, stk, (-alpha)-1, -alpha, rDepth-1, ply+1, childType, SP_NONE, checked)
 			score = -score
 			total += subtotal
 			if score > alpha { // re-search with full-window on fail high
@@ -523,8 +525,8 @@ searchMoves:
 		}
 		sp.cancel = true
 		sp.Unlock()
-
-		// selector.Recycle(recycler) // since all servants have finished processing, we can safely recycle the move buffers.
+		// since all servants have finished processing, we can safely recycle the move buffers.
+		// selector.Recycle(recycler)
 	case SP_SERVANT:
 		return NO_SCORE, 0
 	default:
@@ -575,7 +577,7 @@ func (s *Search) quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) 
 
 	if !inCheck {
 		score = evaluate(brd, alpha, beta) // stand pat
-		thisStk.eval = score
+		thisStk.eval = int16(score)
 		if score > best {
 			if score > alpha {
 				if score >= beta {
@@ -641,7 +643,7 @@ func (s *Search) nullMake(brd *Board, stk Stack, beta, nullDepth, ply int, check
 	brd.enpTarget = SQ_INVALID
 	stk[ply+1].inCheck = false // Impossible to give check from a legal position by standing pat.
 	stk[ply+1].canNull = false
-	score, sum := s.ybw(brd, stk, -beta, -beta+1, nullDepth-1, ply+1, Y_CUT, SP_NONE, checked)
+	score, sum := s.ybw(brd, stk, -beta, (-beta)+1, nullDepth-1, ply+1, Y_CUT, SP_NONE, checked)
 	stk[ply+1].canNull = true
 	brd.c ^= 1
 	brd.hashKey = hashKey
