@@ -34,16 +34,20 @@ func RunTestSuite(testSuite string, depth, timeout int) {
 			fmt.Printf("-")
 		} else {
 			fmt.Printf("%d.", i+1)
+			// fmt.Printf("\n%s\n", epd.fen)
+			// fmt.Println(moveStr)
+			// fmt.Printf("best moves: %s\n", strings.Join(epd.bestMoves, ", "))
+			// fmt.Printf("avoid moves: %s\n", strings.Join(epd.avoidMoves, ", "))
 		}
 		sum += search.nodes
 		// search.htable.PrintMax()
 	}
 	secondsElapsed := time.Since(start).Seconds()
 	mNodes := float64(sum) / 1000000.0
-	fmt.Printf("\n%.4fm nodes searched in %.4fs (%.4fm NPS)\n",
+	fmt.Printf("\n%.3fm nodes searched in %.4fs (%.3fm NPS)\n",
 		mNodes, secondsElapsed, mNodes/secondsElapsed)
 	fmt.Printf("Total score: %d/%d\n", score, len(test))
-	fmt.Printf("Overhead: %.4fm\n", float64(loadBalancer.Overhead())/1000000.0)
+	fmt.Printf("Overhead: %.3fm\n", float64(loadBalancer.Overhead())/1000000.0)
 	fmt.Printf("Timeout: %.1fs\n", float64(timeout)/1000.0)
 }
 

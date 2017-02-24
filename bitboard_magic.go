@@ -61,7 +61,7 @@ func setupMagicMoveGen() {
 		magicsNeeded = true
 	}
 	if magicsNeeded {
-		fmt.Printf("Calculating magics")
+		fmt.Printf("info string Calculating magics")
 		wg.Add(64 * 2)
 	}
 
@@ -73,7 +73,7 @@ func setupMagicMoveGen() {
 	if magicsNeeded {
 		wg.Wait()
 		writeMagicsToDisk()
-		fmt.Printf("done!\n\n")
+		// fmt.Printf("done!\n\n")
 	}
 }
 
@@ -103,7 +103,7 @@ func writeMagicsToDisk() {
 func loadMagics() (success bool) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Printf("Failure reading magics from disk.")
+			fmt.Printf("info string Failure reading magics from disk.\n")
 			success = false // recover any panic
 		}
 	}()
@@ -118,7 +118,7 @@ func loadMagics() (success bool) {
 
 	bishopMagics = magics.BishopMagics
 	rookMagics = magics.RookMagics
-	fmt.Printf("Magics read from disk.\n")
+	// fmt.Printf("Magics read from disk.\n")
 	return true
 }
 

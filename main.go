@@ -46,8 +46,7 @@ func assert(statement bool, failureMessage string) {
 }
 
 func init() {
-	numCPU := runtime.NumCPU()
-	runtime.GOMAXPROCS(numCPU)
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	setupChebyshevDistance()
 	setupMasks()
 	setupMagicMoveGen()
@@ -55,7 +54,7 @@ func init() {
 	setupRand()
 	setupZobrist()
 	resetMainTt()
-	setupLoadBalancer(numCPU)
+	setupLoadBalancer(MaxWorkers())
 }
 
 func printName() {

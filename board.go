@@ -20,19 +20,20 @@ var printMutex sync.Mutex
 // When spawning new goroutines for subtree search, a deep copy of the Board struct will have to be made
 // and passed to the new goroutine.  Keep this struct as small as possible.
 type Board struct {
-	pieces         [2][8]BB  // 1024 bits
-	squares        [64]Piece //  512 bits
-	occupied       [2]BB     //  128 bits
-	hashKey        uint64    //   64 bits
-	worker         *Worker   //   64 bits
-	material       [2]int16  //   32 bits
-	pawnHashKey    uint32    //   32 bits
-	c              uint8     //    8 bits
-	castle         uint8     //    8 bits
-	enpTarget      uint8     //    8 bits
-	halfmoveClock  uint8     //    8 bits
-	endgameCounter uint8     //    8 bits
-	// ...24 bits padding
+	pieces         [2][8]BB  // 1024
+	squares        [64]Piece //  512
+	occupied       [2]BB     //  128
+	hashKey        uint64    //   64
+	worker         *Worker   //   64
+	material       [2]int16  //   32
+	pawnHashKey    uint32    //   32
+	kingSq         [2]uint8  //   16
+	c              uint8     //    8
+	castle         uint8     //    8
+	enpTarget      uint8     //    8
+	halfmoveClock  uint8     //    8
+	endgameCounter uint8     //    8
+	// ...8 bits padding
 }
 
 type BoardMemento struct { // memento object used to store board state to unmake later.
@@ -58,7 +59,7 @@ func (brd *Board) InCheck() bool { // determines if side to move is in check
 }
 
 func (brd *Board) KingSq(c uint8) int {
-	return furthestForward(c, brd.pieces[c][KING])
+	return int(brd.kingSq[c])
 }
 
 func (brd *Board) MayPromote(m Move) bool {
@@ -104,13 +105,14 @@ func (brd *Board) ColorPawnsOnly(c uint8) bool {
 }
 
 func (brd *Board) Copy() *Board {
-	return &Board{
+	return &Board{ // worker is not copied
 		pieces:         brd.pieces,
 		squares:        brd.squares,
 		occupied:       brd.occupied,
-		material:       brd.material,
 		hashKey:        brd.hashKey,
+		material:       brd.material,
 		pawnHashKey:    brd.pawnHashKey,
+		kingSq:         brd.kingSq,
 		c:              brd.c,
 		castle:         brd.castle,
 		enpTarget:      brd.enpTarget,

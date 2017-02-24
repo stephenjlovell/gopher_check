@@ -324,7 +324,7 @@ func (uci *UCIAdapter) setOption(uciFields []string) {
 				uci.invalid(uciFields)
 				return
 			}
-			if numCPU > 0 && runtime.NumCPU() >= numCPU {
+			if numCPU > 0 && numCPU <= MaxWorkers() {
 				if uci.optionDebug {
 					uci.InfoString(fmt.Sprintf("setting up load balancer for %d CPU\n", numCPU))
 				}

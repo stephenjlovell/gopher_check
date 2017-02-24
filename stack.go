@@ -14,15 +14,14 @@ const (
 type Stack []StackItem
 
 type StackItem struct {
-	hashKey      uint64 // use hash key to search for repetitions
 	killers      KEntry
+	hashKey      uint64 // use hash key to search for repetitions
+	sp           *SplitPoint
+	pv           *PV
 	singularMove Move
-
-	sp      *SplitPoint
-	pv      *PV
-	eval    int16
-	inCheck bool
-	canNull bool
+	eval         int16
+	inCheck      bool
+	canNull      bool
 }
 
 func (thisStk *StackItem) Copy() *StackItem {

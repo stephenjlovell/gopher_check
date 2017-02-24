@@ -284,4 +284,6 @@ func unmakeRelocateKing(brd *Board, piece, capturedPiece Piece, from, to int, c 
 	brd.occupied[c] ^= fromTo
 	brd.squares[from] = EMPTY
 	brd.squares[to] = piece
+	brd.kingSq[c] = uint8(to)
+	// Since king PST is weighted by endgame phase, it cannot be easily incrementally updated.
 }

@@ -17,6 +17,16 @@ import (
 	"strings"
 )
 
+var columnChars = map[string]int{"a": 0, "b": 1, "c": 2, "d": 3, "e": 4, "f": 5, "g": 6, "h": 7}
+
+var fenPieceChars = map[string]int{"p": 0, "n": 1, "b": 2, "r": 3, "q": 4, "k": 5, "P": 8, "N": 9,
+	"B": 10, "R": 11, "Q": 12, "K": 13}
+
+var columnNames = [8]string{"a", "b", "c", "d", "e", "f", "g", "h"}
+
+var pieceNames = [2][8]string{{"p", "n", "b", "r", "q", "k"}, {"P", "N", "B", "R", "Q", "K"}}
+var sideNames = [2]string{"b", "w"}
+
 type EPD struct {
 	brd        *Board
 	bestMoves  []string
@@ -106,6 +116,13 @@ func ParseEPDString(str string) *EPD {
 
 var sanChars = [8]string{"P", "N", "B", "R", "Q", "K"}
 
+// <SAN move descriptor piece moves>
+// 		::= <Piece symbol>[<from file>|<from rank>|<from square>]['x']<to square>
+// <SAN move descriptor pawn captures>
+// 		::= <from file>[<from rank>] 'x' <to square>[<promoted to>]
+// <SAN move descriptor pawn push>
+// 		::= <to square>[<promoted to>]
+
 func ToSAN(brd *Board, m Move) string { // convert move to Standard Algebraic Notation (SAN)
 	piece, from, to := m.Piece(), m.From(), m.To()
 	san := SquareString(to)
@@ -164,17 +181,16 @@ func PawnSAN(brd *Board, m Move, san string) string {
 		san += sanChars[m.PromotedTo()]
 	}
 	if m.IsCapture() {
-		from, to := m.From(), m.To()
-		san = "x" + san
+		from := m.From()
+		san = columnNames[column(from)] + "x" + san
 		// disambiguate capturing pawn
-		if brd.TypeAt(to) == EMPTY { // en passant
-			san = columnNames[column(from)] + san
-		} else {
-			t := pawnAttackMasks[brd.Enemy()][to] & brd.pieces[brd.c][PAWN]
-			if popCount(t) > 1 {
-				san = columnNames[column(from)] + san
-			}
-		}
+		// if brd.TypeAt(to) == EMPTY { // en passant
+		// 	san = columnNames[column(from)] + san
+		// } else {
+		// 	if popCount(pawnAttackMasks[brd.Enemy()][to]&brd.pieces[brd.c][PAWN]) > 1 {
+		// 		san = columnNames[column(from)] + san
+		// 	}
+		// }
 	}
 	if GivesCheck(brd, m) {
 		san += "+"
@@ -188,6 +204,52 @@ func GivesCheck(brd *Board, m Move) bool {
 	inCheck := brd.InCheck()
 	unmakeMove(brd, m, memento)
 	return inCheck
+}
+
+// Fields: placement, side to move, castle rights, en-passant target
+// 2k4B/bpp1qp2/p1b5/7p/1PN1n1p1/2Pr4/P5PP/R3QR1K b - -
+// Start Pos: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+// white pieces are capitalized.
+func BoardToFEN(brd *Board) string {
+	fenFields := []string{
+		GetFENPlacement(brd),
+		sideNames[brd.c],
+		GetFENCastleRights(brd),
+		SquareString(int(brd.enpTarget)),
+		// string(brd.halfmoveClock),
+	}
+	return strings.Join(fenFields, " ")
+}
+
+func GetFENPlacement(brd *Board) string {
+	placement := ""
+	var row []Piece
+	var emptySquares int
+	for sq := 0; sq < 64; sq = sq + 8 {
+		row = brd.squares[sq:(sq + 8)]
+		rowStr := ""
+		emptySquares = 0
+		for i, pc := range row {
+			if pc == EMPTY {
+				emptySquares += 1
+			} else {
+				if emptySquares > 0 {
+					rowStr += fmt.Sprint(emptySquares)
+					emptySquares = 0
+				}
+				if sqMaskOn[sq+i]&brd.occupied[BLACK] > 0 {
+					rowStr += pieceNames[BLACK][pc]
+				} else {
+					rowStr += pieceNames[WHITE][pc]
+				}
+			}
+		}
+		if emptySquares > 0 {
+			rowStr += fmt.Sprint(emptySquares)
+		}
+		placement = rowStr + "/" + placement
+	}
+	return strings.TrimRight(placement, "/")
 }
 
 func ParseFENSlice(fenFields []string) *Board {
@@ -225,21 +287,6 @@ func ParseFENString(str string) *Board {
 	return brd
 }
 
-var fenPieceChars = map[string]int{
-	"p": 0,
-	"n": 1,
-	"b": 2,
-	"r": 3,
-	"q": 4,
-	"k": 5,
-	"P": 8,
-	"N": 9,
-	"B": 10,
-	"R": 11,
-	"Q": 12,
-	"K": 13,
-}
-
 func ParsePlacement(brd *Board, str string) {
 	var rowStr string
 	rowFields := strings.Split(str, "/")
@@ -256,8 +303,12 @@ func ParsePlacement(brd *Board, str string) {
 				c := uint8(fenPieceChars[chr] >> 3)
 				pieceType := Piece(fenPieceChars[chr] & 7)
 				addPiece(brd, pieceType, sq, c) // place the piece on the board.
-				if pieceType == PAWN {
+				switch pieceType {
+				case PAWN:
 					brd.pawnHashKey ^= pawnZobrist(sq, c)
+				case KING:
+					brd.kingSq[c] = uint8(sq)
+				default:
 				}
 				sq += 1
 			}
@@ -274,6 +325,26 @@ func ParseSide(str string) uint8 {
 		// something's wrong.
 		return 1
 	}
+}
+
+func GetFENCastleRights(brd *Board) string {
+	rights := ""
+	if brd.castle&C_WK > 0 {
+		rights += "K"
+	}
+	if brd.castle&C_WQ > 0 {
+		rights += "Q"
+	}
+	if brd.castle&C_BK > 0 {
+		rights += "k"
+	}
+	if brd.castle&C_BQ > 0 {
+		rights += "q"
+	}
+	if rights == "" {
+		rights = "-"
+	}
+	return rights
 }
 
 func ParseCastleRights(brd *Board, str string) uint8 {
@@ -341,21 +412,6 @@ func ParseMove(brd *Board, str string) Move {
 	return NewMove(from, to, piece, capturedPiece, promotedTo)
 }
 
-// A1 through H8.  test with Regexp.
-
-var columnChars = map[string]int{
-	"a": 0,
-	"b": 1,
-	"c": 2,
-	"d": 3,
-	"e": 4,
-	"f": 5,
-	"g": 6,
-	"h": 7,
-}
-
-var columnNames = [8]string{"a", "b", "c", "d", "e", "f", "g", "h"}
-
 // create regular expression to match valid move string.
 func IsMove(str string) bool {
 	match, _ := regexp.MatchString("[a-h][1-8][a-h][1-8][nbrq]?", str)
@@ -371,7 +427,11 @@ func ParseSquare(str string) int {
 }
 
 func SquareString(sq int) string {
-	return ParseCoordinates(row(sq), column(sq))
+	if sq >= SQ_INVALID {
+		return "-"
+	} else {
+		return ParseCoordinates(row(sq), column(sq))
+	}
 }
 
 func ParseCoordinates(row, col int) string {

@@ -10,13 +10,20 @@ import (
 	"testing"
 )
 
+// Verify that required FEN fields are parsed correctly.
 func TestEPDParsing(t *testing.T) {
 	test, err := loadEpdFile("test_suites/wac_300.epd")
 	if err != nil {
-		fmt.Print(err)
+		fmt.Println(err)
 		return
 	}
 	for _, epd := range test {
-		epd.Print()
+		fen := BoardToFEN(epd.brd)
+		if fen != epd.fen {
+			fmt.Print("\n")
+			fmt.Println(epd.fen)
+			fmt.Println(fen)
+			panic("FEN string parsing not symmetric.")
+		}
 	}
 }

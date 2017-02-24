@@ -7,6 +7,7 @@ package main
 
 import (
 	// "fmt"
+	"runtime"
 	"sync"
 )
 
@@ -28,6 +29,9 @@ import (
 // read by the other workers collaborating on the current split point.
 // If there are more SPs below the current one, the cancellation signal will be fanned out to
 // each child SP.
+const (
+	MAX_WORKERS = 32
+)
 
 type Worker struct {
 	sync.RWMutex
@@ -42,8 +46,12 @@ type Worker struct {
 	recycler  *Recycler
 	currentSp *SplitPoint
 
-	mask  uint8
+	mask  uint32
 	index uint8
+}
+
+func MaxWorkers() int {
+	return min(MAX_WORKERS, runtime.NumCPU())
 }
 
 func (w *Worker) IsCancelled() bool {

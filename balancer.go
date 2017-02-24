@@ -45,7 +45,7 @@ func NewLoadBalancer(numWorkers uint8) *Balancer {
 	}
 	for i := uint8(0); i < numWorkers; i++ {
 		b.workers[i] = &Worker{
-			mask:     1 << i,
+			mask:     uint32(1 << i),
 			index:    i,
 			spList:   make(SPList, 0, MAX_DEPTH),
 			stk:      NewStack(),

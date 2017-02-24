@@ -28,11 +28,9 @@ type SplitPoint struct {
 	thisStk                          *StackItem
 	cond                             *sync.Cond
 	bestMove                         Move // 4
-	servantMask                      uint8
+	servantMask                      uint32
 	cancel, workerFinished, checked  bool
 	// extensionsLeft int  // TODO: verify if extension counter needs lock protection.
-	// canNull        bool
-	// wg 								sync.WaitGroup
 }
 
 func (sp *SplitPoint) Wait() {
@@ -69,20 +67,20 @@ func (sp *SplitPoint) HelpWanted() bool {
 	return !sp.Cancel() && sp.ServantMask() > 0
 }
 
-func (sp *SplitPoint) ServantMask() uint8 {
+func (sp *SplitPoint) ServantMask() uint32 {
 	sp.cond.L.Lock()
 	servantMask := sp.servantMask
 	sp.cond.L.Unlock()
 	return servantMask
 }
 
-func (sp *SplitPoint) AddServant(wMask uint8) {
+func (sp *SplitPoint) AddServant(wMask uint32) {
 	sp.cond.L.Lock()
 	sp.servantMask |= wMask
 	sp.cond.L.Unlock()
 }
 
-func (sp *SplitPoint) RemoveServant(wMask uint8) {
+func (sp *SplitPoint) RemoveServant(wMask uint32) {
 	sp.cond.L.Lock()
 	sp.servantMask &= (^wMask)
 	sp.cond.L.Unlock()
