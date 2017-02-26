@@ -216,12 +216,12 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, nodeType,
 	// from the SP and jump to the moves loop.
 	if spType == SP_SERVANT {
 		sp = stk[ply].sp
-		sp.Lock()
+		sp.RLock()
 		selector = sp.selector
 		thisStk = sp.thisStk
 		eval = int(thisStk.eval)
 		inCheck = thisStk.inCheck
-		sp.Unlock()
+		sp.RUnlock()
 		goto searchMoves
 	}
 
@@ -323,6 +323,8 @@ searchMoves:
 	memento := brd.NewMemento()
 	recycler := brd.worker.recycler
 
+	var mayPromote, tryPrune, givesCheck bool
+
 	for m, stage := selector.Next(recycler, spType); m != NO_MOVE; m, stage = selector.Next(recycler, spType) {
 
 		if ply == 0 && s.restrictSearch {
@@ -335,8 +337,8 @@ searchMoves:
 			continue
 		}
 
-		mayPromote := brd.MayPromote(m)
-		tryPrune := canPrune && stage == STAGE_REMAINING && legalSearched > 0 && !mayPromote
+		mayPromote = brd.MayPromote(m)
+		tryPrune = canPrune && stage == STAGE_REMAINING && legalSearched > 0 && !mayPromote
 
 		if tryPrune && getSee(brd, m.From(), m.To(), EMPTY) < 0 {
 			continue // prune quiet moves that result in loss of moving piece
@@ -359,7 +361,7 @@ searchMoves:
 
 		makeMove(brd, m)
 
-		givesCheck := brd.InCheck()
+		givesCheck = brd.InCheck()
 
 		if fPrune && tryPrune && !givesCheck {
 			unmakeMove(brd, m, memento)
