@@ -156,14 +156,14 @@ func (s *MoveSelector) NextBatch(recycler *Recycler) bool {
 		s.finished = 1
 	case STAGE_WINNING:
 		if s.inCheck {
-			s.winning = recycler.AttemptReuse()
-			s.losing = recycler.AttemptReuse()
-			s.remainingMoves = recycler.AttemptReuse()
+			s.winning = recycler.AttemptReuse(DEFAULT_MOVE_LIST_LENGTH)
+			s.losing = recycler.AttemptReuse(DEFAULT_MOVE_LIST_LENGTH)
+			s.remainingMoves = recycler.AttemptReuse(QUIET_MOVE_LIST_LENGTH)
 			getEvasions(s.brd, s.htable, &s.winning, &s.losing, &s.remainingMoves)
 			// fmt.Printf("%t,%t,%t,", len(s.winning) > 8, len(s.losing) > 8, len(s.remaining_moves) > 8)
 		} else {
-			s.winning = recycler.AttemptReuse()
-			s.losing = recycler.AttemptReuse()
+			s.winning = recycler.AttemptReuse(DEFAULT_MOVE_LIST_LENGTH)
+			s.losing = recycler.AttemptReuse(DEFAULT_MOVE_LIST_LENGTH)
 			getCaptures(s.brd, s.htable, &s.winning, &s.losing)
 			// fmt.Printf("%t,%t,", len(s.winning) > 8, len(s.losing) > 8)
 		}
@@ -176,7 +176,7 @@ func (s *MoveSelector) NextBatch(recycler *Recycler) bool {
 		s.finished = len(s.losing)
 	case STAGE_REMAINING:
 		if !s.inCheck {
-			s.remainingMoves = recycler.AttemptReuse()
+			s.remainingMoves = recycler.AttemptReuse(QUIET_MOVE_LIST_LENGTH)
 			getNonCaptures(s.brd, s.htable, &s.remainingMoves)
 			// fmt.Printf("%t,", len(s.remaining_moves) > 8)
 		}
@@ -240,12 +240,12 @@ func (s *QMoveSelector) NextBatch() bool {
 	switch s.stage {
 	case Q_STAGE_WINNING:
 		if s.inCheck {
-			s.winning = s.recycler.AttemptReuse()
-			s.losing = s.recycler.AttemptReuse()
-			s.remainingMoves = s.recycler.AttemptReuse()
+			s.winning = s.recycler.AttemptReuse(DEFAULT_MOVE_LIST_LENGTH)
+			s.losing = s.recycler.AttemptReuse(DEFAULT_MOVE_LIST_LENGTH)
+			s.remainingMoves = s.recycler.AttemptReuse(QUIET_MOVE_LIST_LENGTH)
 			getEvasions(s.brd, s.htable, &s.winning, &s.losing, &s.remainingMoves)
 		} else {
-			s.winning = s.recycler.AttemptReuse()
+			s.winning = s.recycler.AttemptReuse(DEFAULT_MOVE_LIST_LENGTH)
 			getWinningCaptures(s.brd, s.htable, &s.winning)
 		}
 		s.winning.Sort()
@@ -258,7 +258,7 @@ func (s *QMoveSelector) NextBatch() bool {
 		s.finished = len(s.remainingMoves)
 	case Q_STAGE_CHECKS:
 		if !s.inCheck && s.canCheck {
-			s.checks = s.recycler.AttemptReuse()
+			s.checks = s.recycler.AttemptReuse(DEFAULT_MOVE_LIST_LENGTH)
 			getChecks(s.brd, s.htable, &s.checks)
 			s.checks.Sort()
 		}

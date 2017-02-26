@@ -67,8 +67,9 @@ type SortItem struct {
 
 type MoveList []SortItem
 
-func NewMoveList() MoveList {
-	return make(MoveList, 0, 8)
+// Generating non-captures usually results in longer move lists.
+func NewMoveList(length int) MoveList {
+	return make(MoveList, 0, length)
 }
 
 func (l *MoveList) Sort() {

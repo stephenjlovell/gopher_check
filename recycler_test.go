@@ -24,7 +24,7 @@ func TestRecyclerThreadSafety(t *testing.T) {
 			defer wg.Done()
 			var moves MoveList
 			for j := 0; j < 100; j++ {
-				moves = r.AttemptReuse()
+				moves = r.AttemptReuse(DEFAULT_MOVE_LIST_LENGTH)
 				time.Sleep(time.Microsecond * time.Duration(rand.Intn(1000)))
 				fmt.Println(len(moves))
 				// r.g.Dump()
