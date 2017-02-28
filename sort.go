@@ -5,7 +5,7 @@
 
 package main
 
-import "sort"
+import "math/rand"
 
 // Root Sorting
 // At root, moves should be sorted based on subtree value rather than standard sorting.
@@ -72,8 +72,18 @@ func NewMoveList(length int) MoveList {
 	return make(MoveList, 0, length)
 }
 
-func (l *MoveList) Sort() {
-	sort.Sort(l)
+// sort.Sort() takes an interface. This prevents proper escape analysis by the compiler,
+// resulting in additional heap allocations.
+// TODO: write native sort implementation to replace package sort.
+func (l MoveList) Sort() {
+	// sort.Sort(l)
+	l.QSort()
+
+	// if len(l) > 1 && l[0].order > 0 {
+	// 	printMutex.Lock()
+	// 	fmt.Println(l)
+	// 	printMutex.Unlock()
+	// }
 }
 
 func (l MoveList) Len() int { return len(l) }
@@ -86,4 +96,29 @@ func (l MoveList) Swap(i, j int) {
 
 func (l *MoveList) Push(item SortItem) {
 	*l = append(*l, item)
+}
+
+// func (l *MoveList) BubbleSort() {
+// }
+
+func (l MoveList) QSort() MoveList {
+	if len(l) < 2 {
+		return l
+	}
+	left, right := 0, len(l)-1
+	pivotIndex := rand.Int() % len(l) // initial pivot location
+	// Move the pivot to the right
+	l[pivotIndex], l[right] = l[right], l[pivotIndex]
+	// Pile elements larger than the pivot on the left
+	for i := range l {
+		if l[i].order > l[right].order {
+			l[i], l[left] = l[left], l[i]
+			left++
+		}
+	}
+	// relocate pivot
+	l[left], l[right] = l[right], l[left]
+	l[:left].QSort()
+	l[left+1:].QSort()
+	return l
 }
