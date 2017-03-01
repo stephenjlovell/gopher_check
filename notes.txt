@@ -21,7 +21,7 @@ Performance:
   Overhead: 31.9396m
   Timeout: 1.5s
 
-Upgraded to Go 1.7 8/21/1
+Upgraded to Go 1.7 8/21/16
   779.9704m nodes searched in 410.1461s (1.9017m NPS)
   Total score: 290/300
   Overhead: 45.4335m
@@ -38,4 +38,10 @@ Implemented memory recycling for move lists 1/31/17
   1645.355m nodes searched in 549.5607s (2.994m NPS)
   Total score: 293/300
   Overhead: 95.597m
+  Timeout: 2.0s
+
+"recycle q-move selectors" 118a0719f32d311551c8a926d27834d3b3814796
+  1660.629m nodes searched in 548.8817s (3.025m NPS)
+  Total score: 293/300
+  Overhead: 101.763m
   Timeout: 2.0s

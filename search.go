@@ -211,6 +211,7 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, nodeType,
 	canPrune, fPrune, canReduce := false, false, false
 	bestMove, firstMove := NO_MOVE, NO_MOVE
 
+	recycler := brd.worker.recycler
 	// if the is_sp flag is set, a worker has just been assigned to this split point.
 	// the SP master has already handled most of the pruning, so just read the latest values
 	// from the SP and jump to the moves loop.
@@ -291,7 +292,8 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, nodeType,
 		}
 	}
 
-	selector = NewMoveSelector(brd, thisStk, &s.htable, inCheck, firstMove)
+	// recycler = brd.worker.recycler
+	selector = recycler.ReuseMoveSelector(brd, thisStk, &s.htable, inCheck, firstMove)
 
 searchMoves:
 
@@ -321,11 +323,10 @@ searchMoves:
 	// 	firstMove.IsMove() && depth > 6 && thisStk.canNull
 
 	memento := brd.NewMemento()
-	recycler := brd.worker.recycler
 
 	var mayPromote, tryPrune, givesCheck bool
 
-	for m, stage := selector.Next(recycler, spType); m != NO_MOVE; m, stage = selector.Next(recycler, spType) {
+	for m, stage := selector.Next(spType); m != NO_MOVE; m, stage = selector.Next(spType) {
 
 		if ply == 0 && s.restrictSearch {
 			if !s.moveAllowed(m) { // restrict search to only those moves requested by the GUI.
@@ -430,7 +431,8 @@ searchMoves:
 			case SP_SERVANT:
 				return NO_SCORE, sum // servant aborts its search and reports the nodes searched as overhead.
 			case SP_NONE:
-				selector.Recycle(recycler)
+				// selector.Recycle(recycler)
+				recycler.RecycleMoveSelector(selector)
 				return NO_SCORE, sum
 			default:
 				s.sendInfo("unknown SP type\n")
@@ -485,7 +487,8 @@ searchMoves:
 					if score >= beta {
 						storeCutoff(thisStk, &s.htable, m, brd.c, total) // what happens on refutation of main pv?
 						mainTt.store(brd, m, depth, LOWER_BOUND, score)
-						selector.Recycle(recycler)
+						// selector.Recycle(recycler)
+						recycler.RecycleMoveSelector(selector)
 						return score, sum
 					}
 					alpha = score
@@ -532,7 +535,8 @@ searchMoves:
 	case SP_SERVANT:
 		return NO_SCORE, 0
 	default:
-		selector.Recycle(recycler)
+		// selector.Recycle(recycler)
+		recycler.RecycleMoveSelector(selector)
 	}
 
 	if legalSearched > 0 {

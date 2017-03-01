@@ -65,11 +65,11 @@ func legalMovegen(fn func(*Board, *HistoryTable, Stack, int, int) int, brd *Boar
 func Perft(brd *Board, htable *HistoryTable, stk Stack, depth, ply int) int {
 	sum := 0
 	inCheck := brd.InCheck()
-	thisStk := stk[ply]
 	memento := brd.NewMemento()
+
 	recycler := loadBalancer.RootWorker().recycler
-	generator := NewMoveSelector(brd, &thisStk, htable, inCheck, NO_MOVE)
-	for m, _ := generator.Next(recycler, SP_NONE); m != NO_MOVE; m, _ = generator.Next(recycler, SP_NONE) {
+	selector := recycler.ReuseMoveSelector(brd, &stk[ply], htable, inCheck, NO_MOVE)
+	for m, _ := selector.Next(SP_NONE); m != NO_MOVE; m, _ = selector.Next(SP_NONE) {
 		if depth > 1 {
 			makeMove(brd, m)
 			sum += Perft(brd, htable, stk, depth-1, ply+1)
@@ -87,12 +87,11 @@ func PerftValidation(brd *Board, htable *HistoryTable, stk Stack, depth, ply int
 		return 1
 	}
 	sum := 0
-	thisStk := stk[ply]
 	memento := brd.NewMemento()
 	// intentionally disregard whether king is in check while generating moves.
 	recycler := loadBalancer.RootWorker().recycler
-	generator := NewMoveSelector(brd, &thisStk, htable, false, NO_MOVE)
-	for m, _ := generator.Next(recycler, SP_NONE); m != NO_MOVE; m, _ = generator.Next(recycler, SP_NONE) {
+	selector := recycler.ReuseMoveSelector(brd, &stk[ply], htable, false, NO_MOVE)
+	for m, _ := selector.Next(SP_NONE); m != NO_MOVE; m, _ = selector.Next(SP_NONE) {
 		inCheck := brd.InCheck()
 		if !brd.ValidMove(m, inCheck) || !brd.LegalMove(m, inCheck) {
 			continue // rely on validation to prevent illegal moves...
