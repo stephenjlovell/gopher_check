@@ -45,3 +45,9 @@ Implemented memory recycling for move lists 1/31/17
   Total score: 293/300
   Overhead: 101.763m
   Timeout: 2.0s
+
+"recycle move selectors" 4ca27ca18ae1f84da0b599c127aeccdb24a68b0f
+  1705.194m nodes searched in 548.0859s (3.111m NPS)
+  Total score: 292/300
+  Overhead: 114.836m
+  Timeout: 2.0s

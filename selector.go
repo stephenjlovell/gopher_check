@@ -164,12 +164,14 @@ func (s *MoveSelector) NextBatch() bool {
 		} else {
 			getCaptures(s.brd, s.htable, &s.winning, &s.losing)
 		}
-		s.winning.Sort()
+		// s.winning.Sort()
+		s.winning.InsertionSort()
 		s.finished = len(s.winning)
 	case STAGE_KILLER:
 		s.finished = KILLER_COUNT
 	case STAGE_LOSING:
-		s.losing.Sort()
+		// s.losing.Sort()
+		s.losing.InsertionSort()
 		s.finished = len(s.losing)
 	case STAGE_REMAINING:
 		if !s.inCheck {
@@ -232,10 +234,12 @@ func (s *QMoveSelector) NextBatch() bool {
 		} else {
 			getWinningCaptures(s.brd, s.htable, &s.winning)
 		}
-		s.winning.Sort()
+		// s.winning.Sort()
+		s.winning.InsertionSort()
 		s.finished = len(s.winning)
 	case Q_STAGE_LOSING:
-		s.losing.Sort()
+		// s.losing.Sort()
+		s.losing.InsertionSort()
 		s.finished = len(s.losing)
 	case Q_STAGE_REMAINING:
 		s.remainingMoves.Sort()
@@ -243,7 +247,8 @@ func (s *QMoveSelector) NextBatch() bool {
 	case Q_STAGE_CHECKS:
 		if !s.inCheck && s.canCheck {
 			getChecks(s.brd, s.htable, &s.checks)
-			s.checks.Sort()
+			// s.checks.Sort()
+			s.checks.InsertionSort()
 		}
 		s.finished = len(s.checks)
 	default:

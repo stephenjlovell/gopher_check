@@ -76,9 +76,7 @@ func NewMoveList(length int) MoveList {
 // resulting in additional heap allocations.
 // TODO: write native sort implementation to replace package sort.
 func (l MoveList) Sort() {
-	// sort.Sort(l)
-	l.QSort()
-
+	l.qSort()
 	// if len(l) > 1 && l[0].order > 0 {
 	// 	printMutex.Lock()
 	// 	fmt.Println(l)
@@ -98,13 +96,26 @@ func (l *MoveList) Push(item SortItem) {
 	*l = append(*l, item)
 }
 
-// func (l *MoveList) BubbleSort() {
-// }
+func (l MoveList) InsertionSort() {
+	l.insertionSort(0, len(l))
+}
 
-func (l MoveList) QSort() MoveList {
-	if len(l) < 2 {
-		return l
+func (l MoveList) insertionSort(a, b int) {
+	for i := a + 1; i < b; i++ {
+		for j := i; j > a && l.Less(j, j-1); j-- {
+			l.Swap(j, j-1)
+		}
 	}
+}
+
+func (l MoveList) qSort() {
+	if len(l) < 9 {
+		if len(l) < 2 {
+			return
+		}
+		l.insertionSort(0, len(l))
+	}
+
 	left, right := 0, len(l)-1
 	pivotIndex := rand.Int() % len(l) // initial pivot location
 	// Move the pivot to the right
@@ -118,7 +129,6 @@ func (l MoveList) QSort() MoveList {
 	}
 	// relocate pivot
 	l[left], l[right] = l[right], l[left]
-	l[:left].QSort()
-	l[left+1:].QSort()
-	return l
+	l[:left].qSort()
+	l[left+1:].qSort()
 }
