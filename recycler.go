@@ -8,7 +8,7 @@ package main
 import "sync"
 
 type Recycler struct {
-	stack []MoveList
+	moveLists []MoveList
 	sync.Mutex
 }
 
@@ -19,28 +19,28 @@ const (
 
 func NewRecycler(capacity uint64) *Recycler {
 	r := &Recycler{
-		stack: make([]MoveList, capacity/2, capacity),
+		moveLists: make([]MoveList, capacity, capacity),
 	}
 	r.init()
 	return r
 }
 
 func (r *Recycler) init() {
-	for i := 0; i < len(r.stack); i++ {
-		r.stack[0] = NewMoveList(QUIET_MOVE_LIST_LENGTH)
+	for i := 0; i < len(r.moveLists); i++ {
+		r.moveLists[i] = NewMoveList(QUIET_MOVE_LIST_LENGTH)
 	}
 }
 
 func (r *Recycler) Recycle(moves MoveList) {
-	if len(r.stack) < cap(r.stack) {
-		r.stack = append(r.stack, moves)
+	if len(r.moveLists) < cap(r.moveLists) {
+		r.moveLists = append(r.moveLists, moves)
 	}
 }
 
 func (r *Recycler) AttemptReuse(length int) MoveList {
 	var moves MoveList
-	if len(r.stack) > 0 {
-		moves, r.stack = r.stack[len(r.stack)-1], r.stack[:len(r.stack)-1]
+	if len(r.moveLists) > 0 {
+		moves, r.moveLists = r.moveLists[len(r.moveLists)-1], r.moveLists[:len(r.moveLists)-1]
 	}
 	if moves == nil {
 		moves = NewMoveList(length)
