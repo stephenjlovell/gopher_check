@@ -13,24 +13,29 @@ Tune Tapered Eval.
 
 
 Performance:
+2.9 GHz Core i5 (2x physical cores, 4 hyper-threads)
 
-5/28/16, 2.9 GHz Core i5 (2x physical cores, 4 hyper-threads)
+5/28/16
   657.6419m nodes searched in 408.8506s (1.6085m NPS)
   Total score: 290/300
   Overhead: 31.9396m
   Timeout: 1.5s
 
-8/21/16, 2.9 GHz Core i5 (2x physical cores, 4 hyper-threads)
-Upgraded to Go 1.7
+Upgraded to Go 1.7 8/21/1
   779.9704m nodes searched in 410.1461s (1.9017m NPS)
   Total score: 290/300
   Overhead: 45.4335m
   Timeout: 2.0s
   PASS
 
-1/31/17, 2.9 GHz Core i5 (2x physical cores, 4 hyper-threads)
-Implemented memory recycling for move lists
+Implemented memory recycling for move lists 1/31/17
   1034.6923m nodes searched in 408.7054s (2.5316m NPS)
   Total score: 289/300
   Overhead: 53.8827m
+  Timeout: 2.0s
+
+"eliminate AbstractSelector" b549b3b5fe81b4f2f20f3702eb631d521ad9104b
+  1645.355m nodes searched in 549.5607s (2.994m NPS)
+  Total score: 293/300
+  Overhead: 95.597m
   Timeout: 2.0s

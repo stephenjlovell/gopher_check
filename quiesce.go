@@ -44,10 +44,11 @@ func (s *Search) quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) 
 
 	legalMoves := false
 	memento := brd.NewMemento()
-	selector := NewQMoveSelector(brd, thisStk, &s.htable, brd.worker.recycler, inCheck, depth >= MIN_CHECK_DEPTH)
+	recycler := brd.worker.recycler
+	selector := NewQMoveSelector(brd, thisStk, &s.htable, inCheck, depth >= MIN_CHECK_DEPTH)
 
 	var mayPromote, givesCheck bool
-	for m := selector.Next(); m != NO_MOVE; m = selector.Next() {
+	for m := selector.Next(recycler); m != NO_MOVE; m = selector.Next(recycler) {
 
 		mayPromote = brd.MayPromote(m)
 
@@ -71,7 +72,7 @@ func (s *Search) quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) 
 		if score > best {
 			if score > alpha {
 				if score >= beta {
-					selector.Recycle()
+					selector.Recycle(recycler)
 					return score, sum
 				}
 				alpha = score
@@ -81,7 +82,7 @@ func (s *Search) quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) 
 		legalMoves = true
 	}
 
-	selector.Recycle()
+	selector.Recycle(recycler)
 	if inCheck && !legalMoves {
 		return ply - MATE, 1 // detect checkmate.
 	}

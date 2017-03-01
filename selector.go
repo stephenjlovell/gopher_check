@@ -30,30 +30,6 @@ const (
 	Q_STAGE_CHECKS
 )
 
-// type AbstractSelector struct {
-// 	winning        MoveList
-// 	losing         MoveList
-// 	remainingMoves MoveList
-// 	sync.Mutex
-// 	brd      *Board
-// 	thisStk  *StackItem
-// 	htable   *HistoryTable
-// 	stage    int
-// 	index    int
-// 	finished int
-// 	inCheck  bool
-// }
-
-// func (s *AbstractSelector) CurrentStage() int {
-// 	return s.stage - 1
-// }
-//
-// func (s *AbstractSelector) recycleList(recycler *Recycler, moves MoveList) {
-// 	if moves != nil {
-// 		recycler.Recycle(moves[0:0])
-// 	}
-// }
-
 func (s *MoveSelector) CurrentStage() int {
 	return s.stage - 1
 }
@@ -97,7 +73,6 @@ type QMoveSelector struct {
 	brd            *Board
 	thisStk        *StackItem
 	htable         *HistoryTable
-	recycler       *Recycler
 	stage          int
 	index          int
 	finished       int
@@ -115,14 +90,13 @@ func NewMoveSelector(brd *Board, thisStk *StackItem, htable *HistoryTable, inChe
 	}
 }
 
-func NewQMoveSelector(brd *Board, thisStk *StackItem, htable *HistoryTable, recycler *Recycler, inCheck, canCheck bool) *QMoveSelector {
+func NewQMoveSelector(brd *Board, thisStk *StackItem, htable *HistoryTable, inCheck, canCheck bool) *QMoveSelector {
 	return &QMoveSelector{
 		brd:      brd,
 		thisStk:  thisStk,
 		htable:   htable,
 		inCheck:  inCheck,
 		canCheck: canCheck,
-		recycler: recycler,
 	}
 }
 
@@ -228,10 +202,10 @@ func (s *MoveSelector) Recycle(recycler *Recycler) {
 	s.recycleList(recycler, s.remainingMoves)
 }
 
-func (s *QMoveSelector) Next() Move {
+func (s *QMoveSelector) Next(recycler *Recycler) Move {
 	for {
 		for s.index == s.finished {
-			if s.NextBatch() {
+			if s.NextBatch(recycler) {
 				return NO_MOVE
 			}
 		}
@@ -265,18 +239,18 @@ func (s *QMoveSelector) Next() Move {
 	}
 }
 
-func (s *QMoveSelector) NextBatch() bool {
+func (s *QMoveSelector) NextBatch(recycler *Recycler) bool {
 	done := false
 	s.index = 0
 	switch s.stage {
 	case Q_STAGE_WINNING:
 		if s.inCheck {
-			s.winning = s.recycler.AttemptReuse(DEFAULT_MOVE_LIST_LENGTH)
-			s.losing = s.recycler.AttemptReuse(DEFAULT_MOVE_LIST_LENGTH)
-			s.remainingMoves = s.recycler.AttemptReuse(QUIET_MOVE_LIST_LENGTH)
+			s.winning = recycler.AttemptReuse(DEFAULT_MOVE_LIST_LENGTH)
+			s.losing = recycler.AttemptReuse(DEFAULT_MOVE_LIST_LENGTH)
+			s.remainingMoves = recycler.AttemptReuse(QUIET_MOVE_LIST_LENGTH)
 			getEvasions(s.brd, s.htable, &s.winning, &s.losing, &s.remainingMoves)
 		} else {
-			s.winning = s.recycler.AttemptReuse(DEFAULT_MOVE_LIST_LENGTH)
+			s.winning = recycler.AttemptReuse(DEFAULT_MOVE_LIST_LENGTH)
 			getWinningCaptures(s.brd, s.htable, &s.winning)
 		}
 		s.winning.Sort()
@@ -289,7 +263,7 @@ func (s *QMoveSelector) NextBatch() bool {
 		s.finished = len(s.remainingMoves)
 	case Q_STAGE_CHECKS:
 		if !s.inCheck && s.canCheck {
-			s.checks = s.recycler.AttemptReuse(DEFAULT_MOVE_LIST_LENGTH)
+			s.checks = recycler.AttemptReuse(DEFAULT_MOVE_LIST_LENGTH)
 			getChecks(s.brd, s.htable, &s.checks)
 			s.checks.Sort()
 		}
@@ -301,9 +275,9 @@ func (s *QMoveSelector) NextBatch() bool {
 	return done
 }
 
-func (s *QMoveSelector) Recycle() {
-	s.recycleList(s.recycler, s.winning)
-	s.recycleList(s.recycler, s.losing)
-	s.recycleList(s.recycler, s.remainingMoves)
-	s.recycleList(s.recycler, s.checks)
+func (s *QMoveSelector) Recycle(recycler *Recycler) {
+	s.recycleList(recycler, s.winning)
+	s.recycleList(recycler, s.losing)
+	s.recycleList(recycler, s.remainingMoves)
+	s.recycleList(recycler, s.checks)
 }
