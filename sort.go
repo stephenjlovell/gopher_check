@@ -5,7 +5,7 @@
 
 package main
 
-import "math/rand"
+import "fmt"
 
 // Root Sorting
 // At root, moves should be sorted based on subtree value rather than standard sorting.
@@ -77,11 +77,7 @@ func NewMoveList(length int) MoveList {
 // TODO: write native sort implementation to replace package sort.
 func (l MoveList) Sort() {
 	l.qSort()
-	// if len(l) > 1 && l[0].order > 0 {
-	// 	printMutex.Lock()
-	// 	fmt.Println(l)
-	// 	printMutex.Unlock()
-	// }
+	// assert(l.isSorted(), "list not sorted")
 }
 
 func (l MoveList) Len() int { return len(l) }
@@ -115,20 +111,36 @@ func (l MoveList) qSort() {
 		}
 		l.insertionSort(0, len(l))
 	}
-
 	left, right := 0, len(l)-1
-	pivotIndex := rand.Int() % len(l) // initial pivot location
+	// initial pivot location
+	// pivotIndex := rand.Int() % len(l)
+	pivotIndex := right >> 1
+
 	// Move the pivot to the right
-	l[pivotIndex], l[right] = l[right], l[pivotIndex]
+	// l[pivotIndex], l[right] = l[right], l[pivotIndex]
+	l.Swap(pivotIndex, right)
 	// Pile elements larger than the pivot on the left
 	for i := range l {
-		if l[i].order > l[right].order {
-			l[i], l[left] = l[left], l[i]
+		if l.Less(i, right) {
+			l.Swap(i, left)
 			left++
 		}
 	}
 	// relocate pivot
-	l[left], l[right] = l[right], l[left]
+	l.Swap(left, right)
 	l[:left].qSort()
 	l[left+1:].qSort()
+}
+
+func (l MoveList) isSorted() bool {
+	n := len(l)
+	for i := 1; i < n; i++ {
+		if l[i-1].order < l[i].order {
+			printMutex.Lock()
+			fmt.Println(l)
+			printMutex.Unlock()
+			return false
+		}
+	}
+	return true
 }
