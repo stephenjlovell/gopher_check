@@ -51,3 +51,9 @@ Implemented memory recycling for move lists 1/31/17
   Total score: 292/300
   Overhead: 117.618m
   Timeout: 2.0s
+
+"optimize q-sort based on cpu profiling" 9334da661e7ca56a76bdf377650c92bb39c66901
+  2017.377m nodes searched in 539.6638s (3.738m NPS)
+  Total score: 293/300
+  Overhead: 143.192m
+  Timeout: 2.0s

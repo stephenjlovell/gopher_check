@@ -181,6 +181,7 @@ func getSee(brd *Board, from, to int, capturedPiece Piece) int {
 	return pieceList[0]
 }
 
+// TODO: handle other pieces getting king out of check...
 func isCheckmate(brd *Board, inCheck bool) bool {
 	if !inCheck {
 		return false

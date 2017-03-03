@@ -89,7 +89,7 @@ func (sp *SplitPoint) RemoveServant(wMask uint32) {
 	sp.workerFinished = true
 	sp.Unlock()
 
-	sp.cond.Signal()
+	sp.cond.Signal() // there should only ever be one sp master sleeping & awaiting this signal.
 }
 
 func CreateSP(s *Search, brd *Board, stk Stack, ms *MoveSelector, bestMove Move, alpha, beta, best,
@@ -122,6 +122,7 @@ func CreateSP(s *Search, brd *Board, stk Stack, ms *MoveSelector, bestMove Move,
 		cancel:        false,
 	}
 
+	// TODO: If possible, recycle this slice when SplitPoint is discarded.
 	sp.stk = make(Stack, ply, ply)
 	stk.CopyUpTo(sp.stk, ply)
 
@@ -141,7 +142,7 @@ func (l *SPList) Push(sp *SplitPoint) {
 func (l *SPList) Pop() *SplitPoint {
 	old := *l
 	n := len(old)
-	sp := old[n-1]
-	*l = old[0 : n-1]
+	var sp *SplitPoint
+	sp, *l = old[n-1], old[0:n-1]
 	return sp
 }
