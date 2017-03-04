@@ -25,6 +25,15 @@ type StackItem struct {
 	canNull      bool
 }
 
+// ThinStackItem provides a lighter version of Stack for use with SPs.
+
+type ThinStack []ThinStackItem
+
+type ThinStackItem struct {
+	hashKey uint64
+	eval    int16
+}
+
 func (thisStk *StackItem) Copy() *StackItem {
 	copy := *thisStk
 	return &copy
@@ -39,15 +48,16 @@ func NewStack() Stack {
 	return stk
 }
 
-func (stk Stack) CopyUpTo(otherStk Stack, ply int) {
-	for i := 0; i < ply; i++ {
-		// other_stk[i].sp = stk[i].sp
-		// other_stk[i].value = stk[i].value
-		// other_stk[i].eval = stk[i].eval
-		// other_stk[i].pv_move = stk[i].pv_move
-		// other_stk[i].killers = stk[i].killers
-		otherStk[i].hashKey = stk[i].hashKey
-		// other_stk[i].depth = stk[i].depth
-		// other_stk[i].in_check = stk[i].in_check
+func CopyToThinStack(from Stack, to ThinStack, upTo int) {
+	for i := 0; i < upTo; i++ {
+		to[i].eval = from[i].eval
+		to[i].hashKey = from[i].hashKey
+	}
+}
+
+func CopyToStack(from ThinStack, to Stack, upTo int) {
+	for i := 0; i < upTo; i++ {
+		to[i].eval = from[i].eval
+		to[i].hashKey = from[i].hashKey
 	}
 }

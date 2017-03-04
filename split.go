@@ -17,7 +17,7 @@ const (
 
 type SplitPoint struct {
 	mu                               sync.RWMutex // 24 (bytes)
-	stk                              Stack        // 12
+	stk                              ThinStack    // 12
 	depth, ply, nodeType, nodeCount  int          // 8 x 8
 	alpha, beta, best, legalSearched int
 	s                                *Search // 8 x 7
@@ -64,7 +64,6 @@ func (sp *SplitPoint) Cancel() bool {
 }
 
 func (sp *SplitPoint) HelpWanted() bool {
-	// return !sp.Cancel() && sp.ServantMask() > 0
 	sp.mu.RLock()
 	cancel := sp.cancel
 	servantMask := sp.servantMask
@@ -73,26 +72,19 @@ func (sp *SplitPoint) HelpWanted() bool {
 }
 
 func (sp *SplitPoint) ServantMask() uint32 {
-	// sp.cond.L.Lock()
 	sp.mu.Lock()
 	servantMask := sp.servantMask
-	// sp.cond.L.Unlock()
 	sp.mu.Unlock()
 	return servantMask
 }
 
 func (sp *SplitPoint) AddServant(wMask uint32) {
-	// sp.cond.L.Lock()
 	sp.mu.Lock()
 	sp.servantMask |= wMask
-	// sp.cond.L.Unlock()
 	sp.mu.Unlock()
 }
 
 func (sp *SplitPoint) RemoveServant(wMask uint32) {
-	// sp.cond.L.Lock()
-	// sp.servantMask &= (^wMask)
-	// sp.cond.L.Unlock()
 	sp.mu.Lock()
 	sp.servantMask &= (^wMask)
 	sp.workerFinished = true
@@ -127,8 +119,8 @@ func CreateSP(s *Search, brd *Board, stk Stack, ms *MoveSelector, bestMove Move,
 	sp.cond = sync.NewCond(&sp.mu)
 
 	// TODO: If possible, recycle this slice when SplitPoint is discarded.
-	sp.stk = make(Stack, ply, ply)
-	stk.CopyUpTo(sp.stk, ply)
+	sp.stk = make(ThinStack, ply, ply)
+	CopyToThinStack(stk, sp.stk, ply)
 
 	ms.brd = sp.brd // make sure the move selector points to the static SP board.
 

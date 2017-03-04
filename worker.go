@@ -140,7 +140,7 @@ func (w *Worker) SearchSP(sp *SplitPoint) {
 	brd := sp.brd.Copy()
 	brd.worker = w
 
-	sp.stk.CopyUpTo(w.stk, sp.ply)
+	CopyToStack(sp.stk, w.stk, sp.ply)
 
 	sp.mu.RLock()
 	alpha, beta := sp.alpha, sp.beta
