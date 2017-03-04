@@ -154,7 +154,7 @@ func (s *Search) iterativeDeepening(brd *Board) int {
 	for d := 1; d <= s.maxDepth; d++ {
 
 		stk[0].inCheck = inCheck
-		guess, total = s.ybw(brd, stk, s.alpha, s.beta, d, 0, Y_PV, SP_NONE, false)
+		guess, total = s.ybw(brd, s.alpha, s.beta, d, 0, Y_PV, SP_NONE, false)
 		sum += total
 
 		select { // if the cancel signal was received mid-search, the current guess is not useful.
@@ -182,19 +182,19 @@ func (s *Search) iterativeDeepening(brd *Board) int {
 	return sum
 }
 
-func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, nodeType,
+func (s *Search) ybw(brd *Board, alpha, beta, depth, ply, nodeType,
 	spType int, checked bool) (int, int) {
 	select {
 	case <-s.cancel:
 		return NO_SCORE, 1
 	default:
 	}
-
+	stk := brd.worker.stk
 	if depth <= 0 {
 		if nodeType == Y_PV {
 			stk[ply].pv = nil
 		}
-		return s.quiescence(brd, stk, alpha, beta, 0, ply) // q-search is always sequential.
+		return s.quiescence(brd, alpha, beta, 0, ply) // q-search is always sequential.
 	}
 
 	var inCheck bool
@@ -261,12 +261,12 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, nodeType,
 		} else if !inCheck && thisStk.canNull && hashResult != AVOID_NULL && depth >= NULL_MOVE_MIN &&
 			!brd.PawnsOnly() && eval >= beta { // Null-move pruning
 
-			score, subtotal = s.nullMake(brd, stk, beta, nullDepth, ply, checked)
+			score, subtotal = s.nullMake(brd, beta, nullDepth, ply, checked)
 			sum += subtotal
 			if score >= beta && score < MIN_MATE {
 				if depth >= 8 { //  Null-move Verification search
 					thisStk.canNull = false
-					score, subtotal = s.ybw(brd, stk, beta-1, beta, nullDepth-1, ply, nodeType, SP_NONE, checked)
+					score, subtotal = s.ybw(brd, beta-1, beta, nullDepth-1, ply, nodeType, SP_NONE, checked)
 					thisStk.canNull = true
 					sum += subtotal
 					if score >= beta && score < MIN_MATE {
@@ -282,7 +282,7 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, nodeType,
 	// skip IID when in check?
 	if !inCheck && nodeType == Y_PV && hashResult == NO_MATCH && depth >= IID_MIN {
 		// No hash move available. Use IID to get a decent first move to try.
-		score, subtotal = s.ybw(brd, stk, alpha, beta, depth-2, ply, Y_PV, SP_NONE, checked)
+		score, subtotal = s.ybw(brd, alpha, beta, depth-2, ply, Y_PV, SP_NONE, checked)
 		sum += subtotal
 		if thisStk.pv != nil {
 			firstMove = thisStk.pv.m
@@ -381,21 +381,21 @@ searchMoves:
 
 		// time to search deeper:
 		if nodeType == Y_PV && alpha > oldAlpha {
-			score, subtotal = s.ybw(brd, stk, (-alpha)-1, -alpha, rDepth-1, ply+1, childType, SP_NONE, checked)
+			score, subtotal = s.ybw(brd, (-alpha)-1, -alpha, rDepth-1, ply+1, childType, SP_NONE, checked)
 			score = -score
 			total += subtotal
 			if score > alpha { // re-search with full-window on fail high
-				score, subtotal = s.ybw(brd, stk, -beta, -alpha, rDepth-1, ply+1, Y_PV, SP_NONE, checked)
+				score, subtotal = s.ybw(brd, -beta, -alpha, rDepth-1, ply+1, Y_PV, SP_NONE, checked)
 				score = -score
 				total += subtotal
 			}
 		} else {
-			score, subtotal = s.ybw(brd, stk, -beta, -alpha, rDepth-1, ply+1, childType, SP_NONE, checked)
+			score, subtotal = s.ybw(brd, -beta, -alpha, rDepth-1, ply+1, childType, SP_NONE, checked)
 			score = -score
 			total += subtotal
 			// re-search reduced moves that fail high at full depth.
 			if rDepth < depth && score > alpha {
-				score, subtotal = s.ybw(brd, stk, -beta, -alpha, depth-1, ply+1, childType, SP_NONE, checked)
+				score, subtotal = s.ybw(brd, -beta, -alpha, depth-1, ply+1, childType, SP_NONE, checked)
 				score = -score
 				total += subtotal
 			}
@@ -550,15 +550,16 @@ searchMoves:
 	}
 }
 
-func (s *Search) nullMake(brd *Board, stk Stack, beta, nullDepth, ply int, checked bool) (int, int) {
+func (s *Search) nullMake(brd *Board, beta, nullDepth, ply int, checked bool) (int, int) {
 	hashKey, enpTarget := brd.hashKey, brd.enpTarget
 	brd.c ^= 1
 	brd.hashKey ^= sideKey64
 	brd.hashKey ^= enpZobrist(enpTarget)
 	brd.enpTarget = SQ_INVALID
+	stk := brd.worker.stk
 	stk[ply+1].inCheck = false // Impossible to give check from a legal position by standing pat.
 	stk[ply+1].canNull = false
-	score, sum := s.ybw(brd, stk, -beta, (-beta)+1, nullDepth-1, ply+1, Y_CUT, SP_NONE, checked)
+	score, sum := s.ybw(brd, -beta, (-beta)+1, nullDepth-1, ply+1, Y_CUT, SP_NONE, checked)
 	stk[ply+1].canNull = true
 	brd.c ^= 1
 	brd.hashKey = hashKey

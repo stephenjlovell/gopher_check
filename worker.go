@@ -141,14 +141,13 @@ func (w *Worker) SearchSP(sp *SplitPoint) {
 	brd.worker = w
 
 	sp.stk.CopyUpTo(w.stk, sp.ply)
-	// w.stk[sp.ply].sp = sp
 
 	sp.mu.RLock()
 	alpha, beta := sp.alpha, sp.beta
 	sp.mu.RUnlock()
 
 	// Once the SP is fully evaluated, The SP master will handle returning its value to parent node.
-	_, total := sp.s.ybw(brd, w.stk, alpha, beta, sp.depth, sp.ply, sp.nodeType, SP_SERVANT, sp.checked)
+	_, total := sp.s.ybw(brd, alpha, beta, sp.depth, sp.ply, sp.nodeType, SP_SERVANT, sp.checked)
 	w.searchOverhead += total
 
 	sp.RemoveServant(w.mask)

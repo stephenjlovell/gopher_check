@@ -7,11 +7,11 @@ package main
 
 // Q-Search will always be done sequentially: Q-search subtrees are taller and narrower than in the main search,
 // making benefit of parallelism smaller and raising communication and synchronization overhead.
-func (s *Search) quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) (int, int) {
-
+func (s *Search) quiescence(brd *Board, alpha, beta, depth, ply int) (int, int) {
+	stk := brd.worker.stk
 	thisStk := &stk[ply]
-
 	thisStk.hashKey = brd.hashKey
+
 	if stk.IsRepetition(ply, brd.halfmoveClock) { // check for draw by threefold repetition
 		return ply - DRAW_VALUE, 1
 	}
@@ -64,7 +64,7 @@ func (s *Search) quiescence(brd *Board, stk Stack, alpha, beta, depth, ply int) 
 
 		stk[ply+1].inCheck = givesCheck // avoid having to recalculate in_check at beginning of search.
 
-		score, total = s.quiescence(brd, stk, -beta, -alpha, depth-1, ply+1)
+		score, total = s.quiescence(brd, -beta, -alpha, depth-1, ply+1)
 		score = -score
 		sum += total
 		unmakeMove(brd, m, memento)
