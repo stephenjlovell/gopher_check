@@ -59,9 +59,8 @@ func NewLoadBalancer(numWorkers uint8) *Balancer {
 
 type Balancer struct {
 	workers []*Worker
-	// sync.Mutex
-	once sync.Once
-	done chan *Worker
+	once    sync.Once
+	done    chan *Worker
 }
 
 func (b *Balancer) Start(numCPU int) {
@@ -105,6 +104,7 @@ FlushIdle: // If there are any idle workers, assign them now.
 
 // RemoveSP prevents new workers from being assigned to w.current_sp without cancelling
 // any ongoing work at this SP.
+// TODO: Investigate recycling for used SPs (or their internal Stack slices.)
 func (b *Balancer) RemoveSP(w *Worker) {
 	w.Lock()
 	w.spList.Pop()

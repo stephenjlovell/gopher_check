@@ -14,9 +14,9 @@ const (
 type Stack []StackItem
 
 type StackItem struct {
-	killers      KEntry
-	hashKey      uint64 // use hash key to search for repetitions
-	sp           *SplitPoint
+	killers KEntry
+	hashKey uint64 // use hash key to search for repetitions
+	// sp           *SplitPoint
 	pv           *PV
 	singularMove Move
 	eval         int16

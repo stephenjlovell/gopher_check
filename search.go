@@ -216,13 +216,14 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, nodeType,
 	// the SP master has already handled most of the pruning, so just read the latest values
 	// from the SP and jump to the moves loop.
 	if spType == SP_SERVANT {
-		sp = stk[ply].sp
-		sp.RLock()
+		// sp = stk[ply].sp
+		sp = brd.worker.currentSp
+		sp.mu.RLock()
 		selector = sp.selector
 		thisStk = sp.thisStk
 		eval = int(thisStk.eval)
 		inCheck = thisStk.inCheck
-		sp.RUnlock()
+		sp.mu.RUnlock()
 		goto searchMoves
 	}
 
@@ -292,7 +293,6 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, nodeType,
 		}
 	}
 
-	// recycler = brd.worker.recycler
 	selector = recycler.ReuseMoveSelector(brd, thisStk, &s.htable, inCheck, firstMove)
 
 searchMoves:
@@ -315,10 +315,6 @@ searchMoves:
 		}
 	}
 
-	// if nodeType == Y_PV {
-	// 	fmt.Printf("%d:%t, %b\n", ply, hashResult&EXACT_FOUND > 0, hashResult)
-	// }
-
 	// singularNode := ply > 0 && nodeType == Y_CUT && (hashResult&BETA_FOUND) > 0 &&
 	// 	firstMove.IsMove() && depth > 6 && thisStk.canNull
 
@@ -334,9 +330,9 @@ searchMoves:
 			}
 		}
 
-		if m == thisStk.singularMove {
-			continue
-		}
+		// if spType == SP_NONE && m == thisStk.singularMove {
+		// 	continue
+		// }
 
 		mayPromote = brd.MayPromote(m)
 		tryPrune = canPrune && stage == STAGE_REMAINING && legalSearched > 0 && !mayPromote
@@ -414,24 +410,23 @@ searchMoves:
 		if brd.worker.IsCancelled() {
 			switch spType {
 			case SP_MASTER:
-				sp.Lock()
+				sp.mu.Lock()
 				if sp.cancel { // A servant has found a cutoff
 					best, bestMove, sum = sp.best, sp.bestMove, sp.nodeCount
-					sp.Unlock()
+					sp.mu.Unlock()
 					loadBalancer.RemoveSP(brd.worker)
 					// the servant that found the cutoff has already stored the cutoff info.
 					mainTt.store(brd, bestMove, depth, LOWER_BOUND, best)
 					return best, sum
 				} else { // A cutoff has been found somewhere above this SP.
 					sp.cancel = true
-					sp.Unlock()
+					sp.mu.Unlock()
 					loadBalancer.RemoveSP(brd.worker)
 					return NO_SCORE, sum
 				}
 			case SP_SERVANT:
 				return NO_SCORE, sum // servant aborts its search and reports the nodes searched as overhead.
 			case SP_NONE:
-				// selector.Recycle(recycler)
 				recycler.RecycleMoveSelector(selector)
 				return NO_SCORE, sum
 			default:
@@ -440,7 +435,7 @@ searchMoves:
 		}
 
 		if spType != SP_NONE {
-			sp.Lock() // get the latest info under lock protection
+			sp.mu.Lock() // get the latest info under lock protection
 			alpha, beta, best, bestMove = sp.alpha, sp.beta, sp.best, sp.bestMove
 			if nodeType == Y_PV {
 				pv = thisStk.pv
@@ -449,7 +444,7 @@ searchMoves:
 
 			sp.legalSearched += 1
 			sp.nodeCount += total
-			legalSearched, sum = sp.legalSearched, sp.nodeCount
+			sum = sp.nodeCount
 
 			if score > best {
 				bestMove, sp.bestMove, best, sp.best = m, m, score, score
@@ -461,13 +456,12 @@ searchMoves:
 				if score > alpha {
 					alpha, sp.alpha = score, score
 					if score >= beta {
-						storeCutoff(&stk[ply], &s.htable, m, brd.c, total)
 						sp.cancel = true
-						sp.Unlock()
+						sp.mu.Unlock()
+						storeCutoff(&stk[ply], &s.htable, m, brd.c, total)
 						if spType == SP_MASTER {
 							loadBalancer.RemoveSP(brd.worker)
 							mainTt.store(brd, m, depth, LOWER_BOUND, score)
-							// selector.Recycle(recycler)
 							return score, sum
 						} else { // sp_type == SP_SERVANT
 							return NO_SCORE, 0
@@ -475,7 +469,8 @@ searchMoves:
 					}
 				}
 			}
-			sp.Unlock()
+			legalSearched = sp.legalSearched
+			sp.mu.Unlock()
 		} else { // sp_type == SP_NONE
 			sum += total
 			if score > best {
@@ -487,7 +482,6 @@ searchMoves:
 					if score >= beta {
 						storeCutoff(thisStk, &s.htable, m, brd.c, total) // what happens on refutation of main pv?
 						mainTt.store(brd, m, depth, LOWER_BOUND, score)
-						// selector.Recycle(recycler)
 						recycler.RecycleMoveSelector(selector)
 						return score, sum
 					}
@@ -501,9 +495,9 @@ searchMoves:
 				sp = CreateSP(s, brd, stk, selector, bestMove, alpha, beta, best, depth, ply,
 					legalSearched, nodeType, sum, checked)
 				// register the split point in the appropriate SP list, and notify any idle workers.
-				loadBalancer.AddSP(brd.worker, sp)
 				thisStk = sp.thisStk
 				spType = SP_MASTER
+				loadBalancer.AddSP(brd.worker, sp)
 			}
 		}
 
@@ -511,9 +505,10 @@ searchMoves:
 
 	switch spType {
 	case SP_MASTER:
-		sp.Lock()
-		sp.workerFinished = true
-		sp.Unlock()
+		sp.mu.Lock()
+		sp.workerFinished = true // no need to update sp.servantMask
+		sp.mu.Unlock()
+
 		loadBalancer.RemoveSP(brd.worker)
 
 		// Helpful Master Concept:
@@ -522,20 +517,19 @@ searchMoves:
 		// this split point.
 		brd.worker.HelpServants(sp) // Blocks until all servants have finished processing.
 
-		sp.Lock() // make sure to capture any improvements contributed by servant workers:
+		sp.mu.Lock() // make sure to capture any improvements contributed by servant workers:
 		alpha, best, bestMove = sp.alpha, sp.best, sp.bestMove
 		sum, legalSearched = sp.nodeCount, sp.legalSearched
 		if nodeType == Y_PV {
 			stk[ply].pv = thisStk.pv
 		}
 		sp.cancel = true
-		sp.Unlock()
+		sp.mu.Unlock()
 		// since all servants have finished processing, we can safely recycle the move buffers.
-		// selector.Recycle(recycler)
+		// recycler.RecycleMoveSelector(selector)
 	case SP_SERVANT:
 		return NO_SCORE, 0
 	default:
-		// selector.Recycle(recycler)
 		recycler.RecycleMoveSelector(selector)
 	}
 

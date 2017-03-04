@@ -1,15 +1,8 @@
 
+TODO:
+- add proper error handling in UCI adapter.
+- revisit SP cancellation mechanisms, SP lists vs. parent SPs.
 
-To Do:
-
-TODO: add proper error handling in UCI adapter.
-
-BUG: 'orphaned' workers occasionally still processing at completion of search - can interfere
-     with next search.
-
-Reduce GC pressure: decrease object allocation during parallel search.
-
-Tune Tapered Eval.
 
 
 Performance:
@@ -56,4 +49,9 @@ Implemented memory recycling for move lists 1/31/17
   2017.377m nodes searched in 539.6638s (3.738m NPS)
   Total score: 293/300
   Overhead: 143.192m
+  Timeout: 2.0s
+
+  2074.741m nodes searched in 540.2386s (3.840m NPS)
+  Total score: 293/300
+  Overhead: 126.524m
   Timeout: 2.0s
