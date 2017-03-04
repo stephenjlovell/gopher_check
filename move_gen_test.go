@@ -68,7 +68,7 @@ func Perft(brd *Board, htable *HistoryTable, stk Stack, depth, ply int) int {
 	memento := brd.NewMemento()
 
 	recycler := loadBalancer.RootWorker().recycler
-	selector := recycler.ReuseMoveSelector(brd, &stk[ply], htable, inCheck, NO_MOVE)
+	selector := recycler.ReuseMoveSelector(brd, htable, inCheck, NO_MOVE, stk[ply].killers)
 	for m, _ := selector.Next(SP_NONE); m != NO_MOVE; m, _ = selector.Next(SP_NONE) {
 		if depth > 1 {
 			makeMove(brd, m)
@@ -90,7 +90,7 @@ func PerftValidation(brd *Board, htable *HistoryTable, stk Stack, depth, ply int
 	memento := brd.NewMemento()
 	// intentionally disregard whether king is in check while generating moves.
 	recycler := loadBalancer.RootWorker().recycler
-	selector := recycler.ReuseMoveSelector(brd, &stk[ply], htable, false, NO_MOVE)
+	selector := recycler.ReuseMoveSelector(brd, htable, false, NO_MOVE, stk[ply].killers)
 	for m, _ := selector.Next(SP_NONE); m != NO_MOVE; m, _ = selector.Next(SP_NONE) {
 		inCheck := brd.InCheck()
 		if !brd.ValidMove(m, inCheck) || !brd.LegalMove(m, inCheck) {

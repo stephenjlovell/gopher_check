@@ -11,12 +11,13 @@ const (
 	MAX_STACK = 128
 )
 
+// Stack provides a way for worker goroutines to reach data from above or below the current ply
+// that would otherwise be trapped in the call stack due to recursion.
 type Stack []StackItem
 
 type StackItem struct {
-	killers KEntry
-	hashKey uint64 // use hash key to search for repetitions
-	// sp           *SplitPoint
+	killers      KEntry
+	hashKey      uint64 // use hash key to search for repetitions
 	pv           *PV
 	singularMove Move
 	eval         int16
@@ -25,16 +26,8 @@ type StackItem struct {
 }
 
 func (thisStk *StackItem) Copy() *StackItem {
-	return &StackItem{
-		// split point is not copied over.
-		pv:           thisStk.pv,
-		killers:      thisStk.killers,
-		singularMove: thisStk.singularMove,
-		eval:         thisStk.eval,
-		hashKey:      thisStk.hashKey,
-		inCheck:      thisStk.inCheck,
-		canNull:      thisStk.canNull,
-	}
+	copy := *thisStk
+	return &copy
 }
 
 func NewStack() Stack {

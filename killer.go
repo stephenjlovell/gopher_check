@@ -23,7 +23,6 @@ func (s *StackItem) StoreKiller(m Move) {
 	}
 }
 
-func (s *StackItem) IsKiller(m Move) bool {
-	killers := &s.killers
+func (killers KEntry) IsKiller(m Move) bool {
 	return m == killers[0] || m == killers[1] || m == killers[2]
 }

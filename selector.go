@@ -39,12 +39,12 @@ func (s *QMoveSelector) CurrentStage() int {
 }
 
 type MoveSelector struct {
+	killers        KEntry
 	winning        MoveList
 	losing         MoveList
 	remainingMoves MoveList
 	mu             sync.Mutex
 	brd            *Board
-	thisStk        *StackItem
 	htable         *HistoryTable
 	stage          int
 	index          int
@@ -59,7 +59,6 @@ type QMoveSelector struct {
 	remainingMoves MoveList
 	checks         MoveList
 	brd            *Board
-	thisStk        *StackItem
 	htable         *HistoryTable
 	stage          int
 	index          int
@@ -68,10 +67,10 @@ type QMoveSelector struct {
 	canCheck       bool
 }
 
-func NewMoveSelector(brd *Board, thisStk *StackItem, htable *HistoryTable, inCheck bool, firstMove Move) *MoveSelector {
+func NewMoveSelector(brd *Board, htable *HistoryTable, inCheck bool, firstMove Move, killers KEntry) *MoveSelector {
 	return &MoveSelector{
+		killers:        killers,
 		brd:            brd,
-		thisStk:        thisStk,
 		htable:         htable,
 		inCheck:        inCheck,
 		firstMove:      firstMove,
@@ -81,10 +80,9 @@ func NewMoveSelector(brd *Board, thisStk *StackItem, htable *HistoryTable, inChe
 	}
 }
 
-func NewQMoveSelector(brd *Board, thisStk *StackItem, htable *HistoryTable, inCheck, canCheck bool) *QMoveSelector {
+func NewQMoveSelector(brd *Board, htable *HistoryTable, inCheck, canCheck bool) *QMoveSelector {
 	return &QMoveSelector{
 		brd:            brd,
-		thisStk:        thisStk,
 		htable:         htable,
 		inCheck:        inCheck,
 		canCheck:       canCheck,
@@ -130,7 +128,7 @@ func (s *MoveSelector) NextMove() (Move, int) {
 				return m, STAGE_WINNING
 			}
 		case STAGE_KILLER:
-			m := s.thisStk.killers[s.index]
+			m := s.killers[s.index]
 			s.index++
 			if m != s.firstMove && s.brd.ValidMove(m, s.inCheck) && s.brd.LegalMove(m, s.inCheck) {
 				return m, STAGE_KILLER
@@ -144,7 +142,7 @@ func (s *MoveSelector) NextMove() (Move, int) {
 		case STAGE_REMAINING:
 			m := s.remainingMoves[s.index].move
 			s.index++
-			if m != s.firstMove && !s.thisStk.IsKiller(m) && s.brd.AvoidsCheck(m, s.inCheck) {
+			if m != s.firstMove && !s.killers.IsKiller(m) && s.brd.AvoidsCheck(m, s.inCheck) {
 				return m, STAGE_REMAINING
 			}
 		default:

@@ -25,7 +25,7 @@ type SplitPoint struct {
 	parent                           *SplitPoint
 	master                           *Worker
 	brd                              *Board
-	thisStk                          *StackItem
+	pv                               *PV
 	cond                             *sync.Cond
 	bestMove                         Move // 4
 	servantMask                      uint32
@@ -104,14 +104,12 @@ func (sp *SplitPoint) RemoveServant(wMask uint32) {
 func CreateSP(s *Search, brd *Board, stk Stack, ms *MoveSelector, bestMove Move, alpha, beta, best,
 	depth, ply, legalSearched, nodeType, sum int, checked bool) *SplitPoint {
 	sp := &SplitPoint{
-		mu:       sync.RWMutex{},
-		selector: ms,
-		master:   brd.worker,
-		parent:   brd.worker.currentSp,
-
-		brd:     brd.Copy(),
-		thisStk: stk[ply].Copy(),
-
+		mu:            sync.RWMutex{},
+		selector:      ms,
+		master:        brd.worker,
+		parent:        brd.worker.currentSp,
+		brd:           brd.Copy(),
+		pv:            stk[ply].pv,
 		s:             s,
 		depth:         depth,
 		ply:           ply,
@@ -133,7 +131,6 @@ func CreateSP(s *Search, brd *Board, stk Stack, ms *MoveSelector, bestMove Move,
 	stk.CopyUpTo(sp.stk, ply)
 
 	ms.brd = sp.brd // make sure the move selector points to the static SP board.
-	ms.thisStk = sp.thisStk
 
 	return sp
 }

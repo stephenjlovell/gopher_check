@@ -197,7 +197,6 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, nodeType,
 		return s.quiescence(brd, stk, alpha, beta, 0, ply) // q-search is always sequential.
 	}
 
-	var thisStk *StackItem
 	var inCheck bool
 	var sp *SplitPoint
 	var pv *PV
@@ -210,7 +209,7 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, nodeType,
 	// var hashScore int
 	canPrune, fPrune, canReduce := false, false, false
 	bestMove, firstMove := NO_MOVE, NO_MOVE
-
+	thisStk := &stk[ply]
 	recycler := brd.worker.recycler
 	// if the is_sp flag is set, a worker has just been assigned to this split point.
 	// the SP master has already handled most of the pruning, so just read the latest values
@@ -220,14 +219,11 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, nodeType,
 		sp = brd.worker.currentSp
 		sp.mu.RLock()
 		selector = sp.selector
-		thisStk = sp.thisStk
 		eval = int(thisStk.eval)
 		inCheck = thisStk.inCheck
 		sp.mu.RUnlock()
 		goto searchMoves
 	}
-
-	thisStk = &stk[ply]
 
 	if nodeType != Y_PV { // Mate Distance Pruning
 		mateValue := max(ply-MATE, alpha)
@@ -293,7 +289,7 @@ func (s *Search) ybw(brd *Board, stk Stack, alpha, beta, depth, ply, nodeType,
 		}
 	}
 
-	selector = recycler.ReuseMoveSelector(brd, thisStk, &s.htable, inCheck, firstMove)
+	selector = recycler.ReuseMoveSelector(brd, &s.htable, inCheck, firstMove, thisStk.killers)
 
 searchMoves:
 
@@ -438,7 +434,7 @@ searchMoves:
 			sp.mu.Lock() // get the latest info under lock protection
 			alpha, beta, best, bestMove = sp.alpha, sp.beta, sp.best, sp.bestMove
 			if nodeType == Y_PV {
-				pv = thisStk.pv
+				pv = sp.pv
 				stk[ply].pv = pv
 			}
 
@@ -448,11 +444,14 @@ searchMoves:
 
 			if score > best {
 				bestMove, sp.bestMove, best, sp.best = m, m, score, score
+
 				if nodeType == Y_PV {
 					pv.m, pv.value, pv.depth, pv.next = m, score, depth, stk[ply+1].pv
-					thisStk.pv = pv
+					// thisStk.pv = pv
+					sp.pv = pv
 					stk[ply].pv = pv
 				}
+
 				if score > alpha {
 					alpha, sp.alpha = score, score
 					if score >= beta {
@@ -495,7 +494,6 @@ searchMoves:
 				sp = CreateSP(s, brd, stk, selector, bestMove, alpha, beta, best, depth, ply,
 					legalSearched, nodeType, sum, checked)
 				// register the split point in the appropriate SP list, and notify any idle workers.
-				thisStk = sp.thisStk
 				spType = SP_MASTER
 				loadBalancer.AddSP(brd.worker, sp)
 			}
@@ -521,7 +519,7 @@ searchMoves:
 		alpha, best, bestMove = sp.alpha, sp.best, sp.bestMove
 		sum, legalSearched = sp.nodeCount, sp.legalSearched
 		if nodeType == Y_PV {
-			stk[ply].pv = thisStk.pv
+			stk[ply].pv = sp.pv
 		}
 		sp.cancel = true
 		sp.mu.Unlock()

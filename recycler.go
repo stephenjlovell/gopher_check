@@ -57,7 +57,7 @@ func (r *Recycler) ReuseQMoveSelector(brd *Board, thisStk *StackItem, htable *Hi
 	if len(r.qMoveSelectors) > 0 {
 		var selector *QMoveSelector
 		selector, r.qMoveSelectors = r.qMoveSelectors[len(r.qMoveSelectors)-1], r.qMoveSelectors[:len(r.qMoveSelectors)-1]
-		selector.brd, selector.thisStk, selector.htable = brd, thisStk, htable
+		selector.brd, selector.htable = brd, htable
 		selector.inCheck, selector.canCheck = inCheck, canCheck
 		selector.winning = selector.winning[0:0]
 		selector.losing = selector.losing[0:0]
@@ -66,7 +66,7 @@ func (r *Recycler) ReuseQMoveSelector(brd *Board, thisStk *StackItem, htable *Hi
 		selector.stage, selector.finished, selector.index = 0, 0, 0
 		return selector
 	} else {
-		return NewQMoveSelector(brd, thisStk, htable, inCheck, canCheck)
+		return NewQMoveSelector(brd, htable, inCheck, canCheck)
 	}
 }
 
@@ -76,12 +76,13 @@ func (r *Recycler) RecycleMoveSelector(selector *MoveSelector) {
 	}
 }
 
-func (r *Recycler) ReuseMoveSelector(brd *Board, thisStk *StackItem, htable *HistoryTable,
-	inCheck bool, firstMove Move) *MoveSelector {
+func (r *Recycler) ReuseMoveSelector(brd *Board, htable *HistoryTable,
+	inCheck bool, firstMove Move, killers KEntry) *MoveSelector {
 	if len(r.moveSelectors) > 0 {
 		var selector *MoveSelector
 		selector, r.moveSelectors = r.moveSelectors[len(r.moveSelectors)-1], r.moveSelectors[:len(r.moveSelectors)-1]
-		selector.brd, selector.thisStk, selector.htable = brd, thisStk, htable
+		selector.brd, selector.htable = brd, htable
+		selector.killers = killers
 		selector.inCheck = inCheck
 		selector.firstMove = firstMove
 		selector.winning = selector.winning[0:0]
@@ -90,6 +91,6 @@ func (r *Recycler) ReuseMoveSelector(brd *Board, thisStk *StackItem, htable *His
 		selector.stage, selector.finished, selector.index = 0, 0, 0
 		return selector
 	} else {
-		return NewMoveSelector(brd, thisStk, htable, inCheck, firstMove)
+		return NewMoveSelector(brd, htable, inCheck, firstMove, killers)
 	}
 }
