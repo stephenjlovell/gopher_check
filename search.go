@@ -425,8 +425,6 @@ searchMoves:
 			case SP_NONE:
 				recycler.RecycleMoveSelector(selector)
 				return NO_SCORE, sum
-			default:
-				s.sendInfo("unknown SP type\n")
 			}
 		}
 
@@ -518,8 +516,6 @@ searchMoves:
 		}
 		sp.cancel = true
 		sp.mu.Unlock()
-		// since all servants have finished processing, we can safely recycle the move buffers.
-		// recycler.RecycleMoveSelector(selector)
 	case SP_SERVANT:
 		return NO_SCORE, 0
 	default:

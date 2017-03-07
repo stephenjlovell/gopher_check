@@ -65,7 +65,6 @@ type Balancer struct {
 
 func (b *Balancer) Start(numCPU int) {
 	b.once.Do(func() {
-		// fmt.Printf("Initializing %d workers\n", numCPU)
 		for _, w := range b.workers[1:] {
 			w.Help(b) // Start each worker except for the root worker.
 		}
@@ -88,8 +87,8 @@ func (b *Balancer) RootWorker() *Worker {
 // from all goroutines collaborating at this Split Point. AddSP is only called by the worker that
 // found sp.
 func (b *Balancer) AddSP(w *Worker, sp *SplitPoint) {
-	w.Lock()
 	sp.master = w
+	w.Lock()
 	sp.parent = w.currentSP
 	w.spList.Push(sp)
 	w.currentSP = sp
