@@ -84,17 +84,21 @@ func (b *Balancer) RootWorker() *Worker {
 	return b.workers[0]
 }
 
+// AddSP registers Worker w as the 'master' of sp, meaning w is responsible for collecting results
+// from all goroutines collaborating at this Split Point. AddSP is only called by the worker that
+// found sp.
 func (b *Balancer) AddSP(w *Worker, sp *SplitPoint) {
 	w.Lock()
+	sp.master = w
+	sp.parent = w.currentSP
 	w.spList.Push(sp)
+	w.currentSP = sp
 	w.Unlock()
-	w.currentSp = sp
 
 FlushIdle: // If there are any idle workers, assign them now.
 	for {
 		select {
 		case idle := <-b.done:
-			sp.AddServant(idle.mask)
 			idle.assignSp <- sp
 		default:
 			break FlushIdle
@@ -108,11 +112,12 @@ FlushIdle: // If there are any idle workers, assign them now.
 func (b *Balancer) RemoveSP(w *Worker) {
 	w.Lock()
 	w.spList.Pop()
+	w.currentSP = w.currentSP.parent
 	w.Unlock()
-	w.currentSp = w.currentSp.parent
 }
 
 func (b *Balancer) Print() {
+	printMutex.Lock()
 	for i, w := range b.workers {
 		if len(w.spList) > 0 {
 			w.Lock()
@@ -124,4 +129,5 @@ func (b *Balancer) Print() {
 			w.Unlock()
 		}
 	}
+	printMutex.Unlock()
 }

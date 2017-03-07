@@ -16,6 +16,7 @@ const (
 )
 
 type SplitPoint struct {
+	cond                             sync.Cond
 	mu                               sync.RWMutex // 24 (bytes)
 	stk                              ThinStack    // 12
 	depth, ply, nodeType, nodeCount  int          // 8 x 8
@@ -26,10 +27,10 @@ type SplitPoint struct {
 	master                           *Worker
 	brd                              *Board
 	pv                               *PV
-	cond                             *sync.Cond
 	bestMove                         Move // 4
 	servantMask                      uint32
 	cancel, workerFinished, checked  bool
+	// cuttoffFound                     bool
 	// extensionsLeft int  // TODO: verify if extension counter needs lock protection.
 }
 
@@ -66,9 +67,9 @@ func (sp *SplitPoint) Cancel() bool {
 func (sp *SplitPoint) HelpWanted() bool {
 	sp.mu.RLock()
 	cancel := sp.cancel
-	servantMask := sp.servantMask
+	workerFinished := sp.workerFinished
 	sp.mu.RUnlock()
-	return !cancel && servantMask > 0
+	return !cancel && !workerFinished
 }
 
 func (sp *SplitPoint) ServantMask() uint32 {
@@ -98,8 +99,6 @@ func CreateSP(s *Search, brd *Board, stk Stack, ms *MoveSelector, bestMove Move,
 	sp := &SplitPoint{
 		mu:            sync.RWMutex{},
 		selector:      ms,
-		master:        brd.worker,
-		parent:        brd.worker.currentSp,
 		brd:           brd.Copy(),
 		pv:            stk[ply].pv,
 		s:             s,
@@ -113,10 +112,9 @@ func CreateSP(s *Search, brd *Board, stk Stack, ms *MoveSelector, bestMove Move,
 		checked:       checked,
 		nodeCount:     sum,
 		legalSearched: legalSearched,
-		cancel:        false,
 	}
 
-	sp.cond = sync.NewCond(&sp.mu)
+	sp.cond.L = &sp.mu
 
 	// TODO: If possible, recycle this slice when SplitPoint is discarded.
 	sp.stk = make(ThinStack, ply, ply)

@@ -216,7 +216,7 @@ func (s *Search) ybw(brd *Board, alpha, beta, depth, ply, nodeType,
 	// from the SP and jump to the moves loop.
 	if spType == SP_SERVANT {
 		// sp = stk[ply].sp
-		sp = brd.worker.currentSp
+		sp = brd.worker.currentSP
 		sp.mu.RLock()
 		selector = sp.selector
 		eval = int(thisStk.eval)
@@ -503,11 +503,6 @@ searchMoves:
 
 	switch spType {
 	case SP_MASTER:
-		sp.mu.Lock()
-		sp.workerFinished = true // no need to update sp.servantMask
-		sp.mu.Unlock()
-
-		loadBalancer.RemoveSP(brd.worker)
 
 		// Helpful Master Concept:
 		// All moves at this SP may have been consumed, but servant workers may still be busy evaluating
