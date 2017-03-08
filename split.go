@@ -47,7 +47,7 @@ func (sp *SplitPoint) Order() int {
 	searched := sp.legalSearched
 	nodeType := sp.nodeType
 	sp.mu.RUnlock()
-	return (max(searched, 16) << 2) | nodeType
+	return (Max(searched, 16) << 2) | nodeType
 }
 
 func (sp *SplitPoint) WorkerFinished() bool {

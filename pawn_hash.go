@@ -10,6 +10,10 @@ const (
 	PAWN_TT_MASK     = PAWN_ENTRY_COUNT - 1
 )
 
+// PawnTT provides a cache for storing information related to pawn structure evaluation.
+// Since positions are hashed based only on the position of all pawns on the board, features
+// that depend on the position of non-pawn pieces cannot be cached in this table.
+// To avoid the need for locking, each worker goroutine maintains its own PawnTT table.
 type PawnTT [PAWN_ENTRY_COUNT]PawnEntry
 
 type PawnEntry struct {

@@ -5,8 +5,6 @@
 
 package main
 
-// "fmt"
-
 type PV struct {
 	m     Move
 	value int
@@ -28,25 +26,22 @@ func (pv *PV) ToUCI() string {
 	return str
 }
 
+// SavePV writes all moves in the pv to the main transposition table, stopping if an illegal move
+// is encountered.
 func (pv *PV) SavePV(brd *Board, value, depth int) {
 	var m Move
 	var inCheck bool
 	copy := brd.Copy() // create a local copy of the board to avoid having to unmake moves.
-	// fmt.Printf("\n%s\n", pv.ToUCI())
 	for pv != nil {
 		m = pv.m
 		inCheck = copy.InCheck()
 		if !copy.ValidMove(m, inCheck) || !copy.LegalMove(m, inCheck) {
 			break
 		}
-		// fmt.Printf("%d, ", pv.depth)
 		mainTt.store(copy, m, pv.depth, EXACT, pv.value)
-
 		makeMove(copy, m)
 		pv = pv.next
 	}
-	// fmt.Printf("\n")
-
 }
 
 // Node criteria as defined by Onno Garms:

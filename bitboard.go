@@ -64,6 +64,18 @@ func pawnAttacks(brd *Board, c uint8) (BB, BB) { // returns (left_attacks, right
 	}
 }
 
+func pawnAdvances(brd *Board, empty BB, c uint8) (BB, BB) {
+	var singleAdvances, doubleAdvances BB
+	if c > 0 { // white to move
+		singleAdvances = (brd.pieces[WHITE][PAWN] << 8) & empty & (^rowMasks[7]) // promotions generated in get_captures
+		doubleAdvances = ((singleAdvances & rowMasks[2]) << 8) & empty
+	} else { // black to move
+		singleAdvances = (brd.pieces[BLACK][PAWN] >> 8) & empty & (^rowMasks[0])
+		doubleAdvances = ((singleAdvances & rowMasks[5]) >> 8) & empty
+	}
+	return singleAdvances, doubleAdvances
+}
+
 func generateBishopAttacks(occ BB, sq int) BB {
 	return scanUp(occ, NW, sq) | scanUp(occ, NE, sq) | scanDown(occ, SE, sq) | scanDown(occ, SW, sq)
 }

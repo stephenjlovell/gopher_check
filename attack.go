@@ -90,7 +90,7 @@ const (
 func getSee(brd *Board, from, to int, capturedPiece Piece) int {
 	var nextVictim int
 	var t Piece
-	// var t, last_t Piece
+
 	tempColor := brd.Enemy()
 	// get initial map of all squares directly attacking this square (does not include 'discovered'/hidden attacks)
 	bAttackers := brd.pieces[WHITE][BISHOP] | brd.pieces[BLACK][BISHOP] |
@@ -110,7 +110,7 @@ func getSee(brd *Board, from, to int, capturedPiece Piece) int {
 		// this move is illegal and will be discarded by the move selector. Return the lowest possible
 		// SEE value so that this move will be put at end of list.  If cutoff occurs before then,
 		// the cost of detecting the illegal move will be saved.
-		fmt.Println("info string king capture detected in getSee(): %s", BoardToFEN(brd))
+		fmt.Printf("info string king capture detected in getSee(): %s\n", BoardToFEN(brd))
 		return SEE_MIN
 	}
 	t = brd.TypeAt(from)
@@ -157,7 +157,7 @@ func getSee(brd *Board, from, to int, capturedPiece Piece) int {
 
 		count++
 
-		if (pieceList[count-1] - nextVictim) > 0 { // validate this.
+		if (pieceList[count-1] - nextVictim) > 0 { // TODO: validate this.
 			break
 		}
 
@@ -175,7 +175,7 @@ func getSee(brd *Board, from, to int, capturedPiece Piece) int {
 
 	for count-1 > 0 {
 		count--
-		pieceList[count-1] = -max(-pieceList[count-1], pieceList[count])
+		pieceList[count-1] = -Max(-pieceList[count-1], pieceList[count])
 	}
 	// fmt.Printf(" %d ", piece_list[0])
 	return pieceList[0]

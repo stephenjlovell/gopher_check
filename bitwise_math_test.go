@@ -14,7 +14,7 @@ var result int // hacks to make sure compiler doesn't eliminate func under test.
 
 func BenchmarkPopCount(b *testing.B) {
 	var bb BB
-	test, err := loadEpdFile("test_suites/wac_300.epd")
+	test, err := LoadEpdFile("test_suites/wac_300.epd")
 	if err != nil {
 		fmt.Print(err)
 		return
@@ -31,7 +31,7 @@ func BenchmarkPopCount(b *testing.B) {
 
 func BenchmarkLSB(b *testing.B) {
 	var bb BB
-	test, err := loadEpdFile("test_suites/wac_300.epd")
+	test, err := LoadEpdFile("test_suites/wac_300.epd")
 	if err != nil {
 		fmt.Print(err)
 		return

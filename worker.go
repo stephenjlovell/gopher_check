@@ -51,7 +51,7 @@ type Worker struct {
 }
 
 func MaxWorkers() int {
-	return min(MAX_WORKERS, runtime.NumCPU())
+	return Min(MAX_WORKERS, runtime.NumCPU())
 }
 
 func (w *Worker) IsCancelled() bool {

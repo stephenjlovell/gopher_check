@@ -11,7 +11,7 @@ import (
 )
 
 func RunTestSuite(testSuite string, depth, timeout int) {
-	test, err := loadEpdFile(testSuite)
+	test, err := LoadEpdFile(testSuite)
 	if err != nil {
 		fmt.Println(err)
 		return

@@ -17,8 +17,9 @@ const ( // color
 
 var printMutex sync.Mutex
 
-// When spawning new goroutines for subtree search, a deep copy of the Board struct will have to be made
-// and passed to the new goroutine.  Keep this struct as small as possible.
+// when creating a new SplitPoint, a static deep copy of the Board struct will be made. Any workers
+// that start searching that SplitPoint will make their own copy of the SP board.
+// Keep this struct as small as possible.
 type Board struct {
 	pieces         [2][8]BB  // 1024
 	squares        [64]Piece //  512
@@ -105,20 +106,9 @@ func (brd *Board) ColorPawnsOnly(c uint8) bool {
 }
 
 func (brd *Board) Copy() *Board {
-	return &Board{ // worker is not copied
-		pieces:         brd.pieces,
-		squares:        brd.squares,
-		occupied:       brd.occupied,
-		hashKey:        brd.hashKey,
-		material:       brd.material,
-		pawnHashKey:    brd.pawnHashKey,
-		kingSq:         brd.kingSq,
-		c:              brd.c,
-		castle:         brd.castle,
-		enpTarget:      brd.enpTarget,
-		halfmoveClock:  brd.halfmoveClock,
-		endgameCounter: brd.endgameCounter,
-	}
+	var copy *Board
+	*copy = *brd
+	return copy
 }
 
 func (brd *Board) PrintDetails() {

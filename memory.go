@@ -5,9 +5,7 @@
 
 package main
 
-import (
-	"sync/atomic"
-)
+import "sync/atomic"
 
 const (
 	SLOT_COUNT = 1048576        // number of main TT slots. 4 buckets per slot.
@@ -64,12 +62,12 @@ func NewData(move Move, depth, entryType, value, id int) BucketData {
 func (b *Bucket) Store(newData BucketData, hashKey uint64) {
 	atomic.StoreUint64(&b.data, uint64(newData))
 	atomic.StoreUint64(&b.key, uint64(newData)^hashKey)
-	// b.data = uint64(new_data)
-	// b.key = (uint64(new_data) ^ hash_key)
+	// b.data = uint64(newData)
+	// b.key = (uint64(newData) ^ hashKey)
 }
 
-func (b *Bucket) Load() (BucketData, BucketData) {
-	return BucketData(atomic.LoadUint64(&b.data)), BucketData(atomic.LoadUint64(&b.key))
+func (b *Bucket) Load() (BucketData, uint64) {
+	return BucketData(atomic.LoadUint64(&b.data)), atomic.LoadUint64(&b.key)
 	// return BucketData(b.data), BucketData(b.key)
 }
 
@@ -105,7 +103,8 @@ func (tt *TT) probe(brd *Board, depth, nullDepth, alpha, beta int, score *int) (
 
 	// return NO_MOVE, NO_MATCH  // uncomment to disable transposition table
 
-	var data, key BucketData
+	var data BucketData
+	var key uint64
 	hashKey := brd.hashKey
 	slot := tt.getSlot(hashKey)
 
@@ -114,7 +113,7 @@ func (tt *TT) probe(brd *Board, depth, nullDepth, alpha, beta int, score *int) (
 
 		// XOR out data to return the original hash key.  If data has been modified by another goroutine
 		// due to a data race, the key returned will no longer match and probe() will reject the entry.
-		if hashKey == uint64(data^key) { // look for an entry uncorrupted by lockless access.
+		if hashKey == uint64(data)^key { // look for an entry uncorrupted by lockless access.
 
 			slot[i].Store(data.NewID(searchId), hashKey) // update age (search id) of entry.
 
@@ -157,14 +156,14 @@ func (tt *TT) probe(brd *Board, depth, nullDepth, alpha, beta int, score *int) (
 func (tt *TT) store(brd *Board, move Move, depth, entryType, value int) {
 	hashKey := brd.hashKey
 	slot := tt.getSlot(hashKey)
-	var key BucketData
+	var key uint64
 	var data [4]BucketData
 
 	newData := NewData(move, depth, entryType, value, searchId)
 
 	for i := 0; i < 4; i++ {
 		data[i], key = slot[i].Load()
-		if hashKey == uint64(data[i]^key) {
+		if hashKey == uint64(data[i])^key {
 			slot[i].Store(newData, hashKey) // exact match found.  Always replace.
 			return
 		}

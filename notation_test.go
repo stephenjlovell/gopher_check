@@ -12,7 +12,7 @@ import (
 
 // Verify that required FEN fields are parsed correctly.
 func TestEPDParsing(t *testing.T) {
-	test, err := loadEpdFile("test_suites/wac_300.epd")
+	test, err := LoadEpdFile("test_suites/wac_300.epd")
 	if err != nil {
 		fmt.Println(err)
 		return

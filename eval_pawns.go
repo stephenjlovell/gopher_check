@@ -61,7 +61,7 @@ func setPawnMaps(brd *Board, pentry *PawnEntry, c uint8) {
 	pentry.passedPawns[c] = 0
 }
 
-// pawn_structure() sets the remaining pentry attributes for side c
+// pawnStructure sets the remaining pentry attributes for side c
 func pawnStructure(brd *Board, pentry *PawnEntry, c, e uint8) int {
 
 	var value, sq, sqRow int
@@ -90,8 +90,7 @@ func pawnStructure(brd *Board, pentry *PawnEntry, c, e uint8) int {
 			}
 		}
 
-		// https://chessprogramming.wikispaces.com/Backward+Pawn
-		// backward pawns:
+		// Backward pawns:  (https://chessprogramming.wikispaces.com/Backward+Pawn)
 		// 1. cannot be defended by friendly pawns,
 		// 2. their stop square is defended by an enemy sentry pawn,
 		// 3. their stop square is not defended by a friendly pawn

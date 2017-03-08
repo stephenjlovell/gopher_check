@@ -28,7 +28,7 @@ func chebyshevDistance(from, to int) int {
 func setupChebyshevDistance() {
 	for from := 0; from < 64; from++ {
 		for to := 0; to < 64; to++ {
-			chebyshevDistanceTable[from][to] = max(abs(row(from)-row(to)), abs(column(from)-column(to)))
+			chebyshevDistanceTable[from][to] = Max(Abs(row(from)-row(to)), Abs(column(from)-column(to)))
 		}
 	}
 }

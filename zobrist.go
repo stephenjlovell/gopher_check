@@ -38,18 +38,18 @@ func setupZobrist() {
 	sideKey64 = rng.RandomUint64(63)
 }
 
-func zobrist(pc Piece, sq int, c uint8) uint64 {
+func Zobrist(pc Piece, sq int, c uint8) uint64 {
 	return zobristTable[c][pc][sq]
 }
 
-func pawnZobrist(sq int, c uint8) uint32 {
+func PawnZobrist(sq int, c uint8) uint32 {
 	return pawnZobristTable[c][sq]
 }
 
-func enpZobrist(sq uint8) uint64 {
+func EnpZobrist(sq uint8) uint64 {
 	return enpTable[sq]
 }
 
-func castleZobrist(castle uint8) uint64 {
+func CastleZobrist(castle uint8) uint64 {
 	return castleTable[castle]
 }

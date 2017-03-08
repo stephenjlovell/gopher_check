@@ -17,21 +17,23 @@ import (
 
 var version = "0.3.0"
 
-func max(a, b int) int {
+func Max(a, b int) int {
 	if a > b {
 		return a
 	} else {
 		return b
 	}
 }
-func min(a, b int) int {
+
+func Min(a, b int) int {
 	if a > b {
 		return b
 	} else {
 		return a
 	}
 }
-func abs(x int) int {
+
+func Abs(x int) int {
 	if x < 0 {
 		return -x
 	} else {
@@ -64,8 +66,10 @@ func printName() {
 	fmt.Printf("---------------------------------------\n\n")
 }
 
-var cpuProfileFlag = flag.Bool("cpuprofile", false, "Runs cpu profiler on test suite.")
-var memProfileFlag = flag.Bool("memprofile", false, "Runs memory profiler on test suite.")
+var cpuProfileFlag = flag.Bool("cpuprofile", false,
+	"Runs cpu profiler on test suite and outputs to cpu.pprof.")
+var memProfileFlag = flag.Bool("memprofile", false,
+	"Runs memory profiler on test suite and outputs to mem.pprof.")
 var versionFlag = flag.Bool("version", false, "Prints version number and exits.")
 
 func main() {
@@ -78,6 +82,7 @@ func main() {
 			defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
 			RunTestSuite("test_suites/wac_300.epd", MAX_DEPTH, 5000)
 			// run 'go tool pprof -text gopher_check cpu.pprof > cpu_prof.txt' to output profile to text
+			// run 'go tool pprof gopher_check cpu.pprof' to enter interactive mode
 		} else if *memProfileFlag {
 			printName()
 			defer profile.Start(profile.MemProfileRate(64), profile.ProfilePath(".")).Stop()

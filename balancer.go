@@ -8,28 +8,7 @@ package main
 import (
 	"fmt"
 	"sync"
-	// "time"
 )
-
-// 2-Level Locking Scheme
-//
-// Load Balancer (Global-level) Lock
-//
-//   - Protects integrity of SP lists maintained by workers (Adding / Removing SPs)
-//   USAGE:
-//   - When a worker self-assigns (searches for an SP from available SP lists), it should lock
-//     the load balancer. Load balancer should only be unlocked after the worker is registered
-//     with the SP.
-//   - Finding the best SP should ideally be encapsulated by the load balancer.
-//
-// Split Point (local) Lock
-//
-//   - Protects search state for workers collaborating on same SP.
-//   - Protects info on which workers are collaborating at this SP.
-//   USAGE:
-//   - When the master directly assigns a worker, it should register the worker immediately
-//     with the SP before sending the SP to the worker to avoid a data race with the SP's
-// 		 WaitGroup.
 
 var loadBalancer *Balancer
 
@@ -107,7 +86,6 @@ FlushIdle: // If there are any idle workers, assign them now.
 
 // RemoveSP prevents new workers from being assigned to w.current_sp without cancelling
 // any ongoing work at this SP.
-// TODO: Investigate recycling for used SPs (or their internal Stack slices.)
 func (b *Balancer) RemoveSP(w *Worker) {
 	w.Lock()
 	w.spList.Pop()

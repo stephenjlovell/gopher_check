@@ -3,13 +3,6 @@
 // Copyright © 2014 Stephen J. Lovell
 //-----------------------------------------------------------------------------------
 
-// Implements time management features for different time rules:
-// https://chessprogramming.wikispaces.com/Time+Management
-
-// Time control can be per-move, or per-game.
-// Per-game time control consists of a base amount of time, plus an increment of additional
-// time granted at the beginning of each move.
-
 package main
 
 import (
@@ -23,6 +16,11 @@ const (
 	SAFETY_MARGIN       = time.Duration(5) * time.Millisecond // minimal amount of time to keep on clock
 )
 
+// GameTimer implements time management features for different time controls.
+// https://chessprogramming.wikispaces.com/Time+Management
+// Time control can be per-move, or per-game.
+// Per-game time control consists of a base amount of time, plus an increment of additional
+// time granted at the beginning of each move.
 type GameTimer struct {
 	inc            [2]time.Duration
 	remaining      [2]time.Duration
@@ -35,7 +33,7 @@ type GameTimer struct {
 
 func NewGameTimer(movesPlayed int, sideToMove uint8) *GameTimer {
 	return &GameTimer{
-		movesRemaining: max(MIN_MOVES_REMAINING, AVG_MOVES_PER_GAME-movesPlayed),
+		movesRemaining: Max(MIN_MOVES_REMAINING, AVG_MOVES_PER_GAME-movesPlayed),
 		remaining:      [2]time.Duration{MAX_TIME, MAX_TIME},
 		sideToMove:     sideToMove,
 		startTime:      time.Now(),
@@ -65,5 +63,3 @@ func (gt *GameTimer) Stop() {
 		gt.timer.Stop()
 	}
 }
-
-//

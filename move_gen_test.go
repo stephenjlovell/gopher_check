@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"strconv"
 	"testing"
-	// "testing"
 	"time"
 )
 
@@ -17,34 +16,34 @@ var legalMaxTree = [10]int{1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901
 
 func TestLegalMoveGen(t *testing.T) {
 	depth := 5
-	legalMovegen(Perft, StartPos(), depth, legalMaxTree[depth], true)
+	LegalMovegen(Perft, StartPos(), depth, legalMaxTree[depth], true)
 }
 
-// func TestMoveValidation(t *testing.T) {
-// 	depth := 5
-// 	legal_movegen(PerftValidation, StartPos(), depth, legal_max_tree[depth], true)
-// }
+func TestMoveValidation(t *testing.T) {
+	depth := 5
+	LegalMovegen(PerftValidation, StartPos(), depth, legalMaxTree[depth], true)
+}
 
-// func TestPerftSuite(t *testing.T) {
-// 	depth := 6
-// 	testPositions, err := loadEpdFile("test_suites/perftsuite.epd") // http://www.rocechess.ch/perft.html
-// 	if err != nil {
-// 		panic("could not load epd file")
-// 	}
-//
-// 	for i, epd := range testPositions {
-// 		if expected, ok := epd.nodeCount[depth]; ok {
-// 			fmt.Printf("%d.", i+1)
-// 			epd.brd.Print()
-// 			fmt.Println(epd.fen)
-// 			legalMovegen(Perft, epd.brd, depth, expected, false)
-// 		}
-// 	}
-// }
+func TestPerftSuite(t *testing.T) {
+	depth := 6
+	testPositions, err := LoadEpdFile("test_suites/perftsuite.epd") // http://www.rocechess.ch/perft.html
+	if err != nil {
+		panic("could not load epd file")
+	}
+
+	for i, epd := range testPositions {
+		if expected, ok := epd.nodeCount[depth]; ok {
+			fmt.Printf("%d.", i+1)
+			epd.brd.Print()
+			fmt.Println(epd.fen)
+			LegalMovegen(Perft, epd.brd, depth, expected, false)
+		}
+	}
+}
 
 // TODO: add parallelism
 
-func legalMovegen(fn func(*Board, *HistoryTable, Stack, int, int) int, brd *Board, depth, expected int, verbose bool) {
+func LegalMovegen(fn func(*Board, *HistoryTable, Stack, int, int) int, brd *Board, depth, expected int, verbose bool) {
 	htable := new(HistoryTable)
 	copy := brd.Copy()
 	start := time.Now()

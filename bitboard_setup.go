@@ -5,8 +5,6 @@
 
 package main
 
-// "fmt"
-
 const ( // direction codes (0...8)
 	NW = iota
 	NE
@@ -56,7 +54,7 @@ var rayMasks [8][64]BB
 var pawnStopSq, pawnPromoteSq [2][64]int
 
 func manhattanDistance(from, to int) int {
-	return abs(row(from)-row(to)) + abs(column(from)-column(to))
+	return Abs(row(from)-row(to)) + Abs(column(from)-column(to))
 }
 
 func setupSquareMasks() {
@@ -172,7 +170,6 @@ func setupRowMasks() {
 	for i := 1; i < 8; i++ {
 		rowMasks[i] = (rowMasks[i-1] << 8) // create the remaining rows by shifting the previous
 	} // row up by 8 squares.
-	// middle_rows = row_masks[2] | row_masks[3] | row_masks[4] | row_masks[5]
 }
 
 func setupColumnMasks() {

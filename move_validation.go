@@ -134,7 +134,7 @@ func (brd *Board) ValidMove(m Move, inCheck bool) bool {
 
 	case KING:
 
-		if abs(to-from) == 2 { // validate castle moves
+		if Abs(to-from) == 2 { // validate castle moves
 			if inCheck {
 				return false
 			}

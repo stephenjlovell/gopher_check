@@ -8,8 +8,6 @@
 
 package main
 
-// "fmt"
-
 const (
 	DEBRUIJN = 285870213051386505
 )

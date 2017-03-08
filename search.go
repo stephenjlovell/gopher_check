@@ -30,7 +30,7 @@ const (
 
 const (
 	MAX_DEPTH = 32 // default maximum search depth
-	COMMS_MIN = 1  // minimum depth at which to send info to GUI.
+	COMMS_MIN = 5  // minimum depth at which to send info to GUI.
 )
 
 const (
@@ -226,8 +226,8 @@ func (s *Search) ybw(brd *Board, alpha, beta, depth, ply, nodeType,
 	}
 
 	if nodeType != Y_PV { // Mate Distance Pruning
-		mateValue := max(ply-MATE, alpha)
-		if mateValue >= min(MATE-ply, beta) {
+		mateValue := Max(ply-MATE, alpha)
+		if mateValue >= Min(MATE-ply, beta) {
 			return mateValue, sum
 		}
 	}
@@ -545,7 +545,7 @@ func (s *Search) nullMake(brd *Board, beta, nullDepth, ply int, checked bool) (i
 	hashKey, enpTarget := brd.hashKey, brd.enpTarget
 	brd.c ^= 1
 	brd.hashKey ^= sideKey64
-	brd.hashKey ^= enpZobrist(enpTarget)
+	brd.hashKey ^= EnpZobrist(enpTarget)
 	brd.enpTarget = SQ_INVALID
 	stk := brd.worker.stk
 	stk[ply+1].inCheck = false // Impossible to give check from a legal position by standing pat.

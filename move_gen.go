@@ -7,7 +7,6 @@ package main
 
 func getNonCaptures(brd *Board, htable *HistoryTable, remainingMoves *MoveList) {
 	var from, to int
-	var singleAdvances, doubleAdvances BB
 	c := brd.c
 	occ := brd.AllOccupied()
 	empty := ^occ
@@ -49,13 +48,8 @@ func getNonCaptures(brd *Board, htable *HistoryTable, remainingMoves *MoveList) 
 	//  3. can move an extra space from the starting square;
 	//  4. can capture other pawns via the En-Passant Rule;
 	//  5. are promoted to another piece type if they reach the enemy's back rank.
-	if c > 0 { // white to move
-		singleAdvances = (brd.pieces[WHITE][PAWN] << 8) & empty & (^rowMasks[7]) // promotions generated in get_captures
-		doubleAdvances = ((singleAdvances & rowMasks[2]) << 8) & empty
-	} else { // black to move
-		singleAdvances = (brd.pieces[BLACK][PAWN] >> 8) & empty & (^rowMasks[0])
-		doubleAdvances = ((singleAdvances & rowMasks[5]) >> 8) & empty
-	}
+	singleAdvances, doubleAdvances := pawnAdvances(brd, empty, c)
+
 	for ; doubleAdvances > 0; doubleAdvances.Clear(to) {
 		to = furthestForward(c, doubleAdvances)
 		from = to + pawnFromOffsets[c][OFF_DOUBLE]

@@ -49,7 +49,7 @@ func (epd *EPD) PrintDetails() {
 	fmt.Println(epd.avoidMoves)
 }
 
-func loadEpdFile(dir string) ([]*EPD, error) {
+func LoadEpdFile(dir string) ([]*EPD, error) {
 	epdFile, err := os.Open(dir)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("The specified EPD file could not be loaded.:\n%s\n", dir))
@@ -104,7 +104,6 @@ func ParseEPDString(str string) *EPD {
 
 		loc = depth.FindStringIndex(field)
 		if loc != nil { // map each depth to expected node count
-			// fmt.Println(field)
 			subFields = strings.Split(field, " ")
 			d, _ = strconv.ParseInt(subFields[0][1:], 10, 64)
 			nodeCount, _ = strconv.ParseInt(subFields[1], 10, 64)
@@ -123,7 +122,8 @@ var sanChars = [8]string{"P", "N", "B", "R", "Q", "K"}
 // <SAN move descriptor pawn push>
 // 		::= <to square>[<promoted to>]
 
-func ToSAN(brd *Board, m Move) string { // convert move to Standard Algebraic Notation (SAN)
+// ToSan converts Move m to Standard Algebraic Notation (SAN)
+func ToSAN(brd *Board, m Move) string {
 	piece, from, to := m.Piece(), m.From(), m.To()
 	san := SquareString(to)
 
@@ -258,14 +258,14 @@ func ParseFENSlice(fenFields []string) *Board {
 	ParsePlacement(brd, fenFields[0])
 	brd.c = ParseSide(fenFields[1])
 	brd.castle = ParseCastleRights(brd, fenFields[2])
-	brd.hashKey ^= castleZobrist(brd.castle)
+	brd.hashKey ^= CastleZobrist(brd.castle)
 	if len(fenFields) > 3 {
 		brd.enpTarget = ParseEnpTarget(fenFields[3])
 		if len(fenFields) > 4 {
 			brd.halfmoveClock = ParseHalfmoveClock(fenFields[4])
 		}
 	}
-	brd.hashKey ^= enpZobrist(brd.enpTarget)
+	brd.hashKey ^= EnpZobrist(brd.enpTarget)
 	return brd
 }
 
@@ -276,10 +276,10 @@ func ParseFENString(str string) *Board {
 	ParsePlacement(brd, fenFields[0])
 	brd.c = ParseSide(fenFields[1])
 	brd.castle = ParseCastleRights(brd, fenFields[2])
-	brd.hashKey ^= castleZobrist(brd.castle)
+	brd.hashKey ^= CastleZobrist(brd.castle)
 
 	brd.enpTarget = ParseEnpTarget(fenFields[3])
-	brd.hashKey ^= enpZobrist(brd.enpTarget)
+	brd.hashKey ^= EnpZobrist(brd.enpTarget)
 
 	if len(fenFields) > 4 {
 		brd.halfmoveClock = ParseHalfmoveClock(fenFields[4])
@@ -305,7 +305,7 @@ func ParsePlacement(brd *Board, str string) {
 				addPiece(brd, pieceType, sq, c) // place the piece on the board.
 				switch pieceType {
 				case PAWN:
-					brd.pawnHashKey ^= pawnZobrist(sq, c)
+					brd.pawnHashKey ^= PawnZobrist(sq, c)
 				case KING:
 					brd.kingSq[c] = uint8(sq)
 				default:
@@ -399,7 +399,7 @@ func ParseMove(brd *Board, str string) Move {
 	piece := brd.TypeAt(from)
 	capturedPiece := brd.TypeAt(to)
 	if piece == PAWN && capturedPiece == EMPTY { // check for en-passant capture
-		if abs(to-from) == 9 || abs(to-from) == 7 {
+		if Abs(to-from) == 9 || Abs(to-from) == 7 {
 			capturedPiece = PAWN // en-passant capture detected.
 		}
 	}

@@ -61,7 +61,7 @@ func setupMagicMoveGen() {
 		magicsNeeded = true
 	}
 	if magicsNeeded {
-		fmt.Printf("info string Calculating magics")
+		fmt.Println("info string calculating magics")
 		wg.Add(64 * 2)
 	}
 
@@ -73,7 +73,6 @@ func setupMagicMoveGen() {
 	if magicsNeeded {
 		wg.Wait()
 		writeMagicsToDisk()
-		// fmt.Printf("done!\n\n")
 	}
 }
 
@@ -118,7 +117,6 @@ func loadMagics() (success bool) {
 
 	bishopMagics = magics.BishopMagics
 	rookMagics = magics.RookMagics
-	// fmt.Printf("Magics read from disk.\n")
 	return true
 }
 
@@ -162,7 +160,6 @@ func setupMagicsForPiece(magicsNeeded bool, wg *sync.WaitGroup, magicMasks, mask
 						*attack = refAttacks[i] // populate the moves DB so we can detect collisions.
 					}
 				} // if every possible occupancy has been mapped to the correct attack set, we are done.
-				fmt.Printf(".")
 				wg.Done()
 			}(sq)
 		} else {

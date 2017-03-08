@@ -5,8 +5,6 @@
 
 package main
 
-import "fmt"
-
 // Root Sorting
 // At root, moves should be sorted based on subtree value rather than standard sorting.
 
@@ -72,12 +70,13 @@ func NewMoveList(length int) MoveList {
 	return make(MoveList, 0, length)
 }
 
-// sort.Sort() takes an interface. This prevents proper escape analysis by the compiler,
-// resulting in additional heap allocations.
-// TODO: write native sort implementation to replace package sort.
 func (l MoveList) Sort() {
 	l.qSort()
 	// assert(l.isSorted(), "list not sorted")
+}
+
+func (l MoveList) InsertionSort() {
+	l.insertionSort(0, len(l))
 }
 
 func (l MoveList) Len() int { return len(l) }
@@ -90,10 +89,6 @@ func (l MoveList) Swap(i, j int) {
 
 func (l *MoveList) Push(item SortItem) {
 	*l = append(*l, item)
-}
-
-func (l MoveList) InsertionSort() {
-	l.insertionSort(0, len(l))
 }
 
 func (l MoveList) insertionSort(a, b int) {
@@ -109,38 +104,20 @@ func (l MoveList) qSort() {
 		if len(l) < 2 {
 			return
 		}
-		l.insertionSort(0, len(l))
+		l.insertionSort(0, len(l)) // use insertion sort for shorter slices.
 	}
 	left, right := 0, len(l)-1
-	// initial pivot location
-	// pivotIndex := rand.Int() % len(l)
-	pivotIndex := right >> 1
+	pivotIndex := right >> 1  // initial pivot location
+	l.Swap(pivotIndex, right) // Move the pivot to the right
 
-	// Move the pivot to the right
-	// l[pivotIndex], l[right] = l[right], l[pivotIndex]
-	l.Swap(pivotIndex, right)
-	// Pile elements larger than the pivot on the left
 	for i := range l {
-		if l.Less(i, right) {
+		if l.Less(i, right) { // Pile elements larger than the pivot on the left
 			l.Swap(i, left)
 			left++
 		}
 	}
-	// relocate pivot
-	l.Swap(left, right)
+
+	l.Swap(left, right) // relocate pivot
 	l[:left].qSort()
 	l[left+1:].qSort()
-}
-
-func (l MoveList) isSorted() bool {
-	n := len(l)
-	for i := 1; i < n; i++ {
-		if l[i-1].order < l[i].order {
-			printMutex.Lock()
-			fmt.Println(l)
-			printMutex.Unlock()
-			return false
-		}
-	}
-	return true
 }

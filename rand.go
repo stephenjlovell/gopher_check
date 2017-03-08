@@ -15,6 +15,8 @@ func setupRand() {
 
 // RngKiss uses Bob Jenkins' pseudorandom number approach, which is well-suited for generating
 // magic number candidates:  https://chessprogramming.wikispaces.com/Bob+Jenkins
+// It also allows us to control the sparseness of uints used to perform Zobrist hashing, which
+// results in fewer hash collisions.
 type RngKiss struct {
 	a        BB
 	b        BB
