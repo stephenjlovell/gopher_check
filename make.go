@@ -29,16 +29,16 @@ func makeMove(brd *Board, move Move) {
 		brd.halfmoveClock = 0 // All pawn moves are irreversible.
 		brd.pawnHashKey ^= PawnZobrist(from, c)
 		switch capturedPiece {
-		case EMPTY:
+		case NO_PIECE:
 			if Abs(to-from) == 16 { // handle en passant advances
 				brd.enpTarget = uint8(to)
 				brd.hashKey ^= EnpZobrist(uint8(to)) // XOR in new en passant target
 			}
 		case PAWN: // Destination square will be empty if en passant capture
-			if enpTarget != SQ_INVALID && brd.TypeAt(to) == EMPTY {
+			if enpTarget != SQ_INVALID && brd.TypeAt(to) == NO_PIECE {
 				brd.pawnHashKey ^= PawnZobrist(int(enpTarget), brd.Enemy())
 				removePiece(brd, PAWN, int(enpTarget), brd.Enemy())
-				brd.squares[enpTarget] = EMPTY
+				brd.squares[enpTarget] = NO_PIECE
 			} else {
 				brd.pawnHashKey ^= PawnZobrist(to, brd.Enemy())
 				removePiece(brd, PAWN, to, brd.Enemy())
@@ -47,9 +47,9 @@ func makeMove(brd *Board, move Move) {
 			removePiece(brd, capturedPiece, to, brd.Enemy())
 		}
 		promotedPiece := move.PromotedTo()
-		if promotedPiece != EMPTY {
+		if promotedPiece != NO_PIECE {
 			removePiece(brd, PAWN, from, c)
-			brd.squares[from] = EMPTY
+			brd.squares[from] = NO_PIECE
 			addPiece(brd, promotedPiece, to, c)
 		} else {
 			brd.pawnHashKey ^= PawnZobrist(to, c)
@@ -58,7 +58,7 @@ func makeMove(brd *Board, move Move) {
 
 	case KING:
 		switch capturedPiece {
-		case EMPTY:
+		case NO_PIECE:
 			brd.halfmoveClock += 1
 			if Abs(to-from) == 2 { // king is castling.
 				brd.halfmoveClock = 0
@@ -91,7 +91,7 @@ func makeMove(brd *Board, move Move) {
 		case ROOK:
 			removePiece(brd, capturedPiece, to, brd.Enemy())
 			brd.halfmoveClock = 0 // All capture moves are irreversible.
-		case EMPTY:
+		case NO_PIECE:
 			brd.halfmoveClock += 1
 		case PAWN:
 			removePiece(brd, capturedPiece, to, brd.Enemy())
@@ -108,7 +108,7 @@ func makeMove(brd *Board, move Move) {
 		case ROOK:
 			removePiece(brd, capturedPiece, to, brd.Enemy())
 			brd.halfmoveClock = 0 // All capture moves are irreversible.
-		case EMPTY:
+		case NO_PIECE:
 			brd.halfmoveClock += 1
 		case PAWN:
 			removePiece(brd, capturedPiece, to, brd.Enemy())
@@ -138,7 +138,7 @@ func unmakeMove(brd *Board, move Move, memento *BoardMemento) {
 
 	switch piece {
 	case PAWN:
-		if move.PromotedTo() != EMPTY {
+		if move.PromotedTo() != NO_PIECE {
 			unmakeRemovePiece(brd, move.PromotedTo(), to, c)
 			brd.squares[to] = capturedPiece
 			unmakeAddPiece(brd, piece, from, c)
@@ -164,14 +164,14 @@ func unmakeMove(brd *Board, move Move, memento *BoardMemento) {
 			} else {
 				unmakeAddPiece(brd, PAWN, to, brd.Enemy())
 			}
-		case EMPTY:
+		case NO_PIECE:
 		default: // any non-pawn piece was captured
 			unmakeAddPiece(brd, capturedPiece, to, brd.Enemy())
 		}
 
 	case KING:
 		unmakeRelocateKing(brd, piece, capturedPiece, to, from, c)
-		if capturedPiece != EMPTY {
+		if capturedPiece != NO_PIECE {
 			unmakeAddPiece(brd, capturedPiece, to, brd.Enemy())
 		} else if Abs(to-from) == 2 { // king castled.
 			if c == WHITE {
@@ -191,7 +191,7 @@ func unmakeMove(brd *Board, move Move, memento *BoardMemento) {
 
 	default:
 		unmakeRelocatePiece(brd, piece, to, from, c)
-		if capturedPiece != EMPTY {
+		if capturedPiece != NO_PIECE {
 			unmakeAddPiece(brd, capturedPiece, to, brd.Enemy())
 		}
 	}
@@ -265,7 +265,7 @@ func unmakeRelocatePiece(brd *Board, piece Piece, from, to int, c uint8) {
 	fromTo := (sqMaskOn[from] | sqMaskOn[to])
 	brd.pieces[c][piece] ^= fromTo
 	brd.occupied[c] ^= fromTo
-	brd.squares[from] = EMPTY
+	brd.squares[from] = NO_PIECE
 	brd.squares[to] = piece
 	brd.material[c] += int16(mainPst[c][piece][to] - mainPst[c][piece][from])
 }
@@ -280,7 +280,7 @@ func unmakeRelocateKing(brd *Board, piece, capturedPiece Piece, from, to int, c 
 	fromTo := (sqMaskOn[from] | sqMaskOn[to])
 	brd.pieces[c][piece] ^= fromTo
 	brd.occupied[c] ^= fromTo
-	brd.squares[from] = EMPTY
+	brd.squares[from] = NO_PIECE
 	brd.squares[to] = piece
 	brd.kingSq[c] = uint8(to)
 	// Since king PST is weighted by endgame phase, it cannot be easily incrementally updated.

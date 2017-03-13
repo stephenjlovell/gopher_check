@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	NO_MOVE = (Move(EMPTY) << 15) | (Move(EMPTY) << 18)
+	NO_MOVE = (Move(NO_PIECE) << 15) | (Move(NO_PIECE) << 18)
 )
 
 type Move uint32
@@ -43,11 +43,11 @@ func (m Move) PromotedTo() Piece {
 }
 
 func (m Move) IsCapture() bool {
-	return m.CapturedPiece() != EMPTY
+	return m.CapturedPiece() != NO_PIECE
 }
 
 func (m Move) IsPromotion() bool {
-	return m.PromotedTo() != EMPTY
+	return m.PromotedTo() != NO_PIECE
 }
 
 func (m Move) IsQuiet() bool {
@@ -87,7 +87,7 @@ func (m Move) ToUCI() string {
 	}
 	str := ParseCoordinates(row(m.From()), column(m.From())) +
 		ParseCoordinates(row(m.To()), column(m.To()))
-	if m.PromotedTo() != EMPTY {
+	if m.PromotedTo() != NO_PIECE {
 		str += pieceChars[m.PromotedTo()]
 	}
 	return str
@@ -100,12 +100,12 @@ func NewMove(from, to int, piece, capturedPiece, promotedTo Piece) Move {
 
 func NewRegularMove(from, to int, piece Piece) Move {
 	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) |
-		(Move(EMPTY) << 15) | (Move(EMPTY) << 18)
+		(Move(NO_PIECE) << 15) | (Move(NO_PIECE) << 18)
 }
 
 func NewCapture(from, to int, piece, capturedPiece Piece) Move {
 	return Move(from) | (Move(to) << 6) | (Move(piece) << 12) |
-		(Move(capturedPiece) << 15) | (Move(EMPTY) << 18)
+		(Move(capturedPiece) << 15) | (Move(NO_PIECE) << 18)
 }
 
 // // since moving piece is always PAWN (0) for promotions, no need to merge in the moving piece.

@@ -132,7 +132,7 @@ func isBoardConsistent(brd *Board) bool {
 
 	var sq int
 	for sq = 0; sq < 64; sq++ {
-		squares[sq] = EMPTY
+		squares[sq] = NO_PIECE
 	}
 	consistent := true
 
@@ -147,7 +147,7 @@ func isBoardConsistent(brd *Board) bool {
 			for bb := brd.pieces[c][pc]; bb > 0; bb.Clear(sq) {
 				sq = furthestForward(c, bb)
 				material[c] += int16(pc.Value() + mainPst[c][pc][sq])
-				if squares[sq] != EMPTY {
+				if squares[sq] != NO_PIECE {
 					fmt.Printf("brd.pieces[%d][%d] overlaps with another pieces bitboard at %s.\n", c, pc, SquareString(sq))
 					consistent = false
 				}

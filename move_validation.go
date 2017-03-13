@@ -25,7 +25,7 @@ func (brd *Board) AvoidsCheck(m Move, inCheck bool) bool {
 func (brd *Board) PseudolegalAvoidsCheck(m Move) bool {
 	switch m.Piece() {
 	case PAWN:
-		if m.CapturedPiece() == PAWN && brd.TypeAt(m.To()) == EMPTY { // En-passant
+		if m.CapturedPiece() == PAWN && brd.TypeAt(m.To()) == NO_PIECE { // En-passant
 			// detect if the moving pawn would be pinned in the absence of the captured pawn.
 			return IsPinned(brd, brd.AllOccupied()&sqMaskOff[brd.enpTarget],
 				m.From(), brd.c, brd.Enemy())&sqMaskOn[m.To()] > 0
@@ -76,7 +76,7 @@ func (brd *Board) EvadesCheck(m Move) bool {
 		return false // the moving piece must kill or block the attacking piece.
 	}
 	if brd.enpTarget != SQ_INVALID && piece == PAWN && m.CapturedPiece() == PAWN && // En-passant
-		brd.TypeAt(to) == EMPTY {
+		brd.TypeAt(to) == NO_PIECE {
 		return IsPinned(brd, occ&sqMaskOff[brd.enpTarget], from, c, e)&sqMaskOn[to] > 0
 	}
 	return PinnedCanMove(brd, from, to, c, e) // the moving piece can't be pinned to the king.
@@ -114,13 +114,13 @@ func (brd *Board) ValidMove(m Move, inCheck bool) bool {
 			// fmt.Printf("Invalid pawn movement direction!{%s}", m.ToString())
 			return false
 		} else if diff == 8 {
-			return brd.TypeAt(to) == EMPTY
+			return brd.TypeAt(to) == NO_PIECE
 		} else if diff == 16 {
-			return brd.TypeAt(to) == EMPTY && brd.TypeAt(pawnStopSq[c][from]) == EMPTY
-		} else if capturedPiece == EMPTY {
+			return brd.TypeAt(to) == NO_PIECE && brd.TypeAt(pawnStopSq[c][from]) == NO_PIECE
+		} else if capturedPiece == NO_PIECE {
 			// fmt.Printf("Invalid pawn move!{%s}", m.ToString())
 			return false
-		} else if capturedPiece == PAWN && brd.TypeAt(to) == EMPTY {
+		} else if capturedPiece == PAWN && brd.TypeAt(to) == NO_PIECE {
 			if c == WHITE {
 				return brd.enpTarget != SQ_INVALID && pawnSideMasks[brd.enpTarget]&sqMaskOn[from] > 0 &&
 					int(brd.enpTarget)+8 == to

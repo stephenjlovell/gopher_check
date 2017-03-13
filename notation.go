@@ -230,7 +230,7 @@ func GetFENPlacement(brd *Board) string {
 		rowStr := ""
 		emptySquares = 0
 		for i, pc := range row {
-			if pc == EMPTY {
+			if pc == NO_PIECE {
 				emptySquares += 1
 			} else {
 				if emptySquares > 0 {
@@ -398,7 +398,7 @@ func ParseMove(brd *Board, str string) Move {
 	to := ParseSquare(str[2:4])
 	piece := brd.TypeAt(from)
 	capturedPiece := brd.TypeAt(to)
-	if piece == PAWN && capturedPiece == EMPTY { // check for en-passant capture
+	if piece == PAWN && capturedPiece == NO_PIECE { // check for en-passant capture
 		if Abs(to-from) == 9 || Abs(to-from) == 7 {
 			capturedPiece = PAWN // en-passant capture detected.
 		}
@@ -407,7 +407,7 @@ func ParseMove(brd *Board, str string) Move {
 	if len(str) == 5 { // check for promotion.
 		promotedTo = Piece(fenPieceChars[string(str[4])]) // will always be lowercase.
 	} else {
-		promotedTo = Piece(EMPTY)
+		promotedTo = Piece(NO_PIECE)
 	}
 	return NewMove(from, to, piece, capturedPiece, promotedTo)
 }

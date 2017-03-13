@@ -155,7 +155,7 @@ func (brd *Board) Print() {
 func (brd *Board) PrintRow(start int, row []Piece) {
 	fmt.Printf("| ")
 	for i, piece := range row {
-		if piece == EMPTY {
+		if piece == NO_PIECE {
 			fmt.Printf("  | ")
 		} else {
 			if brd.occupied[WHITE]&sqMaskOn[start+i] > 0 {
@@ -173,7 +173,7 @@ func EmptyBoard() *Board {
 		enpTarget: SQ_INVALID,
 	}
 	for sq := 0; sq < 64; sq++ {
-		brd.squares[sq] = EMPTY
+		brd.squares[sq] = NO_PIECE
 	}
 	return brd
 }

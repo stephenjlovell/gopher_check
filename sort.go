@@ -31,7 +31,7 @@ const (
 func SortPromotionAdvances(brd *Board, from, to int, promotedTo Piece) uint32 {
 	if IsAttackedBy(brd, brd.AllOccupied()&sqMaskOff[from],
 		to, brd.Enemy(), brd.c) { // defended
-		see := GetSee(brd, from, to, EMPTY)
+		see := GetSee(brd, from, to, NO_PIECE)
 		if see >= 0 {
 			return SORT_WINNING_PROMOTION | uint32(see)
 		} else {
