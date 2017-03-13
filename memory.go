@@ -99,6 +99,7 @@ func (tt *TT) getSlot(hashKey uint64) *Slot {
 
 // Use Hyatt's lockless hashing approach to avoid having to lock/unlock shared TT memory
 // during parallel search:  https://cis.uab.edu/hyatt/hashing.html
+// TODO: stop passing pointer to score; inconsistent with rest of program.
 func (tt *TT) probe(brd *Board, depth, nullDepth, alpha, beta int, score *int) (Move, int) {
 
 	// return NO_MOVE, NO_MATCH  // uncomment to disable transposition table

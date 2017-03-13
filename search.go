@@ -241,7 +241,7 @@ func (s *Search) ybw(brd *Board, alpha, beta, depth, ply, nodeType,
 
 	if brd.halfmoveClock >= 100 { // check for draw by halfmove rule
 		// TODO: handle non-king moves that escape from check
-		if isCheckmate(brd, inCheck) {
+		if IsCheckmate(brd, inCheck) {
 			return ply - MATE, 1
 		} else {
 			return ply - DRAW_VALUE, 1
@@ -333,7 +333,7 @@ searchMoves:
 		mayPromote = brd.MayPromote(m)
 		tryPrune = canPrune && stage == STAGE_REMAINING && legalSearched > 0 && !mayPromote
 
-		if tryPrune && getSee(brd, m.From(), m.To(), EMPTY) < 0 {
+		if tryPrune && GetSee(brd, m.From(), m.To(), EMPTY) < 0 {
 			continue // prune quiet moves that result in loss of moving piece
 		}
 
@@ -368,7 +368,7 @@ searchMoves:
 				rDepth = depth + 1 // extend winning promotions only
 			} else if givesCheck && checked && ply > 0 && (stage < STAGE_LOSING ||
 				// don't extend suicidal checks
-				(stage == STAGE_REMAINING && getSee(brd, m.From(), m.To(), EMPTY) >= 0)) {
+				(stage == STAGE_REMAINING && GetSee(brd, m.From(), m.To(), EMPTY) >= 0)) {
 				rDepth = depth + 1 // only extend "useful" checks after the first check in a variation.
 			} else if canReduce && !mayPromote && !givesCheck &&
 				stage >= STAGE_REMAINING && ((nodeType == Y_ALL && legalSearched > 2) ||
@@ -544,7 +544,7 @@ searchMoves:
 func (s *Search) nullMake(brd *Board, beta, nullDepth, ply int, checked bool) (int, int) {
 	hashKey, enpTarget := brd.hashKey, brd.enpTarget
 	brd.c ^= 1
-	brd.hashKey ^= sideKey64
+	brd.hashKey ^= sideKey
 	brd.hashKey ^= EnpZobrist(enpTarget)
 	brd.enpTarget = SQ_INVALID
 	stk := brd.worker.stk

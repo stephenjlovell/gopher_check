@@ -31,16 +31,16 @@ var bishopMagicMoves, rookMagicMoves [64][MAGIC_DB_SIZE]BB
 var bishopMagics, rookMagics [64]BB
 var bishopMagicMasks, rookMagicMasks [64]BB
 
-func bishopAttacks(occ BB, sq int) BB {
+func BishopAttacks(occ BB, sq int) BB {
 	return bishopMagicMoves[sq][magicIndex(occ, bishopMagicMasks[sq], bishopMagics[sq])]
 }
 
-func rookAttacks(occ BB, sq int) BB {
+func RookAttacks(occ BB, sq int) BB {
 	return rookMagicMoves[sq][magicIndex(occ, rookMagicMasks[sq], rookMagics[sq])]
 }
 
-func queenAttacks(occ BB, sq int) BB {
-	return (bishopAttacks(occ, sq) | rookAttacks(occ, sq))
+func QueenAttacks(occ BB, sq int) BB {
+	return (BishopAttacks(occ, sq) | RookAttacks(occ, sq))
 }
 
 func magicIndex(occ, sqMask, magic BB) int {

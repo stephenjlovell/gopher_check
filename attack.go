@@ -7,43 +7,43 @@ package main
 
 import "fmt"
 
-func attackMap(brd *Board, occ BB, sq int) BB {
+func AttackMap(brd *Board, occ BB, sq int) BB {
 	bb := ((pawnAttackMasks[BLACK][sq] & brd.pieces[WHITE][PAWN]) |
 		(pawnAttackMasks[WHITE][sq] & brd.pieces[BLACK][PAWN])) | // Pawns
 		(knightMasks[sq] & (brd.pieces[WHITE][KNIGHT] | brd.pieces[BLACK][KNIGHT])) | // Knights
 		(kingMasks[sq] & (brd.pieces[WHITE][KING] | brd.pieces[BLACK][KING])) // Kings
 	if bSliders := (brd.pieces[WHITE][BISHOP] | brd.pieces[BLACK][BISHOP] | brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]); bSliders&bishopMasks[sq] > 0 {
-		bb |= (bishopAttacks(occ, sq) & bSliders) // Bishops and Queens
+		bb |= (BishopAttacks(occ, sq) & bSliders) // Bishops and Queens
 	}
 	if rSliders := (brd.pieces[WHITE][ROOK] | brd.pieces[BLACK][ROOK] | brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]); rSliders&rookMasks[sq] > 0 {
-		bb |= (rookAttacks(occ, sq) & rSliders) // Rooks and Queens
+		bb |= (RookAttacks(occ, sq) & rSliders) // Rooks and Queens
 	}
 	return bb
 }
 
-func colorAttackMap(brd *Board, occ BB, sq int, c, e uint8) BB {
+func ColorAttackMap(brd *Board, occ BB, sq int, c, e uint8) BB {
 	bb := (pawnAttackMasks[e][sq] & brd.pieces[c][PAWN]) | // Pawns
 		(knightMasks[sq] & brd.pieces[c][KNIGHT]) | // Knights
 		(kingMasks[sq] & brd.pieces[c][KING]) // Kings
 	if bSliders := (brd.pieces[c][BISHOP] | brd.pieces[c][QUEEN]); bSliders&bishopMasks[sq] > 0 {
-		bb |= (bishopAttacks(occ, sq) & bSliders) // Bishops and Queens
+		bb |= (BishopAttacks(occ, sq) & bSliders) // Bishops and Queens
 	}
 	if rSliders := (brd.pieces[c][ROOK] | brd.pieces[c][QUEEN]); rSliders&rookMasks[sq] > 0 {
-		bb |= (rookAttacks(occ, sq) & rSliders) // Rooks and Queens
+		bb |= (RookAttacks(occ, sq) & rSliders) // Rooks and Queens
 	}
 	return bb
 }
 
-func isAttackedBy(brd *Board, occ BB, sq int, attacker, defender uint8) bool {
+func IsAttackedBy(brd *Board, occ BB, sq int, attacker, defender uint8) bool {
 	return (pawnAttackMasks[defender][sq]&brd.pieces[attacker][PAWN] > 0) || // Pawns
 		(knightMasks[sq]&(brd.pieces[attacker][KNIGHT]) > 0) || // Knights
 		(kingMasks[sq]&(brd.pieces[attacker][KING]) > 0) || // Kings
-		(bishopAttacks(occ, sq)&(brd.pieces[attacker][BISHOP]|brd.pieces[attacker][QUEEN]) > 0) || // Bishops and Queens
-		(rookAttacks(occ, sq)&(brd.pieces[attacker][ROOK]|brd.pieces[attacker][QUEEN]) > 0) // Rooks and Queens
+		(BishopAttacks(occ, sq)&(brd.pieces[attacker][BISHOP]|brd.pieces[attacker][QUEEN]) > 0) || // Bishops and Queens
+		(RookAttacks(occ, sq)&(brd.pieces[attacker][ROOK]|brd.pieces[attacker][QUEEN]) > 0) // Rooks and Queens
 }
 
-func pinnedCanMove(brd *Board, from, to int, c, e uint8) bool {
-	return isPinned(brd, brd.AllOccupied(), from, c, e)&sqMaskOn[to] > 0
+func PinnedCanMove(brd *Board, from, to int, c, e uint8) bool {
+	return IsPinned(brd, brd.AllOccupied(), from, c, e)&sqMaskOn[to] > 0
 }
 
 // Determines if a piece is blocking a ray attack to its king, and cannot move off this ray
@@ -56,16 +56,16 @@ func pinnedCanMove(brd *Board, from, to int, c, e uint8) bool {
 
 // Return a bitboard of locations the piece at sq can move to without leaving the king in check.
 
-func isPinned(brd *Board, occ BB, sq int, c, e uint8) BB {
+func IsPinned(brd *Board, occ BB, sq int, c, e uint8) BB {
 	var line, attacks, threat BB
 	kingSq := brd.KingSq(c)
 	line = lineMasks[sq][kingSq]
 	if line > 0 { // can only be pinned if on a ray to the king.
 		if directions[sq][kingSq] < NORTH { // direction toward king
-			attacks = bishopAttacks(occ, sq)
+			attacks = BishopAttacks(occ, sq)
 			threat = line & attacks & (brd.pieces[e][BISHOP] | brd.pieces[e][QUEEN])
 		} else {
-			attacks = rookAttacks(occ, sq)
+			attacks = RookAttacks(occ, sq)
 			threat = line & attacks & (brd.pieces[e][ROOK] | brd.pieces[e][QUEEN])
 		}
 		if threat > 0 && (attacks&brd.pieces[c][KING]) > 0 {
@@ -87,7 +87,7 @@ const (
 	// SEE_MAX = 880  // best outcome (capturing an undefended queen)
 )
 
-func getSee(brd *Board, from, to int, capturedPiece Piece) int {
+func GetSee(brd *Board, from, to int, capturedPiece Piece) int {
 	var nextVictim int
 	var t Piece
 
@@ -99,7 +99,7 @@ func getSee(brd *Board, from, to int, capturedPiece Piece) int {
 		brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]
 
 	tempOcc := brd.AllOccupied()
-	tempMap := attackMap(brd, tempOcc, to)
+	tempMap := AttackMap(brd, tempOcc, to)
 
 	var tempPieces BB
 
@@ -110,6 +110,8 @@ func getSee(brd *Board, from, to int, capturedPiece Piece) int {
 		// this move is illegal and will be discarded by the move selector. Return the lowest possible
 		// SEE value so that this move will be put at end of list.  If cutoff occurs before then,
 		// the cost of detecting the illegal move will be saved.
+		// In practice, this should never happen. If we reach this line, it means we've introduced a bug
+		// somewhere in move generation or tree traversal.
 		fmt.Printf("info string king capture detected in getSee(): %s\n", BoardToFEN(brd))
 		return SEE_MIN
 	}
@@ -129,10 +131,10 @@ func getSee(brd *Board, from, to int, capturedPiece Piece) int {
 	tempOcc.Clear(from)
 	if t != KNIGHT && t != KING { // if the attacker was a pawn, bishop, rook, or queen, re-scan for hidden attacks:
 		if t == PAWN || t == BISHOP || t == QUEEN {
-			tempMap |= bishopAttacks(tempOcc, to) & bAttackers
+			tempMap |= BishopAttacks(tempOcc, to) & bAttackers
 		}
 		if t == PAWN || t == ROOK || t == QUEEN {
-			tempMap |= rookAttacks(tempOcc, to) & rAttackers
+			tempMap |= RookAttacks(tempOcc, to) & rAttackers
 		}
 	}
 
@@ -164,10 +166,10 @@ func getSee(brd *Board, from, to int, capturedPiece Piece) int {
 		tempOcc ^= (tempPieces & -tempPieces) // merge the first set bit of temp_pieces into temp_occ
 		if t != KNIGHT && t != KING {
 			if t == PAWN || t == BISHOP || t == QUEEN {
-				tempMap |= (bishopAttacks(tempOcc, to) & bAttackers)
+				tempMap |= (BishopAttacks(tempOcc, to) & bAttackers)
 			}
 			if t == ROOK || t == QUEEN {
-				tempMap |= (rookAttacks(tempOcc, to) & rAttackers)
+				tempMap |= (RookAttacks(tempOcc, to) & rAttackers)
 			}
 		}
 		tempColor ^= 1
@@ -182,7 +184,7 @@ func getSee(brd *Board, from, to int, capturedPiece Piece) int {
 }
 
 // TODO: handle other pieces getting king out of check...
-func isCheckmate(brd *Board, inCheck bool) bool {
+func IsCheckmate(brd *Board, inCheck bool) bool {
 	if !inCheck {
 		return false
 	}
@@ -193,13 +195,13 @@ func isCheckmate(brd *Board, inCheck bool) bool {
 	occ := brd.AllOccupied()
 	for t := kingMasks[from] & (^brd.occupied[c]); t > 0; t.Clear(to) { // generate to squares
 		to = furthestForward(c, t)
-		if !isAttackedBy(brd, occAfterMove(occ, from, to), to, e, c) {
+		if !IsAttackedBy(brd, OccAfterMove(occ, from, to), to, e, c) {
 			return false
 		}
 	}
 	return true
 }
 
-func occAfterMove(occ BB, from, to int) BB {
+func OccAfterMove(occ BB, from, to int) BB {
 	return (occ | sqMaskOn[to]) & sqMaskOff[from]
 }

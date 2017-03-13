@@ -18,7 +18,7 @@ func (s *Search) quiescence(brd *Board, alpha, beta, depth, ply int) (int, int) 
 
 	inCheck := thisStk.inCheck
 	if brd.halfmoveClock >= 100 {
-		if isCheckmate(brd, inCheck) {
+		if IsCheckmate(brd, inCheck) {
 			return ply - MATE, 1
 		} else {
 			return ply - DRAW_VALUE, 1

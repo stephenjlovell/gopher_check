@@ -56,7 +56,7 @@ func (brd *Board) NewMemento() *BoardMemento {
 }
 
 func (brd *Board) InCheck() bool { // determines if side to move is in check
-	return isAttackedBy(brd, brd.AllOccupied(), brd.KingSq(brd.c), brd.Enemy(), brd.c)
+	return IsAttackedBy(brd, brd.AllOccupied(), brd.KingSq(brd.c), brd.Enemy(), brd.c)
 }
 
 func (brd *Board) KingSq(c uint8) int {
@@ -71,13 +71,13 @@ func (brd *Board) MayPromote(m Move) bool {
 		return true
 	}
 	if brd.c == WHITE {
-		return m.To() >= A5 || brd.isPassedPawn(m)
+		return m.To() >= A5 || brd.IsPassedPawn(m)
 	} else {
-		return m.To() < A5 || brd.isPassedPawn(m)
+		return m.To() < A5 || brd.IsPassedPawn(m)
 	}
 }
 
-func (brd *Board) isPassedPawn(m Move) bool {
+func (brd *Board) IsPassedPawn(m Move) bool {
 	return pawnPassedMasks[brd.c][m.To()]&brd.pieces[brd.Enemy()][PAWN] == 0
 }
 

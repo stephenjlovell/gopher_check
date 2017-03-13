@@ -29,9 +29,9 @@ const (
 // If defended, gain is SEE score where captured_piece == EMPTY
 
 func SortPromotionAdvances(brd *Board, from, to int, promotedTo Piece) uint32 {
-	if isAttackedBy(brd, brd.AllOccupied()&sqMaskOff[from],
+	if IsAttackedBy(brd, brd.AllOccupied()&sqMaskOff[from],
 		to, brd.Enemy(), brd.c) { // defended
-		see := getSee(brd, from, to, EMPTY)
+		see := GetSee(brd, from, to, EMPTY)
 		if see >= 0 {
 			return SORT_WINNING_PROMOTION | uint32(see)
 		} else {
@@ -43,8 +43,8 @@ func SortPromotionAdvances(brd *Board, from, to int, promotedTo Piece) uint32 {
 }
 
 func SortPromotionCaptures(brd *Board, from, to int, capturedPiece, promotedTo Piece) uint32 {
-	if isAttackedBy(brd, brd.AllOccupied()&sqMaskOff[from], to, brd.Enemy(), brd.c) { // defended
-		return uint32(SORT_WINNING_PROMOTION + getSee(brd, from, to, capturedPiece))
+	if IsAttackedBy(brd, brd.AllOccupied()&sqMaskOff[from], to, brd.Enemy(), brd.c) { // defended
+		return uint32(SORT_WINNING_PROMOTION + GetSee(brd, from, to, capturedPiece))
 	} else { // undefended
 		return SORT_WINNING_PROMOTION | uint32(promotedTo.PromoteValue()+capturedPiece.Value())
 	}

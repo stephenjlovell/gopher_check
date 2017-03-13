@@ -152,11 +152,11 @@ func ToSAN(brd *Board, m Move) string {
 		case KNIGHT:
 			t = knightMasks[to] & brd.pieces[c][piece]
 		case BISHOP:
-			t = bishopAttacks(occ, to) & brd.pieces[c][piece]
+			t = BishopAttacks(occ, to) & brd.pieces[c][piece]
 		case ROOK:
-			t = rookAttacks(occ, to) & brd.pieces[c][piece]
+			t = RookAttacks(occ, to) & brd.pieces[c][piece]
 		case QUEEN:
-			t = queenAttacks(occ, to) & brd.pieces[c][piece]
+			t = QueenAttacks(occ, to) & brd.pieces[c][piece]
 		}
 		if popCount(t) > 1 {
 			if popCount(columnMasks[column(from)]&t) == 1 {

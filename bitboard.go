@@ -44,11 +44,11 @@ func (b BB) Print() {
 func slidingAttacks(piece Piece, occ BB, sq int) BB {
 	switch piece {
 	case BISHOP:
-		return bishopAttacks(occ, sq)
+		return BishopAttacks(occ, sq)
 	case ROOK:
-		return rookAttacks(occ, sq)
+		return RookAttacks(occ, sq)
 	case QUEEN:
-		return queenAttacks(occ, sq)
+		return QueenAttacks(occ, sq)
 	default:
 		return BB(0)
 	}

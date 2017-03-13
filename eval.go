@@ -222,7 +222,7 @@ func majorPlacement(brd *Board, pentry *PawnEntry, c, e uint8, kingSq,
 
 	for b = brd.pieces[c][BISHOP]; b > 0; b.Clear(sq) {
 		sq = furthestForward(c, b)
-		attacks = bishopAttacks(occ, sq) & available
+		attacks = BishopAttacks(occ, sq) & available
 		kingThreats += popCount(attacks & enemyKingZone)
 		mobility += bishopMobility[popCount(attacks)]
 	}
@@ -235,7 +235,7 @@ func majorPlacement(brd *Board, pentry *PawnEntry, c, e uint8, kingSq,
 	for b = brd.pieces[c][ROOK]; b > 0; b.Clear(sq) {
 		sq = furthestForward(c, b)
 		placement += rookPawns[pawnCount]
-		attacks = rookAttacks(occ, sq) & available
+		attacks = RookAttacks(occ, sq) & available
 		kingThreats += popCount(attacks & enemyKingZone)
 		// only reward rook mobility in the late-game.
 		mobility += weightScore(phase, 0, rookMobility[popCount(attacks)])
@@ -243,7 +243,7 @@ func majorPlacement(brd *Board, pentry *PawnEntry, c, e uint8, kingSq,
 
 	for b = brd.pieces[c][QUEEN]; b > 0; b.Clear(sq) {
 		sq = furthestForward(c, b)
-		attacks = queenAttacks(occ, sq) & available
+		attacks = QueenAttacks(occ, sq) & available
 		kingThreats += popCount(attacks & enemyKingZone)
 		mobility += queenMobility[popCount(attacks)]
 		placement += weightScore(phase, 0, // encourage queen to move toward enemy king in the late-game.

@@ -16,7 +16,7 @@ var zobristTable [2][8][64]uint64
 // integer keys representing the en-passant target square, if any.
 var enpTable [128]uint64
 var castleTable [16]uint64
-var sideKey64 uint64 // keys representing a change in side-to-move.
+var sideKey uint64 // keys representing a change in side-to-move.
 
 func setupZobrist() {
 	rng := NewRngKiss(148) // sparsely populated rands produce fewer collisions.
@@ -35,7 +35,7 @@ func setupZobrist() {
 		enpTable[sq] = rng.RandomUint64(sq)
 	}
 	enpTable[64] = 0
-	sideKey64 = rng.RandomUint64(63)
+	sideKey = rng.RandomUint64(63)
 }
 
 func Zobrist(pc Piece, sq int, c uint8) uint64 {

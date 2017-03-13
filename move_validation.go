@@ -27,17 +27,17 @@ func (brd *Board) PseudolegalAvoidsCheck(m Move) bool {
 	case PAWN:
 		if m.CapturedPiece() == PAWN && brd.TypeAt(m.To()) == EMPTY { // En-passant
 			// detect if the moving pawn would be pinned in the absence of the captured pawn.
-			return isPinned(brd, brd.AllOccupied()&sqMaskOff[brd.enpTarget],
+			return IsPinned(brd, brd.AllOccupied()&sqMaskOff[brd.enpTarget],
 				m.From(), brd.c, brd.Enemy())&sqMaskOn[m.To()] > 0
 		} else {
-			return pinnedCanMove(brd, m.From(), m.To(), brd.c, brd.Enemy())
+			return PinnedCanMove(brd, m.From(), m.To(), brd.c, brd.Enemy())
 		}
 	case KNIGHT: // Knights can never move when pinned.
-		return isPinned(brd, brd.AllOccupied(), m.From(), brd.c, brd.Enemy()) == BB(ANY_SQUARE_MASK)
+		return IsPinned(brd, brd.AllOccupied(), m.From(), brd.c, brd.Enemy()) == BB(ANY_SQUARE_MASK)
 	case KING:
-		return !isAttackedBy(brd, brd.AllOccupied(), m.To(), brd.Enemy(), brd.c)
+		return !IsAttackedBy(brd, brd.AllOccupied(), m.To(), brd.Enemy(), brd.c)
 	default:
-		return pinnedCanMove(brd, m.From(), m.To(), brd.c, brd.Enemy())
+		return PinnedCanMove(brd, m.From(), m.To(), brd.c, brd.Enemy())
 	}
 }
 
@@ -47,11 +47,11 @@ func (brd *Board) EvadesCheck(m Move) bool {
 	c, e := brd.c, brd.Enemy()
 
 	if piece == KING {
-		return !isAttackedBy(brd, occAfterMove(brd.AllOccupied(), from, to), to, e, c)
+		return !IsAttackedBy(brd, OccAfterMove(brd.AllOccupied(), from, to), to, e, c)
 	}
 	occ := brd.AllOccupied()
 	kingSq := brd.KingSq(c)
-	threats := colorAttackMap(brd, occ, kingSq, e, c)
+	threats := ColorAttackMap(brd, occ, kingSq, e, c)
 
 	// TODO: EvadesCheck() called from non-check position in rare cases. Examples:
 	// 5r1k/1b3p1p/pp3p1q/3n4/1P2R3/P2B1PP1/7P/6K1 w - - 0 1
@@ -77,9 +77,9 @@ func (brd *Board) EvadesCheck(m Move) bool {
 	}
 	if brd.enpTarget != SQ_INVALID && piece == PAWN && m.CapturedPiece() == PAWN && // En-passant
 		brd.TypeAt(to) == EMPTY {
-		return isPinned(brd, occ&sqMaskOff[brd.enpTarget], from, c, e)&sqMaskOn[to] > 0
+		return IsPinned(brd, occ&sqMaskOff[brd.enpTarget], from, c, e)&sqMaskOn[to] > 0
 	}
-	return pinnedCanMove(brd, from, to, c, e) // the moving piece can't be pinned to the king.
+	return PinnedCanMove(brd, from, to, c, e) // the moving piece can't be pinned to the king.
 }
 
 // Determines if a move is otherwise legal for brd, without considering king safety.
@@ -144,12 +144,12 @@ func (brd *Board) ValidMove(m Move, inCheck bool) bool {
 				switch to {
 				case C1:
 					if (castle&C_WQ > uint8(0)) && castleQueensideIntervening[WHITE]&occ == 0 &&
-						!isAttackedBy(brd, occ, C1, e, c) && !isAttackedBy(brd, occ, D1, e, c) {
+						!IsAttackedBy(brd, occ, C1, e, c) && !IsAttackedBy(brd, occ, D1, e, c) {
 						return true
 					}
 				case G1:
 					if (castle&C_WK > uint8(0)) && castleKingsideIntervening[WHITE]&occ == 0 &&
-						!isAttackedBy(brd, occ, F1, e, c) && !isAttackedBy(brd, occ, G1, e, c) {
+						!IsAttackedBy(brd, occ, F1, e, c) && !IsAttackedBy(brd, occ, G1, e, c) {
 						return true
 					}
 				}
@@ -157,12 +157,12 @@ func (brd *Board) ValidMove(m Move, inCheck bool) bool {
 				switch to {
 				case C8:
 					if (castle&C_BQ > uint8(0)) && castleQueensideIntervening[BLACK]&occ == 0 &&
-						!isAttackedBy(brd, occ, C8, e, c) && !isAttackedBy(brd, occ, D8, e, c) {
+						!IsAttackedBy(brd, occ, C8, e, c) && !IsAttackedBy(brd, occ, D8, e, c) {
 						return true
 					}
 				case G8:
 					if (castle&C_BK > uint8(0)) && castleKingsideIntervening[BLACK]&occ == 0 &&
-						!isAttackedBy(brd, occ, F8, e, c) && !isAttackedBy(brd, occ, G8, e, c) {
+						!IsAttackedBy(brd, occ, F8, e, c) && !IsAttackedBy(brd, occ, G8, e, c) {
 						return true
 					}
 				}

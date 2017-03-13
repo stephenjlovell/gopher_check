@@ -122,7 +122,7 @@ func makeMove(brd *Board, move Move) {
 	}
 
 	brd.c ^= 1 // flip the current side to move.
-	brd.hashKey ^= sideKey64
+	brd.hashKey ^= sideKey
 }
 
 // Castle flag, enp target, hash key, pawn hash key, and halfmove clock are all restored during search
