@@ -21,8 +21,8 @@ var printMutex sync.Mutex
 // that start searching that SplitPoint will make their own copy of the SP board.
 // Keep this struct as small as possible.
 type Board struct {
+	squares        [64]Piece // 2048
 	pieces         [2][8]BB  // 1024
-	squares        [64]Piece //  512
 	occupied       [2]BB     //  128
 	hashKey        uint64    //   64
 	worker         *Worker   //   64
@@ -106,9 +106,8 @@ func (brd *Board) ColorPawnsOnly(c uint8) bool {
 }
 
 func (brd *Board) Copy() *Board {
-	var copy *Board
-	*copy = *brd
-	return copy
+	copy := *brd
+	return &copy
 }
 
 func (brd *Board) PrintDetails() {
