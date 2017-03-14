@@ -10,10 +10,12 @@ func AttackMap(brd *Board, occ BB, sq int) BB {
 		(pawnAttackMasks[WHITE][sq] & brd.pieces[BLACK][PAWN])) | // Pawns
 		(knightMasks[sq] & (brd.pieces[WHITE][KNIGHT] | brd.pieces[BLACK][KNIGHT])) | // Knights
 		(kingMasks[sq] & (brd.pieces[WHITE][KING] | brd.pieces[BLACK][KING])) // Kings
-	if bSliders := (brd.pieces[WHITE][BISHOP] | brd.pieces[BLACK][BISHOP] | brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]); bSliders&bishopMasks[sq] > 0 {
+	if bSliders := (brd.pieces[WHITE][BISHOP] | brd.pieces[BLACK][BISHOP] |
+		brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]); bSliders&bishopMasks[sq] > 0 {
 		bb |= (BishopAttacks(occ, sq) & bSliders) // Bishops and Queens
 	}
-	if rSliders := (brd.pieces[WHITE][ROOK] | brd.pieces[BLACK][ROOK] | brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]); rSliders&rookMasks[sq] > 0 {
+	if rSliders := (brd.pieces[WHITE][ROOK] | brd.pieces[BLACK][ROOK] |
+		brd.pieces[WHITE][QUEEN] | brd.pieces[BLACK][QUEEN]); rSliders&rookMasks[sq] > 0 {
 		bb |= (RookAttacks(occ, sq) & rSliders) // Rooks and Queens
 	}
 	return bb

@@ -333,7 +333,7 @@ searchMoves:
 		mayPromote = brd.MayPromote(m)
 		tryPrune = canPrune && stage == STAGE_REMAINING && legalSearched > 0 && !mayPromote
 
-		if tryPrune && GetSee(brd, m.From(), m.To(), NO_PIECE) < 0 {
+		if tryPrune && GetSee(brd, brd.AllOccupied(), m.From(), m.To(), m.CapturedPiece()) < 0 {
 			continue // prune quiet moves that result in loss of moving piece
 		}
 
@@ -368,7 +368,7 @@ searchMoves:
 				rDepth = depth + 1 // extend winning promotions only
 			} else if givesCheck && checked && ply > 0 && (stage < STAGE_LOSING ||
 				// don't extend suicidal checks
-				(stage == STAGE_REMAINING && GetSee(brd, m.From(), m.To(), NO_PIECE) >= 0)) {
+				(stage == STAGE_REMAINING && GetSee(brd, brd.AllOccupied(), m.From(), m.To(), m.CapturedPiece()) >= 0)) {
 				rDepth = depth + 1 // only extend "useful" checks after the first check in a variation.
 			} else if canReduce && !mayPromote && !givesCheck &&
 				stage >= STAGE_REMAINING && ((nodeType == Y_ALL && legalSearched > 2) ||

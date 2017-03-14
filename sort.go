@@ -29,9 +29,10 @@ const (
 // If defended, gain is SEE score where captured_piece == EMPTY
 
 func SortPromotionAdvances(brd *Board, from, to int, promotedTo Piece) uint32 {
-	if IsAttackedBy(brd, brd.AllOccupied()&sqMaskOff[from],
+	occ := brd.AllOccupied()
+	if IsAttackedBy(brd, occ&sqMaskOff[from],
 		to, brd.Enemy(), brd.c) { // defended
-		see := GetSee(brd, from, to, NO_PIECE)
+		see := GetSee(brd, occ, from, to, NO_PIECE)
 		if see >= 0 {
 			return SORT_WINNING_PROMOTION | uint32(see)
 		} else {
@@ -43,18 +44,20 @@ func SortPromotionAdvances(brd *Board, from, to int, promotedTo Piece) uint32 {
 }
 
 func SortPromotionCaptures(brd *Board, from, to int, capturedPiece, promotedTo Piece) uint32 {
-	if IsAttackedBy(brd, brd.AllOccupied()&sqMaskOff[from], to, brd.Enemy(), brd.c) { // defended
-		return uint32(SORT_WINNING_PROMOTION + GetSee(brd, from, to, capturedPiece))
+	occ := brd.AllOccupied()
+	if IsAttackedBy(brd, occ&sqMaskOff[from], to, brd.Enemy(), brd.c) { // defended
+		return uint32(SORT_WINNING_PROMOTION + GetSee(brd, occ, from, to, capturedPiece))
 	} else { // undefended
 		return SORT_WINNING_PROMOTION | uint32(promotedTo.PromoteValue()+capturedPiece.Value())
 	}
 }
 
+// TODO: test with SEE as primary ordering factor.
 func SortCapture(victim, attacker Piece, see int) uint32 {
-	return (MVVLVA(victim, attacker) << 22) + uint32(see-SEE_MIN)
+	return (mVVLVA(victim, attacker) << 22) + uint32(see-SEE_MIN)
 }
 
-func MVVLVA(victim, attacker Piece) uint32 {
+func mVVLVA(victim, attacker Piece) uint32 {
 	return uint32(((victim + 1) << 3) - attacker)
 }
 
