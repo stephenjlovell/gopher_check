@@ -56,8 +56,8 @@ type Search struct {
 }
 
 type SearchParams struct {
-	maxDepth                        int
-	verbose, ponder, restrictSearch bool
+	maxDepth                                               int
+	verbose, ponder, restrictSearch, parallelSearchEnabled bool
 }
 
 type SearchResult struct {
@@ -488,7 +488,7 @@ searchMoves:
 			}
 			legalSearched += 1
 			// Determine if this would be a good location to begin searching in parallel.
-			if canSplit(brd, ply, depth, nodeType, legalSearched, stage) {
+			if s.canSplit(brd, ply, depth, nodeType, legalSearched, stage) {
 				sp = CreateSP(s, brd, stk, selector, bestMove, alpha, beta, best, depth, ply,
 					legalSearched, nodeType, sum, checked)
 				// register the split point in the appropriate SP list, and notify any idle workers.
@@ -581,8 +581,8 @@ func (s *Search) determineChildType(nodeType, legalSearched int) int {
 }
 
 // Determine if the current node is a good place to start searching in parallel.
-func canSplit(brd *Board, ply, depth, nodeType, legalSearched, stage int) bool {
-	if depth >= MIN_SPLIT {
+func (s *Search) canSplit(brd *Board, ply, depth, nodeType, legalSearched, stage int) bool {
+	if s.parallelSearchEnabled && depth >= MIN_SPLIT {
 		switch nodeType {
 		case Y_PV:
 			return ply > 0 && legalSearched > 0

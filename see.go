@@ -15,10 +15,9 @@ const (
 // 1. When a capture results in an exchange of pieces by both sides, SEE is used to determine the
 //    net gain/loss in material for the side initiating the exchange.
 // 2. SEE scoring of moves is used for move ordering of captures at critical nodes.
-// 3. During quiescence search, SEE is used to prune losing captures. This provides a very low-risk
-//    way of reducing the size of the q-search without impacting playing strength.
+// 3. During quiescence search, SEE is used to prune losing captures. This provides a low-risk
+//    way of reducing the size of the q-search without impacting playing strength too much.
 func GetSee(brd *Board, tempOcc BB, from, to int, capturedPiece Piece) int {
-
 	tempColor := brd.Enemy()
 	// get initial map of all squares directly attacking this square (does not include 'discovered'/hidden attacks)
 	bAttackers := brd.pieces[WHITE][BISHOP] | brd.pieces[BLACK][BISHOP] |
@@ -69,10 +68,9 @@ func GetSee(brd *Board, tempOcc BB, from, to int, capturedPiece Piece) int {
 
 		pieceList[count] = nextVictim - pieceList[count-1]
 		nextVictim = pieceValues[pc]
-
 		count++
 
-		if (pieceList[count-1] - nextVictim) > 0 { // TODO: validate this.
+		if (pieceList[count-1] - nextVictim) > 0 {
 			break
 		}
 
@@ -88,13 +86,19 @@ func GetSee(brd *Board, tempOcc BB, from, to int, capturedPiece Piece) int {
 			tempMap |= (RookAttacks(tempOcc, to) & rAttackers)
 		default:
 		}
-
 		tempColor ^= 1
 	}
 
-	for count >= 2 {
+	for count > 1 {
 		count--
 		pieceList[count-1] = -Max(-pieceList[count-1], pieceList[count])
 	}
+
+	// if pc == KING && tempMap&brd.occupied[tempColor^1] == 0 {
+	// 	brd.Print()
+	// 	fmt.Println(SquareString(from) + SquareString(to))
+	// 	fmt.Println(pieceList[0])
+	// }
+
 	return pieceList[0]
 }

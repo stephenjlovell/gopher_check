@@ -349,6 +349,7 @@ func (uci *UCIAdapter) register(uciFields []string) {
 // 	If one command is not send its value should be interpreted as it would not influence the search.
 func (uci *UCIAdapter) start(uciFields []string) bool {
 	var timeLimit int
+	var params SearchParams
 	maxDepth := MAX_DEPTH
 	gt := NewGameTimer(uci.moveCounter, uci.brd.c) // TODO: this will be inaccurate in pondering mode.
 	ponder := false
@@ -429,12 +430,14 @@ func (uci *UCIAdapter) start(uciFields []string) bool {
 	}
 	uci.wg.Add(1)
 
-	// type SearchParams struct {
-	// 	max_depth         int
-	// 	verbose, ponder, restrict_search bool
-	// }
-	uci.search = NewSearch(SearchParams{maxDepth, uci.optionDebug, ponder, len(allowedMoves) > 0},
-		gt, uci, allowedMoves)
+	params = SearchParams{
+		maxDepth:              maxDepth,
+		verbose:               uci.optionDebug,
+		ponder:                ponder,
+		restrictSearch:        len(allowedMoves) > 0,
+		parallelSearchEnabled: len(loadBalancer.workers) > 1,
+	}
+	uci.search = NewSearch(params, gt, uci, allowedMoves)
 	go uci.search.Start(uci.brd.Copy()) // starting the search also starts the clock
 	return ponder
 }
